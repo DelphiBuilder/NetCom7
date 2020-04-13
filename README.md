@@ -48,4 +48,6 @@ Please refer to the demos for a better understanding on how to use these compone
 
 Written by Bill Anastasios Demos.
 
+VasDemos[at]yahoo[dot]co[dot]uk
+
 * Delphi RULES *
