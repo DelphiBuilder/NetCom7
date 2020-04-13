@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2012/07/03 11:29:31.714.dfm,C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\SimpleSources\Server\ufrmMain.dfm=C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>2012/07/03 11:29:31.714.pas,C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\SimpleSources\Server\ufrmMain.pas=C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2012/07/03 11:29:37.339.dproj,C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\SimpleSources\Server\ServerSource.dproj=C:\Users\BDemos\Documents\RAD Studio\Projects\Project1.dproj</Transaction>
+  </Transactions>
+</BorlandProject>
