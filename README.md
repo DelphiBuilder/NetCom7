@@ -19,6 +19,7 @@ any request as fast as possible).
 
 Simple senario:
   Server:
+  
     - You put a TncServerSource on your form. If you want you can change the port it is listening to via the Port property.
     
     - You implement an OnHandleCommand event handler and, depending on aCmd parameter (integer), you respond the result 
