@@ -1,0 +1,79 @@
+package NetCom7;
+
+{$R *.res}
+{$R 'Source\NetComRegister.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS OFF}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS OFF}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Simetron © NetCom7 Network Communications Suite'}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  DesignIDE,
+  dbrtl,
+  adortl;
+
+contains
+  ncIntList in 'Source\ncIntList.pas',
+  ncThreads in 'Source\ncThreads.pas',
+  ncSockets in 'Source\ncSockets.pas',
+  ncSources in 'Source\ncSources.pas',
+  ncCommandHandlers in 'Source\ncCommandHandlers.pas',
+  ncCompression in 'Source\ncCompression.pas',
+  ncEncryption in 'Source\ncEncryption.pas',
+  ncEncBlockciphers in 'Source\Encryption\ncEncBlockciphers.pas',
+  ncEncBlowfish in 'Source\Encryption\ncEncBlowfish.pas',
+  ncEncCast128 in 'Source\Encryption\ncEncCast128.pas',
+  ncEncCast256 in 'Source\Encryption\ncEncCast256.pas',
+  ncEncCrypt2 in 'Source\Encryption\ncEncCrypt2.pas',
+  ncEncDes in 'Source\Encryption\ncEncDes.pas',
+  ncEncHaval in 'Source\Encryption\ncEncHaval.pas',
+  ncEncIce in 'Source\Encryption\ncEncIce.pas',
+  ncEncIdea in 'Source\Encryption\ncEncIdea.pas',
+  ncEncMars in 'Source\Encryption\ncEncMars.pas',
+  ncEncMd4 in 'Source\Encryption\ncEncMd4.pas',
+  ncEncMd5 in 'Source\Encryption\ncEncMd5.pas',
+  ncEncMisty1 in 'Source\Encryption\ncEncMisty1.pas',
+  ncEncRc2 in 'Source\Encryption\ncEncRc2.pas',
+  ncEncRc4 in 'Source\Encryption\ncEncRc4.pas',
+  ncEncRc5 in 'Source\Encryption\ncEncRc5.pas',
+  ncEncRc6 in 'Source\Encryption\ncEncRc6.pas',
+  ncEncRijndael in 'Source\Encryption\ncEncRijndael.pas',
+  ncEncRipemd128 in 'Source\Encryption\ncEncRipemd128.pas',
+  ncEncRipemd160 in 'Source\Encryption\ncEncRipemd160.pas',
+  ncEncSerpent in 'Source\Encryption\ncEncSerpent.pas',
+  ncEncSha1 in 'Source\Encryption\ncEncSha1.pas',
+  ncEncSha256 in 'Source\Encryption\ncEncSha256.pas',
+  ncEncSha512 in 'Source\Encryption\ncEncSha512.pas',
+  ncEncTea in 'Source\Encryption\ncEncTea.pas',
+  ncEncTiger in 'Source\Encryption\ncEncTiger.pas',
+  ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas',
+  ncDBSrv in 'Source\ncDBSrv.pas',
+  ncDBCnt in 'Source\ncDBCnt.pas',
+  NetComRegister in 'Source\NetComRegister.pas',
+  ncSerializeADO in 'Source\ncSerializeADO.pas',
+  ncDBCommands in 'Source\ncDBCommands.pas';
+
+end.
