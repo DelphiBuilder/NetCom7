@@ -19,9 +19,9 @@ Simple senario:
     Port property.
     
     - You implement an OnHandleCommand event handler and, depending on aCmd parameter (integer), you respond the result of
-    this command via setting the Result to anything you like (TBytes). 
-    If an exception is raised, it is trapped, packed, transfered accross to the calling peer, and raised at the peer's 
-    issued ExecCommand. This way exceptions can be handled as if they were raised locally.
+    this command via setting the Result to anything you like (TBytes). If an exception is raised, it is trapped, packed, 
+    transfered accross to the calling peer, and raised at the peer's issued ExecCommand. This way exceptions can be handled
+    as if they were raised locally.
       
     - You set the Active property to true. Your server is ready.
     
