@@ -15,9 +15,14 @@ This set of components can handle as many as 2000 requests per second on my test
 Simple senario:
   Server:
   
-    - You put a TncServerSource on your form. If you want you can change the port it is listening to via the Port property.
+    - You put a TncServerSource on your form. If you want you can change the port it is listening to 
+    via the Port property.
     
-    - You implement an OnHandleCommand event handler and, depending on aCmd parameter (integer), you respond the result of this command via setting the Result to anything you like (TBytes). If an exception is raised, it is trapped and raised at the peer's TncClientSource ExecCommand.
+    - You implement an OnHandleCommand event handler and, depending on aCmd parameter (integer), 
+    you respond the result of this command via setting the Result to anything you like (TBytes). 
+    If an exception is raised, it is trapped, packed, transfered accross to the calling peer,
+    and raised at the peer's TncClientSource ExecCommand. This way exceptions can be handled as if
+    they were raised locally.
       
     - You set the Active property to true. Your server is ready.
     
@@ -27,11 +32,18 @@ Simple senario:
     
     - You set Active property to true. Your client is now connected to the server.
     
-    - You call ExecCommand (on your TncClientSource), with any command number and data that you like. This will send your command and data over to the server, call its OnHandleCommand, pack the response, and return it as a result to your ExecCommand. 
+    - You call ExecCommand (on your TncClientSource), with any command number and data that you like. 
+    This will send your command and data over to the server, call its OnHandleCommand, 
+    pack the response, and return it as a result to your ExecCommand. 
       
-    - ExecCommand is blocking (if aRequiresResult parameter is set to true), but only for the current command issued. The TncClientSource's OnHandleCommand still executes, so, while waiting for a command to return, your client socket may be processing requests from your server (a server can also ExecCommand to a client).
+    - ExecCommand is blocking (if aRequiresResult parameter is set to true), but only for the 
+    current command issued. The TncClientSource's OnHandleCommand still executes, so, while waiting 
+    for a command to return, your client socket may be processing requests from your server 
+    (a server can also ExecCommand to a client).
       
-    - If you have forgotten to set Active to true and call ExecCommand, the TncClientSource will first try to connect, so you can ommit setting this property. It will also try to connect if it knows it has been disconnected.
+    - If you have forgotten to set Active to true and call ExecCommand, the TncClientSource will
+    first try to connect, so you can ommit setting this property. It will also try to connect
+    if it knows it has been disconnected.
       
 This set of components promises unrivalled speed and that is not just in words:
 
