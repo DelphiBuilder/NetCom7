@@ -15,7 +15,8 @@ This set of components can handle as many as 2000 requests per second on my test
 Simple senario:
   Server:
   
-    - You put a TncServerSource on your form. If you want you can change the port it is listening to via the Port property.
+    - You put a TncServerSource on your form. If you want you can change the port it is listening to via the 
+    Port property.
     
     - You implement an OnHandleCommand event handler and, depending on aCmd parameter (integer), you respond the result of
     this command via setting the Result to anything you like (TBytes). 
