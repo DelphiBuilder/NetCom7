@@ -10,8 +10,6 @@ You can use TncTCPClient and TncTCPServer if all you want is to implement standa
 
 On top of the TCP/IP sockets, a lightweight protocol is implemented to be able to pack and unpack buffers (simple TCP/IP is streaming and has no notion of a well defined buffer). The set of components implementing this functionality is TncServerSource and TncClientSource. Both of these components implement an ExecCommand (aCmd, aData) which triggers an OnHandleCommand event on the other side (a client can ExecCommand to a server, or a server can ExecCommand to any client). ExecCommand can be blocking or non-blocking (async) depending on how you set its aRequiresResult parameter. If you use the blocking behaviour, the component still handles incoming requests from its peer(s). For example, a ClientSource could be waiting on an ExecCommand to the server, but while waiting it can serve ExecCommand requests from the server!
 
-This set of components can handle as many as 2000 requests per second on my testing machine, compared to 10 requests per second with Indy. 
-
 Simple senario:
   Server:
   
