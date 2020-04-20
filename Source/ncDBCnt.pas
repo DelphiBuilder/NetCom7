@@ -41,6 +41,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Loaded; override;
 
+    procedure InitializeMasterFieldsNew;
     procedure RefreshParams;
     procedure MasterChanged(Sender: TObject); override;
     procedure SQLChanged(Sender: TObject);
@@ -84,23 +85,6 @@ type
   end;
 
 implementation
-
-procedure InitializeMasterFields(DataSet: TncDBDataset);
-var
-  I: Integer;
-  MasterFieldList: string;
-begin
-  with DataSet do
-    { Assign MasterFields from parameters as needed by the MasterDataLink }
-    if (Parameters.Count > 0) and Assigned(MasterDataLink.DataSource) and Assigned(MasterDataLink.DataSource.DataSet) then
-    begin
-      for I := 0 to Parameters.Count - 1 do
-        if (Parameters[I].Direction in [pdInput, pdInputOutput]) and (MasterDataLink.DataSource.DataSet.FindField(Parameters[I].Name) <> nil) then
-          MasterFieldList := MasterFieldList + Parameters[I].Name + ';';
-      MasterFields := Copy(MasterFieldList, 1, Length(MasterFieldList) - 1);
-      SetParamsFromCursor;
-    end;
-end;
 
 { TncDBDataset }
 
@@ -209,6 +193,22 @@ begin
     RefreshParams;
 end;
 
+procedure TncDBDataset.InitializeMasterFieldsNew;
+var
+  I: Integer;
+  MasterFieldList: string;
+begin
+    { Assign MasterFields from parameters as needed by the MasterDataLink }
+    if (Parameters.Count > 0) and Assigned(MasterDataLink.DataSource) and Assigned(MasterDataLink.DataSource.DataSet) then
+    begin
+      for I := 0 to Parameters.Count - 1 do
+        if (Parameters[I].Direction in [pdInput, pdInputOutput]) and (MasterDataLink.DataSource.DataSet.FindField(Parameters[I].Name) <> nil) then
+          MasterFieldList := MasterFieldList + Parameters[I].Name + ';';
+      MasterFields := Copy(MasterFieldList, 1, Length(MasterFieldList) - 1);
+      SetParamsFromCursor;
+    end;
+end;
+
 procedure TncDBDataset.RefreshParams;
 var
   DataSet: TDataSet;
@@ -285,7 +285,7 @@ begin
       InternalApplyUpdates;
     except
       CancelUpdates;
-      raise ;
+      raise;
     end;
 
   inherited;
@@ -299,7 +299,7 @@ begin
       InternalApplyUpdates;
     except
       CancelUpdates;
-      raise ;
+      raise;
     end;
 
   inherited;
@@ -322,7 +322,7 @@ begin
   try
     // Set the MasterFields property and also get the data for the parameter
     // from the DataSource's equivalent
-    InitializeMasterFields;
+    InitializeMasterFieldsNew;
 
     // Send the SQL and Parameters and retrieve the table back
     CommandData.SQL := SQL.Text;
@@ -400,7 +400,7 @@ var
   UpdateData: TDBUpdateDatasetData;
   AppliedUpdatesRS: _Recordset;
   I: Integer;
-//  tmpData: OleVariant;
+  // tmpData: OleVariant;
   CannotUpdate: Boolean;
 begin
   CheckBrowseMode;
@@ -435,17 +435,17 @@ begin
               // Copy field by field
               CannotUpdate := False;
               for I := 0 to Recordset.Fields.Count - 1 do
-              try
-                Recordset.Fields.Item[I].Value := AppliedUpdatesRS.Fields.Item[I].Value;
-              except
-                // We have tried to assign to a readonly field
-                // Silence off exception. This means a field could not be updated (SQL AutoInc)
-                // If Field is SQLServer & IDENTITY/AutoInc then should delete the field add it again as Integer.
-                // When this is fixed the CannotUpdate must be removed...
+                try
+                  Recordset.Fields.Item[I].Value := AppliedUpdatesRS.Fields.Item[I].Value;
+                except
+                  // We have tried to assign to a readonly field
+                  // Silence off exception. This means a field could not be updated (SQL AutoInc)
+                  // If Field is SQLServer & IDENTITY/AutoInc then should delete the field add it again as Integer.
+                  // When this is fixed the CannotUpdate must be removed...
 
-                if Recordset.Fields.Item[I].Value <> AppliedUpdatesRS.Fields.Item[I].Value then
-                  CannotUpdate := True;
-              end;
+                  if Recordset.Fields.Item[I].Value <> AppliedUpdatesRS.Fields.Item[I].Value then
+                    CannotUpdate := True;
+                end;
               AppliedUpdatesRS.MoveNext;
             end;
 
@@ -468,7 +468,8 @@ begin
   end;
 
   // Temporary (see ToDo comment on the middle of the function.) Just make sure that even if something fails, the data are correct/refresh from server
-  if CannotUpdate then Refresh;
+  if CannotUpdate then
+    Refresh;
 end;
 
 function TncDBDataset.ExecSQL: Integer;
@@ -479,7 +480,7 @@ begin
   try
     // Set the MasterFields property and also get the data for the parameter
     // from the DataSource's equivalent
-    InitializeMasterFields;
+    InitializeMasterFieldsNew;
 
     CommandData.SQL := SQL.Text;
     CommandData.Parameters := ParametersToBytes(Parameters);
