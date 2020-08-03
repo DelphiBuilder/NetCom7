@@ -18,9 +18,11 @@ unit ncThreads;
 interface
 
 {$IFDEF MSWINDOWS}
+
 uses Windows, Classes, SyncObjs, ActiveX, ComObj;
 {$ELSE}
-//uses System.Win, System.Classes, System.SyncObjs, System.ActiveX, System.Win.ComObj;
+
+// uses System.Win, System.Classes, System.SyncObjs, System.ActiveX, System.Win.ComObj;
 uses System.SysUtils, System.Classes, System.SyncObjs;
 {$ENDIF}
 
@@ -72,7 +74,7 @@ type
     procedure SetThreadPriority(aPriority: TThreadPriority);
 {$ELSE}
     procedure SetExecThreads(aThreadCount: Integer; aThreadPriority: Integer);
-    procedure SetThreadPriority(aPriority: integer);
+    procedure SetThreadPriority(aPriority: Integer);
 {$ENDIF}
     property GrowUpto: Integer read GetGrowUpto write SetGrowUpto;
   end;
@@ -101,9 +103,9 @@ end;
 
 procedure TncReadyThread.Execute;
 begin
-  {$IFDEF MSWINDOWS}
+{$IFDEF MSWINDOWS}
   CoInitialize(nil);
-  {$ENDIF}
+{$ENDIF}
   try
     while True do
     begin
@@ -123,9 +125,9 @@ begin
     end; // Exiting main loop terminates thread
     ReadyEvent.SetEvent;
   finally
-    {$IFDEF MSWINDOWS}
+{$IFDEF MSWINDOWS}
     CoUninitialize;
-    {$ENDIF}
+{$ENDIF}
   end;
 end;
 
@@ -192,9 +194,9 @@ begin
         begin
           // Create a new thread to handle commands
           SetLength(Threads, Length(Threads) + 1);
-          Threads[ High(Threads)] := ThreadClass.Create;
-          Threads[ High(Threads)].Priority := Threads[0].Priority;
-          Threads[i].ReadyEvent.WaitFor(1000);
+          Threads[High(Threads)] := ThreadClass.Create;
+          Threads[High(Threads)].Priority := Threads[0].Priority;
+          Threads[High(Threads)].ReadyEvent.WaitFor(1000);
         end
         else
           Sleep(1);
@@ -212,8 +214,10 @@ begin
 end;
 
 {$IFDEF MSWINDOWS}
+
 procedure TncThreadPool.SetExecThreads(aThreadCount: Integer; aThreadPriority: TThreadPriority);
 {$ELSE}
+
 procedure TncThreadPool.SetExecThreads(aThreadCount: Integer; aThreadPriority: Integer);
 {$ENDIF}
 var
@@ -250,8 +254,10 @@ begin
 end;
 
 {$IFDEF MSWINDOWS}
+
 procedure TncThreadPool.SetThreadPriority(aPriority: TThreadPriority);
 {$ELSE}
+
 procedure TncThreadPool.SetThreadPriority(aPriority: Integer);
 {$ENDIF}
 var
@@ -322,6 +328,7 @@ begin
   end;
 end;
 {$ELSE}
+
 begin
   Result := 2;
 end;
