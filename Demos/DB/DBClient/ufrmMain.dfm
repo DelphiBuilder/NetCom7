@@ -1,7 +1,7 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'frmMain'
+  Caption = 'Client DB Tester'
   ClientHeight = 392
   ClientWidth = 945
   Color = clBtnFace
@@ -88,7 +88,7 @@ object frmMain: TfrmMain
     TabOrder = 0
     object Button1: TButton
       Left = 6
-      Top = 16
+      Top = 52
       Width = 219
       Height = 25
       Caption = 'Test Activate/Deactivate Recordset Cycle'
@@ -97,7 +97,7 @@ object frmMain: TfrmMain
     end
     object Button2: TButton
       Left = 6
-      Top = 75
+      Top = 111
       Width = 219
       Height = 25
       Caption = 'Test Requery'
@@ -106,7 +106,7 @@ object frmMain: TfrmMain
     end
     object cbShowOpenClose: TCheckBox
       Left = 12
-      Top = 47
+      Top = 83
       Width = 213
       Height = 17
       Caption = 'Show Open/Close'
@@ -123,7 +123,7 @@ object frmMain: TfrmMain
     end
     object edtHost: TEdit
       Left = 6
-      Top = 160
+      Top = 10
       Width = 121
       Height = 21
       TabOrder = 4
@@ -131,22 +131,13 @@ object frmMain: TfrmMain
       TextHint = 'Host'
       OnChange = edtHostChange
     end
-    object btnHostByName: TButton
-      Left = 6
-      Top = 187
-      Width = 151
-      Height = 25
-      Caption = 'Test Host By Name'
-      TabOrder = 5
-      OnClick = btnHostByNameClick
-    end
     object btnApplyUpdates: TButton
       Left = 6
       Top = 281
       Width = 161
       Height = 45
       Caption = 'Apply Updates'
-      TabOrder = 6
+      TabOrder = 5
       OnClick = btnApplyUpdatesClick
     end
   end

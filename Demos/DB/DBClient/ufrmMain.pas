@@ -21,13 +21,11 @@ type
     cbShowOpenClose: TCheckBox;
     Button4: TButton;
     edtHost: TEdit;
-    btnHostByName: TButton;
     btnApplyUpdates: TButton;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure edtHostChange(Sender: TObject);
-    procedure btnHostByNameClick(Sender: TObject);
     procedure btnApplyUpdatesClick(Sender: TObject);
   private
     { Private declarations }
@@ -45,12 +43,6 @@ implementation
 var
   InButton1: Boolean = False;
   PrevBtn1Cap: string;
-
-procedure TfrmMain.btnHostByNameClick(Sender: TObject);
-begin
-  btnHostByName.Caption := IntToStr(Ord(HostByName(edtHost.Text).S_un_b.s_b1)) + '.' + IntToStr(Ord(HostByName(edtHost.Text).S_un_b.s_b2)) + '.' +
-    IntToStr(Ord(HostByName(edtHost.Text).S_un_b.s_b3)) + '.' + IntToStr(Ord(HostByName(edtHost.Text).S_un_b.s_b4));
-end;
 
 procedure TfrmMain.Button1Click(Sender: TObject);
 var
@@ -115,28 +107,10 @@ begin
   dmMain.ncDBDataset2.Requery;
 end;
 
-var
-  InButton3: Boolean = False;
-  PrevBtn3Cap: string;
-
 procedure TfrmMain.Button4Click(Sender: TObject);
 begin
   dmMain.ncDBDataset1.FilterGroup := fgPendingRecords;
   dmMain.ncDBDataset1.Filtered := not dmMain.ncDBDataset1.Filtered;
-
-  { with dmMain.ncDBDataset1.Recordset do
-    begin
-    if Filter = adFilterNone then
-    begin
-    Filter := adFilterPendingRecords;
-    MarshalOptions := adMarshalModifiedOnly;
-    end
-    else
-    begin
-    Filter := adFilterNone;
-    end;
-    end;
-  }
 end;
 
 procedure TfrmMain.btnApplyUpdatesClick(Sender: TObject);
@@ -147,8 +121,8 @@ end;
 
 procedure TfrmMain.edtHostChange(Sender: TObject);
 begin
-  dmMain.ncClientSource1.Active := False;
-  dmMain.ncClientSource1.Host := edtHost.Text;
+  dmMain.ncClientSource.Active := False;
+  dmMain.ncClientSource.Host := edtHost.Text;
 end;
 
 end.
