@@ -2,6 +2,7 @@ package NetCom7;
 
 {$R *.res}
 {$R 'Source\NetComRegister.dcr'}
+{$R *.dres}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
@@ -10,10 +11,10 @@ package NetCom7;
 {$EXTENDEDSYNTAX ON}
 {$IMPORTEDDATA ON}
 {$IOCHECKS ON}
-{$LOCALSYMBOLS ON}
+{$LOCALSYMBOLS OFF}
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
-{$OPTIMIZATION OFF}
+{$OPTIMIZATION ON}
 {$OVERFLOWCHECKS OFF}
 {$RANGECHECKS OFF}
 {$REFERENCEINFO OFF}
@@ -24,9 +25,9 @@ package NetCom7;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE DEBUG}
+{$DEFINE RELEASE}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'Simetron © NetCom7 Network Communications Suite'}
+{$DESCRIPTION 'NetCom7 Network Communications Suite'}
 {$IMPLICITBUILD ON}
 
 requires
@@ -36,11 +37,18 @@ requires
   adortl;
 
 contains
-  ncIntList in 'Source\ncIntList.pas',
+  NetComRegister in 'Source\NetComRegister.pas',
   ncThreads in 'Source\ncThreads.pas',
+  ncLines in 'Source\ncLines.pas',
+  ncSocketList in 'Source\ncSocketList.pas',
   ncSockets in 'Source\ncSockets.pas',
-  ncSources in 'Source\ncSources.pas',
+  ncCommandPacking in 'Source\ncCommandPacking.pas',
   ncCommandHandlers in 'Source\ncCommandHandlers.pas',
+  ncSources in 'Source\ncSources.pas',
+  ncSerializeADO in 'Source\ncSerializeADO.pas',
+  ncDBSrv in 'Source\ncDBSrv.pas',
+  ncDBCnt in 'Source\ncDBCnt.pas',
+  ncDBCommands in 'Source\ncDBCommands.pas',
   ncCompression in 'Source\ncCompression.pas',
   ncEncryption in 'Source\ncEncryption.pas',
   ncEncBlockciphers in 'Source\Encryption\ncEncBlockciphers.pas',
@@ -69,11 +77,7 @@ contains
   ncEncSha512 in 'Source\Encryption\ncEncSha512.pas',
   ncEncTea in 'Source\Encryption\ncEncTea.pas',
   ncEncTiger in 'Source\Encryption\ncEncTiger.pas',
-  ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas',
-  ncDBSrv in 'Source\ncDBSrv.pas',
-  ncDBCnt in 'Source\ncDBCnt.pas',
-  NetComRegister in 'Source\NetComRegister.pas',
-  ncSerializeADO in 'Source\ncSerializeADO.pas',
-  ncDBCommands in 'Source\ncDBCommands.pas';
+  ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas';
 
 end.
+
