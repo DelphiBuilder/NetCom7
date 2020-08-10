@@ -3,21 +3,38 @@ unit ufrmMain;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ncSockets, StdCtrls, ncSources;
+{$IFDEF MSWINDOWS}
+  WinApi.Windows, WinApi.Winsock2,
+{$ELSE}
+  Posix.SysSocket, Posix.Unistd,
+{$ENDIF}
+  System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Samples.Spin,
+  System.Diagnostics, ncLines, ncSockets;
 
 type
   TForm1 = class(TForm)
-    Button1: TButton;
-    Memo1: TMemo;
-    ncTCPClient1: TncTCPClient;
-    procedure Button1Click(Sender: TObject);
+    memLog: TMemo;
+    TCPClient: TncTCPClient;
+    pnlToolbar: TPanel;
+    btnActivate: TButton;
+    pnlAddress: TPanel;
+    edtHost: TEdit;
+    edtPort: TSpinEdit;
+    Panel1: TPanel;
+    btnSendData: TButton;
+    Panel2: TPanel;
+    edtDataToSend: TEdit;
+    procedure btnActivateClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure ncTCPClient1Connected(Sender: TObject; aLine: TncLine);
-    procedure ncTCPClient1Disconnected(Sender: TObject; aLine: TncLine);
-    procedure ncTCPClient1Reconnected(Sender: TObject; aLine: TncLine);
-    procedure ncTCPClient1ReadData(Sender: TObject; aLine: TncLine;
-      const aBuf: TArray<System.Byte>; aBufCount: Integer);
+    procedure TCPClientConnected(Sender: TObject; aLine: TncLine);
+    procedure TCPClientDisconnected(Sender: TObject; aLine: TncLine);
+    procedure TCPClientReconnected(Sender: TObject; aLine: TncLine);
+    procedure TCPClientReadData(Sender: TObject; aLine: TncLine; const aBuf: TArray<System.Byte>; aBufCount: Integer);
+    procedure edtHostChange(Sender: TObject);
+    procedure edtPortChange(Sender: TObject);
+    procedure btnSendDataClick(Sender: TObject);
+    procedure edtDataToSendEnter(Sender: TObject);
+    procedure edtDataToSendExit(Sender: TObject);
   private
   public
   end;
@@ -29,51 +46,102 @@ implementation
 
 {$R *.dfm}
 
-procedure TForm1.Button1Click(Sender: TObject);
-//var
-//  i: Integer;
-begin
-  ncTCPClient1.Active := True;
-
-//  i := 0;
-//  while not Application.Terminated do
-//  begin
-//    i := i + 1;
-//    ncTCPClient1.Send(BytesOf (WideString ('Hello man!' + IntToStr (i))));
-//    Application.ProcessMessages;
-//    Sleep (100);
-//  end;
-end;
-
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  ncTCPClient1.Active := False;
+  TCPClient.Active := False;
 end;
 
-procedure TForm1.ncTCPClient1Connected(Sender: TObject; aLine: TncLine);
+procedure TForm1.edtHostChange(Sender: TObject);
 begin
-  if ncTCPClient1.ReaderUseMainThread then
-    Memo1.Lines.Add ('Connected');
+  try
+    TCPClient.Host := edtHost.Text;
+  except
+    edtHost.OnChange := nil;
+    try
+      edtHost.Text := TCPClient.Host;
+    finally
+      edtHost.OnChange := edtHostChange;
+    end;
+    raise;
+  end;
 end;
 
-procedure TForm1.ncTCPClient1Disconnected(Sender: TObject; aLine: TncLine);
+procedure TForm1.edtPortChange(Sender: TObject);
 begin
-  if ncTCPClient1.ReaderUseMainThread then
-    Memo1.Lines.Add ('Disconnected');
+  try
+    TCPClient.Port := edtPort.Value;
+  except
+    edtPort.OnChange := nil;
+    try
+      edtPort.Value := TCPClient.Port;
+    finally
+      edtPort.OnChange := edtPortChange;
+    end;
+    raise;
+  end;
 end;
 
-procedure TForm1.ncTCPClient1ReadData(Sender: TObject; aLine: TncLine;
-  const aBuf: TArray<System.Byte>; aBufCount: Integer);
+procedure TForm1.btnActivateClick(Sender: TObject);
 begin
-  if ncTCPClient1.ReaderUseMainThread then
-    Memo1.Lines.Add ('Received: ' + StringOf (aBuf));
-  // ncTCPClient1.Send(aBuf);
+  TCPClient.Active := not TCPClient.Active;
 end;
 
-procedure TForm1.ncTCPClient1Reconnected(Sender: TObject; aLine: TncLine);
+procedure TForm1.edtDataToSendEnter(Sender: TObject);
 begin
-  if ncTCPClient1.ReaderUseMainThread then
-    Memo1.Lines.Add ('Reconnected');
+  btnSendData.Default := True;
 end;
+
+procedure TForm1.edtDataToSendExit(Sender: TObject);
+begin
+  btnSendData.Default := False;
+end;
+
+procedure TForm1.TCPClientConnected(Sender: TObject; aLine: TncLine);
+begin
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Connected');
+      btnActivate.Caption := 'Deactivate';
+    end);
+end;
+
+procedure TForm1.TCPClientDisconnected(Sender: TObject; aLine: TncLine);
+begin
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Disconnected');
+      btnActivate.Caption := 'Activate';
+    end);
+end;
+
+procedure TForm1.TCPClientReconnected(Sender: TObject; aLine: TncLine);
+begin
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Reconnected');
+    end);
+end;
+
+procedure TForm1.TCPClientReadData(Sender: TObject; aLine: TncLine; const aBuf: TArray<System.Byte>; aBufCount: Integer);
+var
+  BytesReceived: TBytes;
+begin
+  BytesReceived := Copy(aBuf, 0, aBufCount);
+
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Received: ' + StringOf(BytesReceived));
+    end);
+end;
+
+procedure TForm1.btnSendDataClick(Sender: TObject);
+begin
+  TCPClient.Send(edtDataToSend.Text);
+end;
+
 
 end.
