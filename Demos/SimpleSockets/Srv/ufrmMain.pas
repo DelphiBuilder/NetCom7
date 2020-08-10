@@ -3,60 +3,121 @@ unit ufrmMain;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ncSockets, StdCtrls;
+{$IFDEF MSWINDOWS}
+  WinApi.Windows, WinApi.Winsock2,
+{$ELSE}
+  Posix.SysSocket, Posix.Unistd,
+{$ENDIF}
+  System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Samples.Spin,
+  System.Diagnostics, ncLines, ncSockets;
 
 type
-  TForm1 = class(TForm)
-    Button1: TButton;
-    Memo1: TMemo;
-    ncTCPServer1: TncTCPServer;
+  TfrmMain = class(TForm)
+    memLog: TMemo;
+    TCPServer: TncTCPServer;
+    pnlToolbar: TPanel;
+    btnActivate: TButton;
+    pblPort: TPanel;
+    edtPort: TSpinEdit;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure ncTCPServer1Connected(Sender: TObject; aLine: TncLine);
-    procedure ncTCPServer1Disconnected(Sender: TObject; aLine: TncLine);
-    procedure ncTCPServer1ReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
+    procedure TCPServerConnected(Sender: TObject; aLine: TncLine);
+    procedure TCPServerDisconnected(Sender: TObject; aLine: TncLine);
+    procedure TCPServerReadData(Sender: TObject; aLine: TncLine; const aBuf: TArray<System.Byte>; aBufCount: Integer);
+    procedure btnActivateClick(Sender: TObject);
+    procedure edtPortChange(Sender: TObject);
   private
   public
   end;
 
 var
-  Form1: TForm1;
+  frmMain: TfrmMain;
 
 implementation
 
 {$R *.dfm}
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  ncTCPServer1.Active := True;
+  try
+    TCPServer.Active := True;
+    memLog.Lines.Add('Server is active at port: ' + IntToStr(TCPServer.Port));
+    btnActivate.Caption := 'Deactivate';
+  except
+    on e: Exception do
+      memLog.Lines.Add('Server cannot activate. ' + e.Message);
+  end;
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
-  ncTCPServer1.Active := False;
+  TCPServer.Active := False;
 end;
 
-procedure TForm1.ncTCPServer1Connected(Sender: TObject; aLine: TncLine);
+procedure TfrmMain.btnActivateClick(Sender: TObject);
 begin
-  if ncTCPServer1.ReaderUseMainThread then
-    Memo1.Lines.Add('Connected');
-  ncTCPServer1.Send(aLine, BytesOf('Hello mr. ' + IntToStr(aLine.Handle)));
-
+  try
+    TCPServer.Active := not TCPServer.Active;
+  finally
+    if TCPServer.Active then
+    begin
+      memLog.Lines.Add('Server is active at port: ' + IntToStr(TCPServer.Port));
+      btnActivate.Caption := 'Deactivate';
+    end
+    else
+    begin
+      memLog.Lines.Add('Server was deactivated');
+      btnActivate.Caption := 'Activate';
+    end;
+  end;
 end;
 
-procedure TForm1.ncTCPServer1Disconnected(Sender: TObject; aLine: TncLine);
+procedure TfrmMain.edtPortChange(Sender: TObject);
 begin
-  if ncTCPServer1.ReaderUseMainThread then
-    Memo1.Lines.Add('Disconnected');
-
+  try
+    TCPServer.Port := edtPort.Value;
+  except
+    // if it is active, it will not allow us to change the value,
+    // revert the edtPort value to its original
+    edtPort.Value := TCPServer.Port;
+    raise; // Reraise the exception so as the user sees the error
+  end;
 end;
 
-procedure TForm1.ncTCPServer1ReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
+procedure TfrmMain.TCPServerConnected(Sender: TObject; aLine: TncLine);
 begin
-  if ncTCPServer1.ReaderUseMainThread then
-    Memo1.Lines.Add(StringOf(aBuf));
-  ncTCPServer1.Send(aLine, aBuf);
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Connected: ' + aLine.PeerIP);
+    end);
+
+  TCPServer.Send(aLine, BytesOf('Hello mr. ' + IntToStr(aLine.Handle)));
+end;
+
+procedure TfrmMain.TCPServerDisconnected(Sender: TObject; aLine: TncLine);
+begin
+  TThread.Synchronize(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Disconnected: ' + aLine.PeerIP);
+    end);
+end;
+
+procedure TfrmMain.TCPServerReadData(Sender: TObject; aLine: TncLine; const aBuf: TArray<System.Byte>; aBufCount: Integer);
+var
+  BytesReceived: TBytes;
+begin
+  BytesReceived := Copy(aBuf, 0, aBufCount);
+
+  TThread.Queue(nil,
+    procedure
+    begin
+      memLog.Lines.Add('Received: "' + StringOf(BytesReceived) + '" from: ' + aLine.PeerIP);
+    end);
+
+  // Send back the buffer received
+  TCPServer.Send(aLine, BytesReceived);
 end;
 
 end.
