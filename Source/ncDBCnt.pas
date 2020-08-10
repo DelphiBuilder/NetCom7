@@ -57,8 +57,8 @@ type
     procedure DoAfterPost; override;
     procedure DoAfterDelete; override;
 
-    procedure Connected(aLine: TncSourceLine);
-    procedure Disconnected(aLine: TncSourceLine);
+    procedure Connected(aLine: TncLine);
+    procedure Disconnected(aLine: TncLine);
     function GetComponentName: string;
     property OnHandleCommand: TncOnSourceHandleCommand read GetOnHandleCommand write SetOnHandleCommand;
   public
@@ -134,12 +134,12 @@ begin
   Result := Name;
 end;
 
-procedure TncDBDataset.Connected(aLine: TncSourceLine);
+procedure TncDBDataset.Connected(aLine: TncLine);
 begin
   // When we get connected, does nothing
 end;
 
-procedure TncDBDataset.Disconnected(aLine: TncSourceLine);
+procedure TncDBDataset.Disconnected(aLine: TncLine);
 begin
   // When we get disconnected, does nothing
 end;
@@ -400,7 +400,6 @@ var
   UpdateData: TDBUpdateDatasetData;
   AppliedUpdatesRS: _Recordset;
   I: Integer;
-  // tmpData: OleVariant;
   CannotUpdate: Boolean;
 begin
   CheckBrowseMode;

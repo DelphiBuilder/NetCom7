@@ -283,8 +283,8 @@ type
 
       const aSourceComponentHandler: string = ''): TBytes; overload; virtual;
 
-    property Line: TncLine read GetLine;
   published
+    property Line: TncLine read GetLine;
     property Host: string read GetHost write SetHost;
     property Reconnect: Boolean read GetReconnect write SetReconnect default True;
     property ReconnectInterval: Cardinal read GetReconnectInterval write SetReconnectInterval default DefCntReconnectInterval;
@@ -301,6 +301,7 @@ type
     SocketSrv: TncTCPServer;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+  published
     property Lines: TThreadLineList read GetLines;
   end;
 

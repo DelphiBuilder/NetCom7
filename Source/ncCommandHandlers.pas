@@ -2,15 +2,15 @@ unit ncCommandHandlers;
 
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 interface
 
 uses
-  Windows, Classes, SysUtils, SyncObjs, Rtti, ncSources;
+  System.Classes, System.SysUtils, System.SyncObjs, System.Rtti, ncSources;
 
 type
   TncCustomCommandHandler = class(TComponent, IncCommandHandler)
@@ -33,8 +33,8 @@ type
     procedure SetPeerCommandHandler(const Value: string);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure Connected(aLine: TncSourceLine);
-    procedure Disconnected(aLine: TncSourceLine);
+    procedure Connected(aLine: TncLine);
+    procedure Disconnected(aLine: TncLine);
     function GetComponentName: string;
 
     property Source: TncSourceBase read FSource write SetSource;
@@ -46,8 +46,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; aAsyncExecute: Boolean = False;
-      const aPeerComponentHandler: string = ''): TBytes;
+    function ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True;
+      aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''): TBytes;
   published
   end;
 
@@ -113,20 +113,20 @@ begin
   end;
 end;
 
-procedure TncCustomCommandHandler.Connected(aLine: TncSourceLine);
+procedure TncCustomCommandHandler.Connected(aLine: TncLine);
 begin
   if Assigned(OnConnected) then
     OnConnected(Self, aLine);
 end;
 
-procedure TncCustomCommandHandler.Disconnected(aLine: TncSourceLine);
+procedure TncCustomCommandHandler.Disconnected(aLine: TncLine);
 begin
   if Assigned(OnDisconnected) then
     OnDisconnected(Self, aLine);
 end;
 
-function TncCustomCommandHandler.ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; aAsyncExecute: Boolean = False;
-  const aPeerComponentHandler: string = ''): TBytes;
+function TncCustomCommandHandler.ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True;
+  aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''): TBytes;
 begin
   if not Assigned(Source) then
     raise Exception.Create('Cannot execute with no source object');

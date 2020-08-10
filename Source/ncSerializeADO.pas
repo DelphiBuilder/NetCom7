@@ -2,13 +2,18 @@ unit ncSerializeADO;
 
 interface
 
-uses SysUtils, Classes, Variants, DB, ADODB, ADOInt, ComObj, ActiveX, OleCtrls;
+uses System.Classes, System.SysUtils, System.Variants, Data.DB, Data.Win.ADODB, System.Win.ComObj, Winapi.ADOInt, Winapi.ActiveX;
 
 // SysUtils: Need TBytes
 // Classes: Need TBytesStream
 // ADODB: Need TPersistFormat
 // ADOInt: Need function PersistFormatEnum
 // ActiveX: Need IStream
+
+function ReadString(var aBuffer: TBytes; var aOfs: Integer): string; inline;
+procedure WriteString(const aValue: string; var aBuffer: TBytes; var aBufLen: Integer); inline;
+function ReadBytes(var aBuffer: TBytes; var aOfs: Integer): TBytes; inline;
+procedure WriteBytes(const aValue: TBytes; var aBuffer: TBytes; var aBufLen: Integer); inline;
 
 function RecordsetToStream(const aRecordset: _Recordset; aFormat: TPersistFormat): TBytesStream;
 function RecordsetToBytes(const aRecordset: _Recordset; aFormat: TPersistFormat = pfADTG): TBytes;
@@ -25,6 +30,167 @@ procedure BytesToParameters(aBytes: TBytes; aParameters: TParameters);
 implementation
 
 uses ncSources;
+
+function ReadInteger(var aBuffer: TBytes; var aOfs: Integer): Integer; inline;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadInt64(var aBuffer: TBytes; var aOfs: Integer): Int64; inline;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadDouble(var aBuffer: TBytes; var aOfs: Integer): Double;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadSingle(var aBuffer: TBytes; var aOfs: Integer): Single; inline;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadDate(var aBuffer: TBytes; var aOfs: Integer): TDateTime; inline;
+begin
+  Result := ReadDouble(aBuffer, aOfs);
+end;
+
+function ReadCurrency(var aBuffer: TBytes; var aOfs: Integer): Currency; inline;
+begin
+  Result := ReadDouble(aBuffer, aOfs);
+end;
+
+function ReadBool(var aBuffer: TBytes; var aOfs: Integer): Boolean; inline;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadByte(var aBuffer: TBytes; var aOfs: Integer): Byte; inline;
+const
+  ResultCount = SizeOf(Result);
+begin
+  move(aBuffer[aOfs], Result, ResultCount);
+  aOfs := aOfs + ResultCount;
+end;
+
+function ReadBytes(var aBuffer: TBytes; var aOfs: Integer): TBytes; inline;
+var
+  ResultCount: Integer;
+begin
+  ResultCount := ReadInteger(aBuffer, aOfs);
+  SetLength(Result, ResultCount);
+
+  if ResultCount > 0 then
+  begin
+    move(aBuffer[aOfs], Result[0], ResultCount);
+    aOfs := aOfs + ResultCount;
+  end;
+end;
+
+function ReadString(var aBuffer: TBytes; var aOfs: Integer): string; inline;
+begin
+  Result := StringOf(ReadBytes(aBuffer, aOfs));
+end;
+
+procedure WriteInteger(const aValue: Integer; var aBuffer: TBytes; var aBufLen: Integer); inline;
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteInt64(const aValue: Int64; var aBuffer: TBytes; var aBufLen: Integer); inline;
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteDouble(const aValue: Double; var aBuffer: TBytes; var aBufLen: Integer);
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteSingle(const aValue: Single; var aBuffer: TBytes; var aBufLen: Integer); inline;
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteDate(const aValue: TDateTime; var aBuffer: TBytes; var aBufLen: Integer); inline;
+begin
+  WriteDouble(aValue, aBuffer, aBufLen);
+end;
+
+procedure WriteCurrency(const aValue: Currency; var aBuffer: TBytes; var aBufLen: Integer); inline;
+begin
+  WriteDouble(aValue, aBuffer, aBufLen);
+end;
+
+procedure WriteBool(const aValue: Boolean; var aBuffer: TBytes; var aBufLen: Integer); inline;
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteByte(const aValue: Byte; var aBuffer: TBytes; var aBufLen: Integer); inline;
+const
+  ValByteCount = SizeOf(aValue);
+begin
+  SetLength(aBuffer, aBufLen + ValByteCount);
+  move(aValue, aBuffer[aBufLen], ValByteCount);
+  aBufLen := aBufLen + ValByteCount;
+end;
+
+procedure WriteBytes(const aValue: TBytes; var aBuffer: TBytes; var aBufLen: Integer); inline;
+var
+  ValByteCount: Integer;
+begin
+  ValByteCount := Length(aValue);
+  WriteInteger(ValByteCount, aBuffer, aBufLen);
+
+  if ValByteCount > 0 then
+  begin
+    SetLength(aBuffer, aBufLen + ValByteCount);
+    move(aValue[0], aBuffer[aBufLen], ValByteCount);
+    aBufLen := aBufLen + ValByteCount;
+  end;
+end;
+
+procedure WriteString(const aValue: string; var aBuffer: TBytes; var aBufLen: Integer); inline;
+begin
+  WriteBytes(BytesOf(aValue), aBuffer, aBufLen);
+end;
 
 function VariantToBytes(aVar: Variant): TBytes;
 var
@@ -71,9 +237,9 @@ begin
   begin
     case VariantType of
       varEmpty:
-        Result := Variants.Unassigned;
+        Result := System.Variants.Unassigned;
       varNull:
-        Result := Variants.Null;
+        Result := System.Variants.Null;
       varByte, varSmallint, varShortInt, varInteger, varWord, varLongWord:
         Result := ReadInteger(aBytes, Ofs);
       varSingle, varDouble:

@@ -7,26 +7,25 @@ unit ncThreads;
 //
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-{$WARN SYMBOL_PLATFORM OFF}
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
+{$WARN SYMBOL_PLATFORM OFF}
 
 interface
 
+uses
 {$IFDEF MSWINDOWS}
-
-uses Windows, Classes, SyncObjs, ActiveX, ComObj;
-{$ELSE}
-
-// uses System.Win, System.Classes, System.SyncObjs, System.ActiveX, System.Win.ComObj;
-uses System.SysUtils, System.Classes, System.SyncObjs;
+  WinApi.Windows, WinApi.ActiveX,
 {$ENDIF}
+  System.Classes, System.SyncObjs, System.SysUtils;
 
 type
+  TncThreadPriority = (ntpIdle, ntpLowest, ntpLower, ntpNormal, ntpHigher, ntpHighest, ntpTimeCritical);
+
   // The thread waits for the wakeup event to start processing
   // after the its ready event is set.
   // After processing is complete, it sets again the ready event and waits
@@ -69,17 +68,21 @@ type
     destructor Destroy; override;
     function RequestReadyThread: TncReadyThread;
     procedure RunRequestedThread(aRequestedThread: TncReadyThread);
-{$IFDEF MSWINDOWS}
-    procedure SetExecThreads(aThreadCount: Integer; aThreadPriority: TThreadPriority);
-    procedure SetThreadPriority(aPriority: TThreadPriority);
-{$ELSE}
-    procedure SetExecThreads(aThreadCount: Integer; aThreadPriority: Integer);
-    procedure SetThreadPriority(aPriority: Integer);
-{$ENDIF}
+
+    procedure SetExecThreads(aThreadCount: Integer; aThreadPriority: TncThreadPriority);
+    procedure SetThreadPriority(aPriority: TncThreadPriority);
+
     property GrowUpto: Integer read GetGrowUpto write SetGrowUpto;
   end;
 
-function GetNumberOfProcessors: Integer;
+function GetNumberOfProcessors: Integer; inline;
+{$IFDEF MSWINDOWS}
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): TThreadPriority; inline;
+function ToNCThreadPriority(aThreadPriority: TThreadPriority): TncThreadPriority; inline;
+{$ELSE}
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): Integer; inline;
+function ToNCThreadPriority(aThreadPriority: Integer): TncThreadPriority; inline;
+{$ENDIF}
 
 implementation
 
@@ -168,39 +171,46 @@ end;
 function TncThreadPool.RequestReadyThread: TncReadyThread;
 var
   i: Integer;
-  Accepted: Boolean;
 begin
-  Result := nil;
-  Accepted := False;
-
   Serialiser.Acquire;
   try
-    while not Accepted do
-    begin
+    // Keep repeating until a ready thread is found
+    repeat
       for i := 0 to High(Threads) do
       begin
         if Threads[i].ReadyEvent.WaitFor(0) = wrSignaled then
         begin
           Threads[i].ReadyEvent.ResetEvent;
-
           Result := Threads[i];
-
-          Accepted := True;
-          Break; // Break for
+          Exit;
         end;
       end;
-      if (not Accepted) then
-        if (Length(Threads) < FGrowUpto) then
+      // We will get here if no threads were ready
+      if (Length(Threads) < FGrowUpto) then
+      begin
+        // Create a new thread to handle commands
+        i := Length(Threads);
+        SetLength(Threads, i + 1); // i now holds High(Threads)
+        try
+          Threads[i] := ThreadClass.Create;
+        except
+          // Cannot create any new thread
+          // Set length back to what it was, and continue waiting until
+          // any other thread is ready
+          SetLength(Threads, i);
+          Continue;
+        end;
+        Threads[i].Priority := Threads[0].Priority;
+        if Threads[i].ReadyEvent.WaitFor(1000) = wrSignaled then
         begin
-          // Create a new thread to handle commands
-          SetLength(Threads, Length(Threads) + 1);
-          Threads[High(Threads)] := ThreadClass.Create;
-          Threads[High(Threads)].Priority := Threads[0].Priority;
-          Threads[High(Threads)].ReadyEvent.WaitFor(1000);
-        end
-        else
-          Sleep(1);
-    end;
+          Threads[i].ReadyEvent.ResetEvent;
+          Result := Threads[i];
+          Exit;
+        end;
+      end
+      else
+        TThread.Yield; // Was Sleep(1);
+    until False;
   finally
     Serialiser.Release;
   end;
@@ -213,13 +223,7 @@ begin
   aRequestedThread.WakeupEvent.SetEvent;
 end;
 
-{$IFDEF MSWINDOWS}
-
-procedure TncThreadPool.SetExecThreads(aThreadCount: Integer; aThreadPriority: TThreadPriority);
-{$ELSE}
-
-procedure TncThreadPool.SetExecThreads(aThreadCount: Integer; aThreadPriority: Integer);
-{$ENDIF}
+procedure TncThreadPool.SetExecThreads(aThreadCount: Integer; aThreadPriority: TncThreadPriority);
 var
   i: Integer;
 begin
@@ -247,24 +251,18 @@ begin
     if Threads[i] = nil then
     begin
       Threads[i] := ThreadClass.Create;
-      Threads[i].Priority := aThreadPriority;
+      Threads[i].Priority := FromNCThreadPriority(aThreadPriority);
     end
     else
-      Threads[i].Priority := aThreadPriority;
+      Threads[i].Priority := FromNCThreadPriority(aThreadPriority);
 end;
 
-{$IFDEF MSWINDOWS}
-
-procedure TncThreadPool.SetThreadPriority(aPriority: TThreadPriority);
-{$ELSE}
-
-procedure TncThreadPool.SetThreadPriority(aPriority: Integer);
-{$ENDIF}
+procedure TncThreadPool.SetThreadPriority(aPriority: TncThreadPriority);
 var
   i: Integer;
 begin
   for i := 0 to high(Threads) do
-    Threads[i].Priority := aPriority;
+    Threads[i].Priority := FromNCThreadPriority(aPriority);
 end;
 
 procedure TncThreadPool.ShutDown;
@@ -330,7 +328,90 @@ end;
 {$ELSE}
 
 begin
-  Result := 2;
+  Result := TThread.ProcessorCount;
+end;
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): TThreadPriority;
+begin
+  case ancThreadPriority of
+    ntpIdle:
+      Result := tpIdle;
+    ntpLowest:
+      Result := tpLowest;
+    ntpLower:
+      Result := tpLower;
+    ntpHigher:
+      Result := tpHigher;
+    ntpHighest:
+      Result := tpHighest;
+    ntpTimeCritical:
+      Result := tpTimeCritical;
+  else
+    Result := tpNormal;
+  end;
+end;
+
+function ToNCThreadPriority(aThreadPriority: TThreadPriority): TncThreadPriority;
+begin
+  case aThreadPriority of
+    tpIdle:
+      Result := ntpIdle;
+    tpLowest:
+      Result := ntpLowest;
+    tpLower:
+      Result := ntpLower;
+    tpHigher:
+      Result := ntpHigher;
+    tpHighest:
+      Result := ntpHighest;
+    tpTimeCritical:
+      Result := ntpTimeCritical;
+  else
+    Result := ntpNormal;
+  end;
+end;
+{$ELSE}
+
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): Integer;
+begin
+  case ancThreadPriority of
+    ntpIdle:
+      Result := 19;
+    ntpLowest:
+      Result := 13;
+    ntpLower:
+      Result := 7;
+    ntpHigher:
+      Result := -7;
+    ntpHighest:
+      Result := -13;
+    ntpTimeCritical:
+      Result := -19;
+  else
+    Result := 0;
+  end;
+end;
+
+function ToNCThreadPriority(aThreadPriority: Integer): TncThreadPriority;
+begin
+  case aThreadPriority of
+    14 .. 19:
+      Result := ntpIdle;
+    8 .. 13:
+      Result := ntpLowest;
+    3 .. 7:
+      Result := ntpLower;
+    -7 .. -3:
+      Result := ntpHigher;
+    -13 .. -8:
+      Result := ntpHighest;
+    -19 .. -14:
+      Result := ntpTimeCritical;
+  else
+    Result := ntpNormal;
+  end;
 end;
 {$ENDIF}
 

@@ -19,15 +19,16 @@ unit ncDBSrv;
 
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 interface
 
 uses
-  Windows, Classes, SysUtils, SyncObjs, ncSources, Variants, ncCommandHandlers, ADODB, ADOInt, ncDBCommands, ncSerializeADO;
+  System.Classes, System.SysUtils, System.SyncObjs, System.Variants, Data.Win.ADODB, Winapi.ADOInt,
+  ncSources, ncCommandHandlers, ncDBCommands, ncSerializeADO;
 
 type
   // Add an array of tables and if one of them is altered then void all the ReadyResults.
@@ -71,9 +72,10 @@ type
     ReadyQueryList: TReadyQueryList;
     FCacheResponses: Boolean;
 
-    procedure DBServerConnected(Sender: TObject; aLine: TncSourceLine);
-    procedure DBServerDisconnected(Sender: TObject; aLine: TncSourceLine);
-    function DBServerHandleCommand(Sender: TObject; aLine: TncSourceLine; aCmd: Integer; aData: TBytes; aRequiresResult: Boolean; const aSenderComponent, aReceiverComponent: string): TBytes;
+    procedure DBServerConnected(Sender: TObject; aLine: TncLine);
+    procedure DBServerDisconnected(Sender: TObject; aLine: TncLine);
+    function DBServerHandleCommand(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean;
+      const aSenderComponent, aReceiverComponent: string): TBytes;
   private
     FADOConnection: TADOConnection;
     PrevADOConnectionString: string;
@@ -118,18 +120,19 @@ begin
   inherited;
 end;
 
-procedure TncDBServer.DBServerConnected(Sender: TObject; aLine: TncSourceLine);
+procedure TncDBServer.DBServerConnected(Sender: TObject; aLine: TncLine);
 begin
   ReadyQueryList.SetConnectionString(ADOConnection.ConnectionString);
 end;
 
-procedure TncDBServer.DBServerDisconnected(Sender: TObject; aLine: TncSourceLine);
+procedure TncDBServer.DBServerDisconnected(Sender: TObject; aLine: TncLine);
 begin
   // Remove all items for the line that disconnected
   // RecordsetList.RemoveRecordsetItems(aLine);
 end;
 
-function TncDBServer.DBServerHandleCommand(Sender: TObject; aLine: TncSourceLine; aCmd: Integer; aData: TBytes; aRequiresResult: Boolean; const aSenderComponent, aReceiverComponent: string): TBytes;
+function TncDBServer.DBServerHandleCommand(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean;
+  const aSenderComponent, aReceiverComponent: string): TBytes;
 var
   DatasetData: TDBDatasetData; // Command
   UpdateDatasetData: TDBUpdateDatasetData; // Command
@@ -144,7 +147,7 @@ begin
 
   PropertyLock.Acquire;
   try
-    if Assigned (FADOConnection) then
+    if Assigned(FADOConnection) then
     begin
       if FADOConnection.ConnectionString <> PrevADOConnectionString then
       begin
@@ -403,7 +406,7 @@ begin
   Tables.Clear;
   // Get for every field the table it comes from
   for i := 0 to ADOQuery.Recordset.Fields.Count - 1 do
-    if VarIsStr (ADOQuery.Recordset.Fields.Item[i].Properties.Item['BASETABLENAME'].Value) then
+    if VarIsStr(ADOQuery.Recordset.Fields.Item[i].Properties.Item['BASETABLENAME'].Value) then
       Tables.Add(ADOQuery.Recordset.Fields.Item[i].Properties.Item['BASETABLENAME'].Value);
 end;
 
