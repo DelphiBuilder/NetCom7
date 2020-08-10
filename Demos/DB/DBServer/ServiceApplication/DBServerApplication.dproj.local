@@ -1,10 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BorlandProject>
 	<Transactions>
-    <Transaction>2011/04/04 13:08:58.034.dfm,C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.dfm=C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ufrmMain.dfm</Transaction>
-    <Transaction>2011/04/04 13:08:58.034.pas,C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.pas=C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ufrmMain.pas</Transaction>
-    <Transaction>2011/04/04 13:09:06.196.dproj,C:\Users\BDemos\Documents\RAD Studio\Projects\Project1.dproj=C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceConsole.dproj</Transaction>
-    <Transaction>2011/04/05 09:14:37.644.dproj,C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceConsole.dproj=C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceApplication.dproj</Transaction>
-    <Transaction>2011/04/06 10:27:07.382.dproj,C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\DB\DBServer\ServiceApplication\ServiceApplication.dproj=C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\DB\DBServer\ServiceApplication\DBServerApplication.dproj</Transaction>
-  </Transactions>
+    <Transaction>2011/04/04 13:08:58.034.dfm,C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ufrmMain.dfm=C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>2011/04/04 13:08:58.034.pas,C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ufrmMain.pas=C:\Users\BDemos\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2011/04/04 13:09:06.196.dproj,C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceConsole.dproj=C:\Users\BDemos\Documents\RAD Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>2011/04/05 09:14:37.644.dproj,C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceApplication.dproj=C:\Users\BDemos\Documents\RAD Studio\Workspace\TrayLogServiceModule\ServiceConsole\ServiceConsole.dproj</Transaction>
+    <Transaction>2011/04/06 10:27:07.382.dproj,C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\DB\DBServer\ServiceApplication\DBServerApplication.dproj=C:\Users\BDemos\Documents\RAD Studio\Components\NetCom7\Demos\DB\DBServer\ServiceApplication\ServiceApplication.dproj</Transaction>
+  </Transactions>  <ActiveMobileDevice>   <NoProfile Android64="Y5LFKVQGYTL7JRV4"/>
+  </ActiveMobileDevice>
 </BorlandProject>
