@@ -56,10 +56,11 @@ Simple senario:
 This set of components promises unrivalled speed and that is not just in words:
 
 A simple timing test with the NetComVSIndy demo gives the following results:
-Testing Indy... Time taken: 32468 msec
-Testing NetCom... Time taken: 25109 msec
 
-Starting with the base unit, ncSockets.pas, you will see that the implementation does not suffer from slack code, it is rather immediate. The **inline** calling convention has been used wherever deemed appropriate. The very core functions have been tested and optimised in a very tight timed loop to squeeze out every last bit of performance. 
+* Testing Indy... Time taken: 32468 msec
+* Testing NetCom... Time taken: 25109 msec
+
+Starting with the base unit, ncSockets.pas, you will see that the implementation does not suffer from slack code, it is rather immediate. The **inline** calling convention has been used wherever deemed appropriate. The very core functions have been tested and optimised by monitoring the performance via timing of large loops and assembly inspection to squeeze out every last bit of performance. 
 
 The biggest difference though in speed gain is due to the architecture. Unlike most typical sockets: 
 
