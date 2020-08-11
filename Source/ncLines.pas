@@ -34,6 +34,7 @@ uses
 {$ELSE}
   Posix.SysTypes, Posix.SysSelect, Posix.SysSocket, Posix.NetDB, Posix.SysTime, Posix.Unistd, System.Net.Socket,
 {$ENDIF}
+  System.SyncObjs,
   System.Math,
   System.SysUtils,
   System.Diagnostics;
@@ -72,16 +73,21 @@ type
   TncLine = class(TObject)
   private
     FActive: Boolean;
-    FLastSent: Cardinal;
-    FLastReceived: Cardinal;
+    FLastSent: Int64;
+    FLastReceived: Int64;
     FPeerIP: string;
     FDataObject: TObject;
     FOnConnected: TncLineOnConnectDisconnect;
     FOnDisconnected: TncLineOnConnectDisconnect;
   private
+    PropertyLock: TCriticalSection;
     FHandle: TSocketHandle;
     procedure SetConnected;
     procedure SetDisconnected;
+    function GetLastReceived: Int64;
+    function GetLastSent: Int64;
+    procedure SetLastReceived(const Value: Int64);
+    procedure SetLastSent(const Value: Int64);
   protected
     function CreateLineObject: TncLine; virtual;
     procedure Check(aCmdRes: Integer); inline;
@@ -108,8 +114,8 @@ type
 
     property Handle: TSocketHandle read FHandle;
     property Active: Boolean read FActive;
-    property LastSent: Cardinal read FLastSent write FLastSent;
-    property LastReceived: Cardinal read FLastReceived write FLastReceived;
+    property LastSent: Int64 read GetLastSent write SetLastSent;
+    property LastReceived: Int64 read GetLastReceived write SetLastReceived;
     property PeerIP: string read FPeerIP;
     property DataObject: TObject read FDataObject write FDataObject;
   end;
@@ -264,6 +270,8 @@ constructor TncLine.Create;
 begin
   inherited Create;
 
+  PropertyLock := TCriticalSection.Create;
+
   FHandle := InvalidSocket;
 
   FActive := False;
@@ -280,6 +288,8 @@ destructor TncLine.Destroy;
 begin
   if FActive then
     DestroyHandle;
+
+  PropertyLock.Free;
 
   inherited Destroy;
 end;
@@ -566,6 +576,46 @@ begin
         OnDisconnected(Self);
       except
       end;
+  end;
+end;
+
+function TncLine.GetLastReceived: Int64;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FLastReceived;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncLine.SetLastReceived(const Value: Int64);
+begin
+  PropertyLock.Acquire;
+  try
+    FLastReceived := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncLine.GetLastSent: Int64;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FLastSent;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncLine.SetLastSent(const Value: Int64);
+begin
+  PropertyLock.Acquire;
+  try
+    FLastSent := Value;
+  finally
+    PropertyLock.Release;
   end;
 end;
 

@@ -2,10 +2,10 @@ unit ncDBCnt;
 
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 interface
 
@@ -16,7 +16,6 @@ uses
 type
   TncDBDataset = class(TCustomADODataSet, IncCommandHandler)
   private
-    PropertyLock: TCriticalSection;
     WasActivated: Boolean;
     procedure UpdateSQLParams;
   private
@@ -31,10 +30,15 @@ type
     function GetPeerCommandHandler: string;
     procedure SetPeerCommandHandler(const Value: string);
     procedure SetSource(const Value: TncClientSource);
+
+    function GetOnConnected: TncOnSourceConnectDisconnect;
+    procedure SetOnConnected(const Value: TncOnSourceConnectDisconnect);
+    function GetOnDisconnected: TncOnSourceConnectDisconnect;
+    procedure SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
     function GetOnHandleCommand: TncOnSourceHandleCommand;
     procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
-    // function GetActive: Boolean;
-    // procedure SetActive(Value: Boolean); override;
+    function GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
+    procedure SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
   protected
     WithinUpdates: Boolean;
 
@@ -57,8 +61,6 @@ type
     procedure DoAfterPost; override;
     procedure DoAfterDelete; override;
 
-    procedure Connected(aLine: TncLine);
-    procedure Disconnected(aLine: TncLine);
     function GetComponentName: string;
     property OnHandleCommand: TncOnSourceHandleCommand read GetOnHandleCommand write SetOnHandleCommand;
   public
@@ -92,7 +94,6 @@ constructor TncDBDataset.Create(AOwner: TComponent);
 begin
   inherited;
 
-  PropertyLock := TCriticalSection.Create;
   WasActivated := False;
 
   FSQL := TStringList.Create;
@@ -112,7 +113,6 @@ begin
   Active := False;
   Source := nil;
   FSQL.Free;
-  PropertyLock.Free;
 
   inherited;
 end;
@@ -134,24 +134,44 @@ begin
   Result := Name;
 end;
 
-procedure TncDBDataset.Connected(aLine: TncLine);
+function TncDBDataset.GetOnConnected: TncOnSourceConnectDisconnect;
 begin
-  // When we get connected, does nothing
+  // Does nothing
 end;
 
-procedure TncDBDataset.Disconnected(aLine: TncLine);
+procedure TncDBDataset.SetOnConnected(const Value: TncOnSourceConnectDisconnect);
 begin
-  // When we get disconnected, does nothing
+  // Does nothing
+end;
+
+function TncDBDataset.GetOnDisconnected: TncOnSourceConnectDisconnect;
+begin
+  // Does nothing
+end;
+
+procedure TncDBDataset.SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
+begin
+  // Does nothing
 end;
 
 function TncDBDataset.GetOnHandleCommand: TncOnSourceHandleCommand;
 begin
-  // does nothing
+  // Does nothing
 end;
 
 procedure TncDBDataset.SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
 begin
-  // does nothing
+  // Does nothing
+end;
+
+function TncDBDataset.GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
+begin
+  // Does nothing
+end;
+
+procedure TncDBDataset.SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
+begin
+  // Does nothing
 end;
 
 procedure TncDBDataset.Notification(AComponent: TComponent; Operation: TOperation);
@@ -198,15 +218,15 @@ var
   I: Integer;
   MasterFieldList: string;
 begin
-    { Assign MasterFields from parameters as needed by the MasterDataLink }
-    if (Parameters.Count > 0) and Assigned(MasterDataLink.DataSource) and Assigned(MasterDataLink.DataSource.DataSet) then
-    begin
-      for I := 0 to Parameters.Count - 1 do
-        if (Parameters[I].Direction in [pdInput, pdInputOutput]) and (MasterDataLink.DataSource.DataSet.FindField(Parameters[I].Name) <> nil) then
-          MasterFieldList := MasterFieldList + Parameters[I].Name + ';';
-      MasterFields := Copy(MasterFieldList, 1, Length(MasterFieldList) - 1);
-      SetParamsFromCursor;
-    end;
+  { Assign MasterFields from parameters as needed by the MasterDataLink }
+  if (Parameters.Count > 0) and Assigned(MasterDataLink.DataSource) and Assigned(MasterDataLink.DataSource.DataSet) then
+  begin
+    for I := 0 to Parameters.Count - 1 do
+      if (Parameters[I].Direction in [pdInput, pdInputOutput]) and (MasterDataLink.DataSource.DataSet.FindField(Parameters[I].Name) <> nil) then
+        MasterFieldList := MasterFieldList + Parameters[I].Name + ';';
+    MasterFields := Copy(MasterFieldList, 1, Length(MasterFieldList) - 1);
+    SetParamsFromCursor;
+  end;
 end;
 
 procedure TncDBDataset.RefreshParams;
@@ -491,22 +511,12 @@ end;
 
 function TncDBDataset.GetSQL: TStrings;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FSQL;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FSQL;
 end;
 
 procedure TncDBDataset.SetSQL(const Value: TStrings);
 begin
-  PropertyLock.Acquire;
-  try
-    FSQL.Assign(Value);
-  finally
-    PropertyLock.Release;
-  end;
+  FSQL.Assign(Value);
 end;
 
 procedure TncDBDataset.SetSource(const Value: TncClientSource);
@@ -525,22 +535,12 @@ end;
 
 function TncDBDataset.GetPeerCommandHandler: string;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FPeerCommandHandler;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FPeerCommandHandler;
 end;
 
 procedure TncDBDataset.SetPeerCommandHandler(const Value: string);
 begin
-  PropertyLock.Acquire;
-  try
-    FPeerCommandHandler := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FPeerCommandHandler := Value;
 end;
 
 end.

@@ -1,5 +1,40 @@
 unit ncSources;
 
+// /////////////////////////////////////////////////////////////////////////////
+//
+// NetCom7 Package
+//
+// This unit creates a TCP Server Source and a TCP Client Source compoents,
+// along with their threads dealing with handling commands.
+//
+// The idea behind the source components is to be able to extend the sockets
+// to handle well defined buffers. Sockets on their own are streaming so
+// you have to implement a mechanism of picking the buffers from the stream
+// to process.
+//
+// The components implemented here introduce an ExecCommand which sends to
+// the peer (be it a client or a server) the command along with its data to
+// be executed. The peer then calls the OnHandleCommand with the data supplied,
+// and packs the result back to the calling peer. If an exception is raised,
+// it is packed and raised back at the caller, so that client/server applications
+// can utilise the exception mechanisms.
+//
+// The buffer packing and unpacking from the stream can handle garbage thrown
+// at it.
+//
+// These components have built in encryption and compression, set by the
+// corresponding properties.
+//
+// 12/8/2020
+// - Complete re-engineering of the base component
+//
+// 16/12/2010
+// - Initial creation
+//
+// Written by Demos Bill
+//
+// /////////////////////////////////////////////////////////////////////////////
+
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
 {$IF CompilerVersion >= 21.0}
@@ -10,14 +45,14 @@ unit ncSources;
 interface
 
 uses
-  {$IFDEF MSWINDOWS}
+{$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Winsock2,
-  {$ELSE}
+{$ELSE}
   Posix.SysSocket, Posix.Unistd,
-  {$ENDIF}
+{$ENDIF}
   System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.ZLib,
-  System.Diagnostics, System.RTLConsts, System.Types,
-  ncCommandPacking, ncLines, ncSocketList, ncThreads, ncSockets, ncCompression, ncEncryption;
+  System.Diagnostics, System.TimeSpan, System.RTLConsts, System.Types,
+  ncCommandPacking, ncLines, ncSocketList, ncThreads, ncSockets, ncPendingCommandsList, ncCompression, ncEncryption;
 
 type
   TncCommandDirection = (cdIncoming, cdOutgoing);
@@ -35,16 +70,16 @@ type
   PMagicHeaderType = ^TMagicHeaderType;
 
 const
-  MagicHeader: TMagicHeaderType = $ACF0FF00;  // Bin: 10101100111100001111111100000000
+  MagicHeader: TMagicHeaderType = $ACF0FF00; // Bin: 10101100111100001111111100000000
 
   DefPort = 17233;
 
-  DefCommandExecTimeout = 15000;
-
   DefExecThreadPriority = ntpNormal;
   DefExecThreads = 0;
-  DefExecThreadsPerCPU = 5;
-  DefExecThreadsGrowUpto = 100;
+  DefExecThreadsPerCPU = 4;
+  DefExecThreadsGrowUpto = 32;
+
+  DefExecCommandTimeout = 15000;
 
   DefEventsUseMainThread = False;
   DefNoDelay = True;
@@ -72,48 +107,54 @@ type
     constructor Create; overload; override;
   end;
 
-  TPendingCommand = record
-  public
-    Line: TncSourceLine;
-    Command: TncCommand;
-    CommandEvent: TEvent;
-  end;
+  TncOnSourceConnectDisconnect = procedure(
 
-  PPendingCommand = ^TPendingCommand;
+    Sender: TObject; aLine: TncLine) of object;
 
-  TUnhandledCommand = record
-  public
-    Line: TncSourceLine;
-    Command: TncCommand;
-  end;
+  TncOnSourceReconnected = procedure(
 
-  PUnhandledCommand = ^TUnhandledCommand;
+    Sender: TObject; aLine: TncLine) of object;
 
-  TncOnSourceConnectDisconnect = procedure(Sender: TObject; aLine: TncLine) of object;
-  TncOnSourceReconnected = procedure(Sender: TObject; aLine: TncLine) of object;
-  TncOnSourceHandleCommand = function(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean;
+  TncOnSourceHandleCommand = function(
+
+    Sender: TObject; aLine: TncLine;
+
+    aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean;
+
     const aSenderComponent, aReceiverComponent: string): TBytes of object;
-  TncOnAsyncExecCommandResult = procedure(Sender: TObject; aLine: TncLine; aCmd: Integer; const aResult: TBytes; aResultIsError: Boolean;
+
+  TncOnAsyncExecCommandResult = procedure(
+
+    Sender: TObject;
+
+    aLine: TncLine; aCmd: Integer; const aResult: TBytes; aResultIsError: Boolean;
+
     const aSenderComponent, aReceiverComponent: string) of object;
 
   IncCommandHandler = interface
     ['{22337701-9561-489A-8593-82EAA3B1B431}']
-    procedure Connected(aLine: TncLine);
-    procedure Disconnected(aLine: TncLine);
+    function GetOnConnected: TncOnSourceConnectDisconnect;
+    procedure SetOnConnected(const Value: TncOnSourceConnectDisconnect);
+    function GetOnDisconnected: TncOnSourceConnectDisconnect;
+    procedure SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
+    function GetOnHandleCommand: TncOnSourceHandleCommand;
+    procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
+    function GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
+    procedure SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
 
     function GetComponentName: string;
 
-    function GetOnHandleCommand: TncOnSourceHandleCommand;
-    procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
+    property OnConnected: TncOnSourceConnectDisconnect read GetOnConnected write SetOnConnected;
+    property OnDisconnected: TncOnSourceConnectDisconnect read GetOnDisconnected write SetOnDisconnected;
     property OnHandleCommand: TncOnSourceHandleCommand read GetOnHandleCommand write SetOnHandleCommand;
+    property OnAsyncExecCommandResult: TncOnAsyncExecCommandResult read GetOnAsyncExecCommandResult write SetOnAsyncExecCommandResult;
   end;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TncSourceBase
   // Is the base for handling Exec and Handle command for the ServerSource and ClientSource
-  TncCommandProcessor = class; // forward declaration
 
-  TncSourceBase = class(TComponent)
+  TncSourceBase = class(TComponent, IncCommandHandler)
   private
     FCommandExecTimeout: Cardinal;
     FCommandProcessorThreadPriority: TncThreadPriority;
@@ -142,14 +183,21 @@ type
     procedure SetPort(const Value: Integer);
     function GetReaderThreadPriority: TncThreadPriority;
     procedure SetReaderThreadPriority(const Value: TncThreadPriority);
+
+    // For implementing the IncCommandHandler interface
+    function GetComponentName: string;
     function GetOnConnected: TncOnSourceConnectDisconnect;
     procedure SetOnConnected(const Value: TncOnSourceConnectDisconnect);
     function GetOnDisconnected: TncOnSourceConnectDisconnect;
     procedure SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
+    function GetOnHandleCommand: TncOnSourceHandleCommand;
+    procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
+    function GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
+    procedure SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
 
-    // Sources new functionality
-    function GetCommandExecTimeout: Cardinal;
-    procedure SetCommandExecTimeout(const Value: Cardinal);
+    // Property getters and setters
+    function GetExecCommandTimeout: Cardinal;
+    procedure SetExecCommandTimeout(const Value: Cardinal);
     function GetCommandProcessorPriority: TncThreadPriority;
     procedure SetCommandProcessorPriority(const Value: TncThreadPriority);
     function GetCommandProcessorThreads: Integer;
@@ -168,24 +216,17 @@ type
     procedure SetEncryptionKey(const Value: string);
     function GetEncryptOnHashedKey: Boolean;
     procedure SetEncryptOnHashedKey(const Value: Boolean);
-    function GetOnHandleCommand: TncOnSourceHandleCommand;
-    procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
   private
-    CommandHandlers: array of IncCommandHandler;
-    UniqueSentID: Integer;
+    // To set the component active on loaded if was set at design time
     WasSetActive: Boolean;
-    procedure HandleCommand(aLine: TncSourceLine; var aUnpackedCommand: TncCommand);
-    function GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
-    procedure SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
   protected
     PropertyLock: TCriticalSection;
-    PendingCommands: TSocketList;
-    PendingCommandsLock: TCriticalSection;
-    UnhandledCommands: TSocketList;
-    UnhandledCommandsLock: TCriticalSection;
-
-    CommandProcessor: TncCommandProcessor;
+    CommandHandlers: array of IncCommandHandler;
+    UniqueSentID: TncCommandUniqueID;
+    HandleCommandThreadPool: TncThreadPool;
     Socket: TncTCPBase;
+
+    PendingCommandsList: TPendingCommandsList;
 
     procedure Loaded; override;
     procedure SocketConnected(Sender: TObject; aLine: TncLine);
@@ -193,7 +234,8 @@ type
     procedure SocketReconnected(Sender: TObject; aLine: TncLine);
     procedure SocketReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
     procedure WriteMessage(aLine: TncSourceLine; const aBuf: TBytes); virtual;
-    procedure WriteCommand(aLine: TncSourceLine; const aCmd: TncCommand);
+    procedure WriteCommand(aLine: TncSourceLine; const aCmd: TncCommand); inline;
+    procedure HandleReceivedCommand(aLine: TncSourceLine; const aCommandBytes: TBytes); inline;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -208,7 +250,6 @@ type
 
     procedure AddCommandHandler(aHandler: TComponent);
     procedure RemoveCommandHandler(aHandler: TComponent);
-    procedure ProcessSocketEvents;
   published
     // From socket
     property Active: Boolean read GetActive write SetActive default False;
@@ -218,12 +259,12 @@ type
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
 
     // New properties for sources
-    property CommandExecTimeout: Cardinal read GetCommandExecTimeout write SetCommandExecTimeout default DefCommandExecTimeout;
     property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorPriority write SetCommandProcessorPriority default DefExecThreadPriority;
     property CommandProcessorThreads: Integer read GetCommandProcessorThreads write SetCommandProcessorThreads default DefExecThreads;
     property CommandProcessorThreadsPerCPU: Integer read GetCommandProcessorThreadsPerCPU write SetCommandProcessorThreadsPerCPU default DefExecThreadsPerCPU;
     property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto
       default DefExecThreadsGrowUpto;
+    property ExecCommandTimeout: Cardinal read GetExecCommandTimeout write SetExecCommandTimeout default DefExecCommandTimeout;
     property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
     property Compression: TncCompressionLevel read GetCompression write SetCompression default DefCompression;
     property Encryption: TEncryptorType read GetEncryption write SetEncryption default DefEncryption;
@@ -236,18 +277,20 @@ type
     property OnAsyncExecCommandResult: TncOnAsyncExecCommandResult read GetOnAsyncExecCommandResult write SetOnAsyncExecCommandResult;
   end;
 
-  THandleCommandWorker = class(TncReadyThread)
+  THandleCommandThreadWorkType = (htwtAsyncResponse, htwtOnHandleCommand);
+
+  THandleCommandThread = class(TncReadyThread)
   public
+    WorkType: THandleCommandThreadWorkType;
     OnHandleCommand: TncOnSourceHandleCommand;
+    OnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
     Source: TncSourceBase;
     Line: TncSourceLine;
-    UnpackedCommand: TncCommand;
+    Command: TncCommand;
+    CommandHandler: IncCommandHandler;
+    procedure CallOnAsyncEvents;
+    procedure CallOnHandleEvents;
     procedure ProcessEvent; override;
-  end;
-
-  TncCommandProcessor = class(TncThreadPool)
-  public
-    procedure CompletePendingEventsForLine(aLine: TncLine);
   end;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,8 +305,6 @@ type
     procedure SetReconnect(const Value: Boolean);
     function GetReconnectInterval: Cardinal;
     procedure SetReconnectInterval(const Value: Cardinal);
-    function GetOnReconnected: TncOnSourceReconnected;
-    procedure SetOnReconnected(const Value: TncOnSourceReconnected);
   protected
     procedure WriteMessage(aLine: TncSourceLine; const aBuf: TBytes); override;
     function GetLine: TncLine;
@@ -284,7 +325,7 @@ type
     property Host: string read GetHost write SetHost;
     property Reconnect: Boolean read GetReconnect write SetReconnect default True;
     property ReconnectInterval: Cardinal read GetReconnectInterval write SetReconnectInterval default DefCntReconnectInterval;
-    property OnReconnected: TncOnSourceReconnected read GetOnReconnected write SetOnReconnected;
+    property OnReconnected: TncOnSourceReconnected read FOnReconnected write FOnReconnected;
   end;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,6 +337,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ShutDownLine(aLine: TncLine);
     property Lines: TThreadLineList read GetLines;
   end;
 
@@ -326,24 +368,20 @@ begin
   inherited Create(AOwner);
 
   PropertyLock := TCriticalSection.Create;
-  PendingCommandsLock := TCriticalSection.Create;
-  PendingCommands := TSocketList.Create;
-  PendingCommands.Duplicates := dupIgnore;
-
-  UnhandledCommandsLock := TCriticalSection.Create;
-  UnhandledCommands := TSocketList.Create;
-  UnhandledCommands.Duplicates := dupIgnore;
 
   Socket := nil;
   WasSetActive := False;
 
-  UniqueSentID := Random(high(Integer) - 1); // for encryption purposes
+  // For encryption purposes this is not set to zero
+  Randomize;
+  UniqueSentID := Random(4096);
 
-  FCommandExecTimeout := DefCommandExecTimeout;
   FCommandProcessorThreadPriority := DefExecThreadPriority;
   FCommandProcessorThreads := DefExecThreads;
   FCommandProcessorThreadsPerCPU := DefExecThreadsPerCPU;
   FCommandProcessorThreadsGrowUpto := DefExecThreadsGrowUpto;
+
+  FCommandExecTimeout := DefExecCommandTimeout;
   FEventsUseMainThread := DefEventsUseMainThread;
   FCompression := DefCompression;
   FEncryption := DefEncryption;
@@ -355,18 +393,16 @@ begin
   FOnHandleCommand := nil;
   FOnAsyncExecCommandResult := nil;
 
-  CommandProcessor := TncCommandProcessor.Create(THandleCommandWorker);
+  PendingCommandsList := TPendingCommandsList.Create;
+  HandleCommandThreadPool := TncThreadPool.Create(THandleCommandThread);
 end;
 
 destructor TncSourceBase.Destroy;
 begin
-  UnhandledCommands.Free;
-  UnhandledCommandsLock.Free;
-  PendingCommands.Free;
-  PendingCommandsLock.Free;
   PropertyLock.Free;
+  PendingCommandsList.Free;
+  HandleCommandThreadPool.Free;
   inherited Destroy;
-  CommandProcessor.Free;
 end;
 
 procedure TncSourceBase.Loaded;
@@ -374,11 +410,11 @@ begin
   inherited Loaded;
 
   if FEventsUseMainThread then
-    CommandProcessor.SetExecThreads(0, ntpNormal)
+    HandleCommandThreadPool.SetExecThreads(0, ntpNormal)
   else
   begin
-    CommandProcessor.SetThreadPriority(FCommandProcessorThreadPriority);
-    CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+    HandleCommandThreadPool.SetThreadPriority(FCommandProcessorThreadPriority);
+    HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
       FCommandProcessorThreadPriority);
   end;
 
@@ -423,19 +459,6 @@ begin
     end
 end;
 
-procedure TncSourceBase.ProcessSocketEvents;
-begin
-  if EventsUseMainThread then
-    if Socket is TncCustomTCPClient then
-    begin
-      TncClientProcessor(Socket.LineProcessor).SocketProcess;
-    end
-    else if Socket is TncCustomTCPServer then
-    begin
-      TncServerProcessor(Socket.LineProcessor).SocketProcess;
-    end;
-end;
-
 procedure TncSourceBase.SocketConnected(Sender: TObject; aLine: TncLine);
 var
   i: Integer;
@@ -448,7 +471,8 @@ begin
 
   for i := 0 to High(CommandHandlers) do
     try
-      CommandHandlers[i].Connected(TncSourceLine(aLine));
+      if Assigned(CommandHandlers[i].OnConnected) then
+        CommandHandlers[i].OnConnected(Sender, TncSourceLine(aLine));
     except
     end;
 end;
@@ -465,262 +489,16 @@ begin
 
   for i := 0 to High(CommandHandlers) do
     try
-      CommandHandlers[i].Disconnected(TncSourceLine(aLine));
+      if Assigned(CommandHandlers[i].OnDisconnected) then
+        CommandHandlers[i].OnDisconnected(Sender, TncSourceLine(aLine));
     except
     end;
-
-  // Also inform all commands for the aLine, in the command processor, to terminate
-  CommandProcessor.CompletePendingEventsForLine(aLine);
 end;
 
 procedure TncSourceBase.SocketReconnected(Sender: TObject; aLine: TncLine);
 begin
   if Assigned(TncClientSource(Self).OnReconnected) then
     TncClientSource(Self).OnReconnected(Sender, TncSourceLine(aLine));
-end;
-
-procedure TncSourceBase.HandleCommand(aLine: TncSourceLine; var aUnpackedCommand: TncCommand);
-var
-  Worker: THandleCommandWorker;
-  i: Integer;
-  FoundComponent: IncCommandHandler;
-begin
-  // Process command to be executed directly,
-  // or add it to the thread pool to process
-  aUnpackedCommand.ResultIsErrorString := False;
-  if EventsUseMainThread then
-  begin
-    // Handle the command directly
-    // or send to appropriate subcomponent
-    FoundComponent := nil;
-    for i := 0 to High(CommandHandlers) do
-      if CommandHandlers[i].GetComponentName = aUnpackedCommand.PeerComponentHandler then
-      begin
-        FoundComponent := CommandHandlers[i];
-        Break;
-      end;
-
-    if (Trim(aUnpackedCommand.PeerComponentHandler) = '') or (FoundComponent = nil) then
-    begin
-      if Assigned(OnHandleCommand) then
-        try
-          aUnpackedCommand.Data := OnHandleCommand(Self, aLine, aUnpackedCommand.Cmd, aUnpackedCommand.Data, aUnpackedCommand.RequiresResult,
-            aUnpackedCommand.SourceComponentHandler, aUnpackedCommand.PeerComponentHandler);
-          aUnpackedCommand.ResultIsErrorString := False;
-        except
-          on E: Exception do
-          begin
-            aUnpackedCommand.ResultIsErrorString := True;
-            aUnpackedCommand.Data := BytesOf(E.ClassName + ' error: ' + E.Message);
-          end;
-        end
-      else
-        SetLength(aUnpackedCommand.Data, 0);
-    end
-    else
-    begin
-      if not Assigned(FoundComponent) then
-      begin
-        aUnpackedCommand.ResultIsErrorString := True;
-        aUnpackedCommand.Data := BytesOf('Error: Peer component ' + aUnpackedCommand.PeerComponentHandler + ' not found');
-      end
-      else
-      begin
-        if Assigned(FoundComponent.OnHandleCommand) then
-          try
-            aUnpackedCommand.Data := FoundComponent.OnHandleCommand(Self, aLine, aUnpackedCommand.Cmd, aUnpackedCommand.Data, aUnpackedCommand.RequiresResult,
-              aUnpackedCommand.SourceComponentHandler, aUnpackedCommand.PeerComponentHandler);
-            aUnpackedCommand.ResultIsErrorString := False;
-          except
-            on E: Exception do
-            begin
-              aUnpackedCommand.ResultIsErrorString := True;
-              aUnpackedCommand.Data := BytesOf(E.ClassName + ' error: ' + E.Message);
-            end;
-          end
-        else
-          SetLength(aUnpackedCommand.Data, 0);
-      end;
-    end;
-
-    // Send the response
-    if aUnpackedCommand.RequiresResult then
-    begin
-      aUnpackedCommand.CommandType := ctResponse;
-      WriteCommand(aLine, aUnpackedCommand);
-    end;
-  end
-  else
-  begin
-    // Handle the command from the thread pool
-    Worker := THandleCommandWorker(CommandProcessor.RequestReadyThread);
-    Worker.OnHandleCommand := OnHandleCommand;
-    Worker.Source := Self;
-    Worker.Line := aLine;
-    Worker.UnpackedCommand := aUnpackedCommand;
-    CommandProcessor.RunRequestedThread(Worker);
-  end;
-end;
-
-// Only from one thread called here, the reader thread, or the main vcl
-procedure TncSourceBase.SocketReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
-
-  function LastPendingCommandIsOnLine(aLine: TncSourceLine): Boolean;
-  begin
-    Result := False;
-
-    if PendingCommands.Count > 0 then
-      Result := PPendingCommand(PendingCommands.Lines[PendingCommands.Count - 1])^.Line = aLine;
-  end;
-
-var
-  Line: TncSourceLine;
-  Ofs, BytesToRead, MesLen: UInt64;
-  UnpackedCommand: TPendingCommand;
-  PendingCommandsNdx: Integer;
-  MagicInt: UInt32;
-  UnhandledCommand: ^TUnhandledCommand;
-
-begin
-  // From SocketProcess from
-  Line := TncSourceLine(aLine);
-
-  Ofs := 0;
-  while Ofs < aBufCount do
-  begin
-    if Line.BytesToEndOfMessage > 0 then
-    begin
-      BytesToRead := Min(Line.BytesToEndOfMessage, UInt64(aBufCount) - Ofs);
-
-      // Add to MessageData, BytesToRead from aBuf [Ofs]
-      MesLen := Length(Line.MessageData);
-      SetLength(Line.MessageData, MesLen + BytesToRead);
-      move(aBuf[Ofs], Line.MessageData[MesLen], BytesToRead);
-
-      Ofs := Ofs + BytesToRead;
-
-      Line.BytesToEndOfMessage := Line.BytesToEndOfMessage - BytesToRead;
-    end;
-
-    if Line.BytesToEndOfMessage = 0 then
-    begin
-      if Length(Line.MessageData) > 0 then
-        try
-          try
-            // Get message data uncompressed and unencrypted
-            if Compression <> zcNone then
-              Line.MessageData := DecompressBytes(Line.MessageData);
-            if Encryption <> etNoEncryption then
-              Line.MessageData := DecryptBytes(Line.MessageData, EncryptionKey, Encryption, EncryptOnHashedKey, False);
-
-            // Get MessageData and convert it into a ncCommand
-            UnpackedCommand.Command.FromBytes(Line.MessageData);
-            case UnpackedCommand.Command.CommandType of
-              ctInitiator:
-                begin
-                  PendingCommandsLock.Acquire;
-                  try
-                    if (PendingCommands.Count = 0) or LastPendingCommandIsOnLine(Line) then // if we are not ExecCommand'ed anything
-                      // The peer is sending a command to be handled here
-                      HandleCommand(Line, UnpackedCommand.Command)
-                    else
-                    begin
-                      // Postpone HandleCommand until we are finished
-                      New(UnhandledCommand);
-                      UnhandledCommandsLock.Acquire;
-                      try
-                        UnhandledCommand^.Line := Line;
-                        UnhandledCommand^.Command := UnpackedCommand.Command;
-                        UnhandledCommands.AddObject(UnhandledCommand^.Command.UniqueID, TncLine(UnhandledCommand));
-                      finally
-                        UnhandledCommandsLock.Release;
-                      end;
-                    end;
-                  finally
-                    PendingCommandsLock.Release;
-                  end;
-                end;
-              ctResponse:
-                // We had requested a command, we got its response
-                begin
-                  PendingCommandsLock.Acquire;
-                  try
-                    PendingCommandsNdx := PendingCommands.IndexOf(UnpackedCommand.Command.UniqueID);
-                    if PendingCommandsNdx <> -1 then
-                      with PPendingCommand(PendingCommands.Lines[PendingCommandsNdx])^ do
-                      begin
-                        if Command.AsyncExecute then
-                        begin
-                          try
-                            if Assigned(OnAsyncExecCommandResult) then
-                              OnAsyncExecCommandResult(Self,
-
-                                Line,
-
-                                Command.Cmd,
-
-                                UnpackedCommand.Command.Data,
-
-                                UnpackedCommand.Command.ResultIsErrorString,
-
-                                UnpackedCommand.Command.SourceComponentHandler,
-
-                                UnpackedCommand.Command.PeerComponentHandler);
-
-                          finally
-                            Dispose(PPendingCommand(PendingCommands.Lines[PendingCommandsNdx]));
-                            PendingCommands.Delete(PendingCommandsNdx);
-                          end;
-                        end
-                        else
-                        begin
-                          Command.Data := UnpackedCommand.Command.Data;
-                          SetLength(UnpackedCommand.Command.Data, 0);
-                          Command.ResultIsErrorString := UnpackedCommand.Command.ResultIsErrorString;
-
-                          CommandEvent.SetEvent;
-                        end;
-                      end;
-                  finally
-                    PendingCommandsLock.Release;
-                  end;
-                end;
-            end;
-          finally
-            // Dispose MessageData, we are complete
-            SetLength(Line.MessageData, 0);
-          end;
-        except
-        end;
-
-      // Read a character
-      if Ofs < aBufCount then
-      begin
-        if Length(Line.HeaderBytes) < SizeOf(TMagicHeaderType) + SizeOf(UInt64) then
-        begin
-          SetLength(Line.HeaderBytes, Length(Line.HeaderBytes) + 1);
-
-          Line.HeaderBytes[High(Line.HeaderBytes)] := aBuf[Ofs];
-          Inc(Ofs);
-        end
-        else
-        begin
-          MagicInt := PMagicHeaderType(@Line.HeaderBytes[0])^;
-          if MagicInt <> MagicHeader then
-          begin
-            SetLength(Line.HeaderBytes, 0);
-            Dec(Ofs, SizeOf(TMagicHeaderType) + SizeOf(UInt64) - 1);
-          end
-          else
-          begin
-            // If a whole integer is read, prepare to read message
-            Line.BytesToEndOfMessage := PUInt64(@Line.HeaderBytes[SizeOf(TMagicHeaderType)])^;
-            SetLength(Line.HeaderBytes, 0);
-          end;
-        end;
-      end;
-    end; // if Line.BytesToEndOfMessage = 0
-  end; // while Ofs < aBufCount
 end;
 
 procedure TncSourceBase.WriteMessage(aLine: TncSourceLine; const aBuf: TBytes);
@@ -759,123 +537,227 @@ function TncSourceBase.ExecCommand(
   const aRequiresResult: Boolean = True; const aAsyncExecute: Boolean = False;
 
   const aPeerComponentHandler: string = ''; const aSourceComponentHandler: string = ''): TBytes;
+
 var
-  PendingCommand: ^TPendingCommand;
-  PendingCommandNdx: Integer;
-  WaitTime: Integer;
-  TheCommand: PUnhandledCommand;
+  Command: TncCommand;
+  IDSent: TncCommandUniqueID;
+  ReceivedResultEvent: TEvent;
+  PendingNdx: Integer;
+
 begin
+  PropertyLock.Acquire;
   try
-    New(PendingCommand);
+    IDSent := UniqueSentID;
+
+    // Random is here for encryption purposes
+    UniqueSentID := (UniqueSentID + TncCommandUniqueID(Random(4096))) mod High(TncCommandUniqueID);
+
+    Command.CommandType := ctInitiator;
+    Command.UniqueID := IDSent;
+    Command.Cmd := aCmd;
+    Command.Data := aData;
+    Command.RequiresResult := aRequiresResult;
+    Command.AsyncExecute := aAsyncExecute;
+    Command.ResultIsErrorString := False;
+    if aSourceComponentHandler = '' then
+      Command.SourceComponentHandler := Name
+    else
+      Command.SourceComponentHandler := aSourceComponentHandler;
+    Command.PeerComponentHandler := aPeerComponentHandler;
+
+    if aRequiresResult and (not aAsyncExecute) then
+    begin
+      aLine.LastReceived := TStopWatch.GetTimeStamp;
+      ReceivedResultEvent := TEvent.Create;
+      PendingNdx := PendingCommandsList.Add(IDSent, ReceivedResultEvent);
+      try
+        // Send command over to peer
+        WriteCommand(TncSourceLine(aLine), Command);
+      except
+        PendingCommandsList.Delete(PendingNdx);
+        ReceivedResultEvent.Free;
+        raise;
+      end;
+    end
+    else
+    begin
+      // Send command over to peer
+      WriteCommand(TncSourceLine(aLine), Command);
+      Exit; // Nothing more to do
+    end;
+  finally
+    PropertyLock.Release;
+  end;
+
+  // We are here because we require a result and this is not an AsyncExecute
+  SetLength(Result, 0);
+  try
     try
-      PendingCommandsLock.Acquire;
-      try
-        PendingCommand^.Line := TncSourceLine(aLine);
-        with PendingCommand^.Command do
-        begin
-          CommandType := ctInitiator;
-          UniqueID := UniqueSentID;
-          UniqueSentID := UniqueSentID + 1;
-          UniqueSentID := UniqueSentID mod (high(Integer) - 1);
-          Cmd := aCmd;
-          Data := aData;
-          RequiresResult := aRequiresResult;
-          AsyncExecute := aAsyncExecute;
-          PeerComponentHandler := aPeerComponentHandler;
-          if aSourceComponentHandler = '' then
-            SourceComponentHandler := Name
-          else
-            SourceComponentHandler := aSourceComponentHandler;
-        end;
+      while ReceivedResultEvent.WaitFor(10) <> wrSignaled do
+      begin
+        if not aLine.Active then
+          Abort;
 
-        if aRequiresResult or aAsyncExecute then
-        begin
-          if not aAsyncExecute then
-            PendingCommand^.CommandEvent := TEvent.Create;
-          // Add it to the list of pending commands, pass the address of the pending command record
-          PendingCommands.AddObject(PendingCommand^.Command.UniqueID, TncLine(PendingCommand));
-        end;
-      finally
-        PendingCommandsLock.Release;
+        if TStopWatch.GetTimeStamp - aLine.LastReceived >= ExecCommandTimeout * TTimeSpan.TicksPerMillisecond then
+          raise ENetComCommandExecutionTimeout.Create(ENetComCommandExecutionTimeoutMessage);
       end;
-
+    except
+      PropertyLock.Acquire;
       try
-        WriteCommand(TncSourceLine(aLine), PendingCommand^.Command);
-
-        if aRequiresResult and not aAsyncExecute then
-        begin
-          // Wait for the command to come back
-          ProcessSocketEvents;
-          if EventsUseMainThread then
-            WaitTime := 0
-          else
-            WaitTime := 100;
-          while PendingCommand.CommandEvent.WaitFor(WaitTime) <> wrSignaled do
-          begin
-            if not aLine.Active then
-              Abort;
-
-            ProcessSocketEvents;
-
-            if TStopWatch.GetTimeStamp - aLine.LastReceived >= CommandExecTimeout then
-              raise ENetComCommandExecutionTimeout.Create(ENetComCommandExecutionTimeoutMessage);
-          end;
-
-          // Get the result of the command into the result of this function
-          with PendingCommand.Command do
-          begin
-            if ResultIsErrorString then
-              raise ENetComResultIsException.Create(StringOf(Data))
-            else
-              Result := Data;
-          end;
-        end;
+        PendingCommandsList.Delete(PendingCommandsList.IndexOf(IDSent));
       finally
-        if aRequiresResult and not aAsyncExecute then
-        begin
-          PendingCommand.CommandEvent.Free;
-          PendingCommandsLock.Acquire;
-          try
-            PendingCommandNdx := PendingCommands.IndexOf(PendingCommand.Command.UniqueID);
-            if PendingCommandNdx <> -1 then
-              PendingCommands.Delete(PendingCommandNdx);
-          finally
-            PendingCommandsLock.Release;
-          end;
-        end;
+        PropertyLock.Release;
       end;
-    finally
-      if aRequiresResult and not aAsyncExecute then
-        Dispose(PendingCommand);
+      raise;
     end;
 
-  finally
-    PendingCommandsLock.Acquire;
+    // We are here because we got the result
+    // Get the result of the command into the result of this function
+    PropertyLock.Acquire;
     try
-      if PendingCommands.Count = 0 then
-      begin
-        UnhandledCommandsLock.Acquire;
+      PendingNdx := PendingCommandsList.IndexOf(IDSent);
+      try
+        Command := PendingCommandsList.Results[PendingNdx];
+        if Command.ResultIsErrorString then
+          raise ENetComResultIsException.Create(StringOf(Command.Data))
+        else
+          Result := Command.Data;
+      finally
+        PendingCommandsList.Delete(PendingNdx);
+      end;
+    finally
+      PropertyLock.Release;
+    end;
+  finally
+    ReceivedResultEvent.Free; // Event not needed any more
+  end;
+end;
+
+// Only from one thread called here, the reader thread, or the main vcl
+procedure TncSourceBase.SocketReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
+var
+  Line: TncSourceLine;
+  MagicInt: TMagicHeaderType;
+  Ofs, BytesToRead, MesLen: UInt64;
+begin
+  // From SocketProcess from
+  Line := TncSourceLine(aLine);
+
+  Ofs := 0;
+  while Ofs < aBufCount do
+  begin
+    if Line.BytesToEndOfMessage > 0 then
+    begin
+      BytesToRead := Min(Line.BytesToEndOfMessage, UInt64(aBufCount) - Ofs);
+
+      // Add to MessageData, BytesToRead from aBuf [Ofs]
+      MesLen := Length(Line.MessageData);
+      SetLength(Line.MessageData, MesLen + BytesToRead);
+      move(aBuf[Ofs], Line.MessageData[MesLen], BytesToRead);
+
+      Ofs := Ofs + BytesToRead;
+
+      Line.BytesToEndOfMessage := Line.BytesToEndOfMessage - BytesToRead;
+    end;
+
+    if Line.BytesToEndOfMessage = 0 then
+    begin
+      if Length(Line.MessageData) > 0 then
         try
-          while (UnhandledCommands.Count > 0) do
+          try
+            // Get message data uncompressed and unencrypted
+            if Compression <> zcNone then
+              Line.MessageData := DecompressBytes(Line.MessageData);
+            if Encryption <> etNoEncryption then
+              Line.MessageData := DecryptBytes(Line.MessageData, EncryptionKey, Encryption, EncryptOnHashedKey, False);
+
+            HandleReceivedCommand(Line, Line.MessageData);
+          finally
+            // Dispose MessageData, we are complete
+            SetLength(Line.MessageData, 0);
+          end;
+        except
+        end;
+
+      // Read a character
+      if Ofs < aBufCount then
+      begin
+        if Length(Line.HeaderBytes) < SizeOf(TMagicHeaderType) + SizeOf(UInt64) then
+        begin
+          SetLength(Line.HeaderBytes, Length(Line.HeaderBytes) + 1);
+
+          Line.HeaderBytes[High(Line.HeaderBytes)] := aBuf[Ofs];
+          Inc(Ofs);
+        end
+        else
+        begin
+          MagicInt := PMagicHeaderType(@Line.HeaderBytes[0])^;
+          if MagicInt <> MagicHeader then
           begin
-            TheCommand := PUnhandledCommand(UnhandledCommands.Lines[0]);
-            try
-              UnhandledCommands.Delete(0);
-              try
-                HandleCommand(TheCommand^.Line, TheCommand^.Command);
-              except
-              end;
-            finally
-              Dispose(TheCommand);
-            end;
+            SetLength(Line.HeaderBytes, 0);
+            Dec(Ofs, SizeOf(TMagicHeaderType) + SizeOf(UInt64) - 1);
+          end
+          else
+          begin
+            // If a whole integer is read, prepare to read message
+            Line.BytesToEndOfMessage := PUint64(@Line.HeaderBytes[SizeOf(TMagicHeaderType)])^;
+            SetLength(Line.HeaderBytes, 0);
+          end;
+        end;
+      end;
+    end; // if Line.BytesToEndOfMessage = 0
+  end; // while Ofs < aBufCount
+end;
+
+// This is run in the reader's thread context
+procedure TncSourceBase.HandleReceivedCommand(aLine: TncSourceLine; const aCommandBytes: TBytes);
+var
+  Command: TncCommand;
+  HandleCommandThread: THandleCommandThread;
+  PendingNdx: Integer;
+begin
+  Command.FromBytes(aCommandBytes);
+  case Command.CommandType of
+    ctInitiator:
+      begin
+        // Handle the command from the thread pool
+        HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+        HandleCommandThread.WorkType := htwtOnHandleCommand;
+        HandleCommandThread.OnHandleCommand := OnHandleCommand;
+        HandleCommandThread.Source := Self;
+        HandleCommandThread.Line := aLine;
+        HandleCommandThread.Command := Command;
+        HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+      end;
+    ctResponse:
+      if Command.AsyncExecute then
+      begin
+        // Handle the command from the thread pool
+        HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+        HandleCommandThread.WorkType := htwtAsyncResponse;
+        HandleCommandThread.OnAsyncExecCommandResult := OnAsyncExecCommandResult;
+        HandleCommandThread.Source := Self;
+        HandleCommandThread.Line := aLine;
+        HandleCommandThread.Command := Command;
+        HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+      end
+      else
+      begin
+        PropertyLock.Acquire;
+        try
+          // Find the event to set from the PendingCommandsList
+          PendingNdx := PendingCommandsList.IndexOf(Command.UniqueID);
+          // We may not find a pending command as the ExecCommand may have
+          // timed out, so do nothing in that case
+          if PendingNdx <> -1 then
+          begin
+            PendingCommandsList.Results[PendingNdx] := Command;
+            PendingCommandsList.ReceivedResultEvents[PendingNdx].SetEvent;
           end;
         finally
-          UnhandledCommandsLock.Release;
+          PropertyLock.Release;
         end;
       end;
-    finally
-      PendingCommandsLock.Release;
-    end;
   end;
 end;
 
@@ -932,7 +814,7 @@ begin
   Socket.ReaderThreadPriority := Value;
 end;
 
-function TncSourceBase.GetCommandExecTimeout: Cardinal;
+function TncSourceBase.GetExecCommandTimeout: Cardinal;
 begin
   PropertyLock.Acquire;
   try
@@ -942,7 +824,7 @@ begin
   end;
 end;
 
-procedure TncSourceBase.SetCommandExecTimeout(const Value: Cardinal);
+procedure TncSourceBase.SetExecCommandTimeout(const Value: Cardinal);
 begin
   PropertyLock.Acquire;
   try
@@ -968,7 +850,7 @@ begin
   try
     FCommandProcessorThreadPriority := Value;
     if not(csLoading in ComponentState) then
-      CommandProcessor.SetThreadPriority(Value);
+      HandleCommandThreadPool.SetThreadPriority(Value);
   finally
     PropertyLock.Release;
   end;
@@ -993,11 +875,8 @@ begin
       FCommandProcessorThreadsPerCPU := 0;
 
     if not(csLoading in ComponentState) then
-      if EventsUseMainThread then
-        CommandProcessor.SetExecThreads(0, ntpNormal)
-      else
-        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-          FCommandProcessorThreadPriority);
+      HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+        FCommandProcessorThreadPriority);
   finally
     PropertyLock.Release;
   end;
@@ -1022,11 +901,8 @@ begin
       FCommandProcessorThreads := 0;
 
     if not(csLoading in ComponentState) then
-      if EventsUseMainThread then
-        CommandProcessor.SetExecThreads(0, ntpNormal)
-      else
-        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-          FCommandProcessorThreadPriority);
+      HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+        FCommandProcessorThreadPriority);
   finally
     PropertyLock.Release;
   end;
@@ -1047,7 +923,7 @@ begin
   PropertyLock.Acquire;
   try
     FCommandProcessorThreadsGrowUpto := Value;
-    CommandProcessor.GrowUpto := Value;
+    HandleCommandThreadPool.GrowUpto := Value;
   finally
     PropertyLock.Release;
   end;
@@ -1071,9 +947,9 @@ begin
 
     if not(csLoading in ComponentState) then
       if Value then
-        CommandProcessor.SetExecThreads(0, ntpNormal)
+        HandleCommandThreadPool.SetExecThreads(0, ntpNormal)
       else
-        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+        HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
           FCommandProcessorThreadPriority);
   finally
     PropertyLock.Release;
@@ -1160,171 +1036,129 @@ begin
   end;
 end;
 
+function TncSourceBase.GetComponentName: string;
+begin
+  Result := Name;
+end;
+
 function TncSourceBase.GetOnConnected: TncOnSourceConnectDisconnect;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnConnected;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnConnected;
 end;
 
 procedure TncSourceBase.SetOnConnected(const Value: TncOnSourceConnectDisconnect);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnConnected := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnConnected := Value;
 end;
 
 function TncSourceBase.GetOnDisconnected: TncOnSourceConnectDisconnect;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnDisconnected;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnDisconnected;
 end;
 
 procedure TncSourceBase.SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnDisconnected := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnDisconnected := Value;
 end;
 
 function TncSourceBase.GetOnHandleCommand: TncOnSourceHandleCommand;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnHandleCommand;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnHandleCommand;
 end;
 
 procedure TncSourceBase.SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnHandleCommand := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnHandleCommand := Value;
 end;
 
 function TncSourceBase.GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnAsyncExecCommandResult;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnAsyncExecCommandResult;
 end;
 
 procedure TncSourceBase.SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnAsyncExecCommandResult := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnAsyncExecCommandResult := Value;
 end;
 
-{ THandleCommandWorker }
+{ THandleCommandThread }
 
-procedure THandleCommandWorker.ProcessEvent;
+procedure THandleCommandThread.CallOnAsyncEvents;
+begin
+  if Assigned(CommandHandler.OnAsyncExecCommandResult) then
+
+    CommandHandler.OnAsyncExecCommandResult(
+
+      Source, Line,
+
+      Command.Cmd, Command.Data,
+
+      Command.ResultIsErrorString,
+
+      Command.SourceComponentHandler, Command.PeerComponentHandler);
+end;
+
+procedure THandleCommandThread.CallOnHandleEvents;
+begin
+  if Assigned(CommandHandler.OnHandleCommand) then
+    try
+      Command.Data := CommandHandler.OnHandleCommand(
+
+        Source, Line,
+
+        Command.Cmd, Command.Data, Command.RequiresResult,
+
+        Command.SourceComponentHandler, Command.PeerComponentHandler);
+
+      Command.ResultIsErrorString := False;
+    except
+      on E: Exception do
+      begin
+        Command.ResultIsErrorString := True;
+        Command.Data := BytesOf(E.ClassName + ' error: ' + E.Message);
+      end;
+    end
+  else
+    SetLength(Command.Data, 0);
+end;
+
+procedure THandleCommandThread.ProcessEvent;
 var
   i: Integer;
-  FoundComponent: IncCommandHandler;
 begin
-  // TODO: Put here to also execute the new OnAsyncExecuteResult
-
-  FoundComponent := nil;
+  // Find which command handler handles the events
+  CommandHandler := nil;
   for i := 0 to High(Source.CommandHandlers) do
-    if Source.CommandHandlers[i].GetComponentName = UnpackedCommand.PeerComponentHandler then
+    if Source.CommandHandlers[i].GetComponentName = Command.PeerComponentHandler then
     begin
-      FoundComponent := Source.CommandHandlers[i];
+      CommandHandler := Source.CommandHandlers[i];
       Break;
     end;
+  if not Assigned(CommandHandler) then
+    Source.GetInterface(IncCommandHandler, CommandHandler);
 
-  // Handle the command directly
-  UnpackedCommand.ResultIsErrorString := False;
-  if (Trim(UnpackedCommand.PeerComponentHandler) = '') or (FoundComponent = nil) then
-  begin
-    if Assigned(OnHandleCommand) then
-      try
-        UnpackedCommand.Data := OnHandleCommand(Self, Line, UnpackedCommand.Cmd, UnpackedCommand.Data, UnpackedCommand.RequiresResult,
-          UnpackedCommand.SourceComponentHandler, UnpackedCommand.PeerComponentHandler);
-        UnpackedCommand.ResultIsErrorString := False;
-      except
-        on E: Exception do
-        begin
-          UnpackedCommand.ResultIsErrorString := True;
-          UnpackedCommand.Data := BytesOf(E.ClassName + ' error: ' + E.Message);
-        end;
-      end
-    else
-      SetLength(UnpackedCommand.Data, 0);
-  end
-  else
-  begin
-    // This does not apply anymore as it is redirected above
-    if not Assigned(FoundComponent) then
-    begin
-      UnpackedCommand.ResultIsErrorString := True;
-      UnpackedCommand.Data := BytesOf('Error: Peer component ' + UnpackedCommand.PeerComponentHandler + ' not found');
-    end
-    else
-    begin
-      if Assigned(FoundComponent.OnHandleCommand) then
-        try
-          UnpackedCommand.Data := FoundComponent.OnHandleCommand(Self, Line, UnpackedCommand.Cmd, UnpackedCommand.Data, UnpackedCommand.RequiresResult,
-            UnpackedCommand.SourceComponentHandler, UnpackedCommand.PeerComponentHandler);
-          UnpackedCommand.ResultIsErrorString := False;
-        except
-          on E: Exception do
-          begin
-            UnpackedCommand.ResultIsErrorString := True;
-            UnpackedCommand.Data := BytesOf(E.ClassName + ' error: ' + E.Message);
-          end;
-        end
+  case WorkType of
+    htwtAsyncResponse:
+      if Source.EventsUseMainThread then
+        Synchronize(CallOnAsyncEvents)
       else
-        SetLength(UnpackedCommand.Data, 0);
-    end;
-  end;
+        CallOnAsyncEvents;
+    htwtOnHandleCommand:
+      begin
+        Command.ResultIsErrorString := False;
 
-  // Send the response
-  if UnpackedCommand.RequiresResult then
-  begin
-    UnpackedCommand.CommandType := ctResponse;
-    Source.WriteCommand(Line, UnpackedCommand);
-  end;
-end;
+        if Source.EventsUseMainThread then
+          Synchronize(CallOnHandleEvents)
+        else
+          CallOnHandleEvents;
 
-{ TncCommandProcessor }
-
-procedure TncCommandProcessor.CompletePendingEventsForLine(aLine: TncLine);
-var
-  i: Integer;
-begin
-  Serialiser.Acquire;
-  try
-    for i := 0 to High(Threads) do
-      if THandleCommandWorker(Threads[i]).Line = aLine then // processing our line
-        Threads[i].ReadyEvent.WaitFor(Infinite); // It is still processing,
-    // wait until it is in ready state again
-  finally
-    Serialiser.Release;
+        // Send the response
+        if Command.RequiresResult then
+        begin
+          Command.CommandType := ctResponse;
+          Source.WriteCommand(Line, Command);
+        end;
+      end;
   end;
 end;
 
@@ -1419,26 +1253,6 @@ begin
   TncTCPClient(Socket).ReconnectInterval := Value;
 end;
 
-function TncClientSource.GetOnReconnected: TncOnSourceReconnected;
-begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnReconnected;
-  finally
-    PropertyLock.Release;
-  end;
-end;
-
-procedure TncClientSource.SetOnReconnected(const Value: TncOnSourceReconnected);
-begin
-  PropertyLock.Acquire;
-  try
-    FOnReconnected := Value;
-  finally
-    PropertyLock.Release;
-  end;
-end;
-
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncServerSource }
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1475,6 +1289,11 @@ end;
 function TncServerSource.GetLines: TThreadLineList;
 begin
   Result := TncTCPServer(Socket).Lines;
+end;
+
+procedure TncServerSource.ShutDownLine(aLine: TncLine);
+begin
+  TncTCPServer(Socket).ShutDownLine(aLine);
 end;
 
 end.

@@ -44,7 +44,7 @@ uses
 {$ELSE}
   Posix.SysSocket, Posix.Unistd,
 {$ENDIF}
-  System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.Diagnostics,
+  System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.Diagnostics, System.TimeSpan,
   ncLines, ncSocketList, ncThreads;
 
 const
@@ -282,7 +282,6 @@ begin
   inherited Create;
   FLock := TCriticalSection.Create;
   FList := TSocketList.Create;
-  FList.Duplicates := dupError;
 end;
 
 destructor TThreadLineList.Destroy;
@@ -303,7 +302,7 @@ begin
   try
     // FList has Duplicates to dupError, so we know if this is already in the
     // list it will not be accepted
-    FList.AddObject(Item.Handle, Item);
+    FList.Add(Item.Handle, Item);
   finally
     UnlockList;
   end;
@@ -615,9 +614,7 @@ end;
 
 procedure TncCustomTCPClient.Send(const aBuf; aBufSize: Integer);
 begin
-  if not Active then
-    Active := True;
-
+  Active := True;
   TncLineInternal(Line).SendBuffer(aBuf, aBufSize);
 end;
 
@@ -639,8 +636,7 @@ begin
   if UseReaderThread then
     raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
 
-  if not Active then
-    Active := True;
+  Active := True;
 
   if not ReadableAnySocket([Line.Handle], aTimeout) then
   begin
@@ -783,7 +779,7 @@ begin
           Sleep(50);
           if Terminated then
             Break;
-          if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval then
+          if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval * TTimeSpan.TicksPerMillisecond then
           begin
             FClientSocket.LastConnectAttempt := TStopWatch.GetTimeStamp;
 

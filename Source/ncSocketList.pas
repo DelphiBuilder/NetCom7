@@ -16,7 +16,7 @@ uses System.Classes, System.SysUtils, System.RTLConsts, ncLines;
 
 type
   TSocketItem = record
-    FSocket: TSocketHandle;
+    FSocketHandle: TSocketHandle;
     FLine: TncLine;
   end;
 
@@ -30,37 +30,34 @@ type
     FList: TSocketItemList;
     FCount: Integer;
     FCapacity: Integer;
-    FDuplicates: TDuplicates;
-    function Get(Index: Integer): TSocketHandle; register;
+    function GetSocketHandle(Index: Integer): TSocketHandle; register;
     function GetLine(Index: Integer): TncLine; register;
     procedure PutLine(Index: Integer; aLine: TncLine);
     procedure SetCapacity(aNewCapacity: Integer);
   protected
-    procedure InsertItem(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
+    procedure Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
     procedure Grow;
     class function CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Integer; inline; static;
   public
     destructor Destroy; override;
 
-    function Add(const aSocketHandle: TSocketHandle): Integer; register;
-    function AddObject(const aSocketHandle: TSocketHandle; aLine: TncLine): Integer;
+    function Add(const aSocketHandle: TSocketHandle; aLine: TncLine): Integer;
     procedure Clear;
     procedure Delete(aIndex: Integer); register;
     function Find(const aSocketHandle: TSocketHandle; var aIndex: Integer): Boolean; register;
     function IndexOf(const aSocketHandle: TSocketHandle): Integer; register;
 
     property Count: Integer read FCount;
-    property Duplicates: TDuplicates read FDuplicates write FDuplicates;
-    property Items[index: Integer]: TSocketHandle read Get; default;
+    property SocketHandles[index: Integer]: TSocketHandle read GetSocketHandle; default;
     property Lines[index: Integer]: TncLine read GetLine write PutLine;
   end;
 
 implementation
 
 resourcestring
-  SDuplicateInteger = 'Integer list does not allow duplicates';
+  SDuplicateSocketHandle = 'Socket handle list does not allow duplicates';
 
-  { TCustomIntList }
+  { TSocketList }
 
 destructor TSocketList.Destroy;
 begin
@@ -69,21 +66,11 @@ begin
   SetCapacity(0);
 end;
 
-function TSocketList.Add(const aSocketHandle: TSocketHandle): Integer;
-begin
-  Result := AddObject(aSocketHandle, nil);
-end;
-
-function TSocketList.AddObject(const aSocketHandle: TSocketHandle; aLine: TncLine): Integer;
+function TSocketList.Add(const aSocketHandle: TSocketHandle; aLine: TncLine): Integer;
 begin
   if Find(aSocketHandle, Result) then
-    case Duplicates of
-      dupIgnore:
-        Exit;
-      dupError:
-        raise Exception.Create(Format(SDuplicateClass, [aLine.ClassName]));
-    end;
-  InsertItem(Result, aSocketHandle, aLine);
+    raise Exception.Create(SDuplicateSocketHandle);
+  Insert(Result, aSocketHandle, aLine);
 end;
 
 procedure TSocketList.Clear;
@@ -117,7 +104,7 @@ begin
   while Low <= High do
   begin
     Mid := (Low + High) shr 1;
-    Comparison := CompareSockets(FList[Mid].FSocket, aSocketHandle);
+    Comparison := CompareSockets(FList[Mid].FSocketHandle, aSocketHandle);
     if Comparison < 0 then
       Low := Mid + 1
     else
@@ -126,8 +113,7 @@ begin
       if Comparison = 0 then
       begin
         Result := True;
-        if Duplicates <> dupAccept then
-          Low := Mid;
+        Low := Mid;
       end;
     end;
   end;
@@ -153,7 +139,7 @@ begin
     Result := -1;
 end;
 
-procedure TSocketList.InsertItem(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
+procedure TSocketList.Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
 begin
   if FCount = FCapacity then
     Grow;
@@ -161,7 +147,7 @@ begin
     System.Move(FList[aIndex], FList[aIndex + 1], (FCount - aIndex) * SizeOf(TSocketItem));
   with FList[aIndex] do
   begin
-    FSocket := aSocketHandle;
+    FSocketHandle := aSocketHandle;
     FLine := aLine;
   end;
   Inc(FCount);
@@ -172,11 +158,11 @@ begin
   Result := aSocketHandle1 - aSocketHandle2;
 end;
 
-function TSocketList.Get(Index: Integer): TSocketHandle;
+function TSocketList.GetSocketHandle(Index: Integer): TSocketHandle;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
-  Result := FList[index].FSocket;
+  Result := FList[index].FSocketHandle;
 end;
 
 function TSocketList.GetLine(Index: Integer): TncLine;
