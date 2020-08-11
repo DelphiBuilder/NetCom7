@@ -15,6 +15,7 @@ type
     tmrUpdateLog: TTimer;
     ToolBar1: TToolBar;
     btnActivateServer: TButton;
+    btnShutDownClients: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure tmrUpdateLogTimer(Sender: TObject);
@@ -23,6 +24,7 @@ type
     procedure ServerConnected(Sender: TObject; aLine: TncLine);
     procedure ServerDisconnected(Sender: TObject; aLine: TncLine);
     procedure btnActivateServerClick(Sender: TObject);
+    procedure btnShutDownClientsClick(Sender: TObject);
   private
     LogLock: TCriticalSection;
     LogLines, LogLinesCopy: TStringList;
@@ -80,6 +82,7 @@ begin
   for i := 0 to LogLinesCopy.Count - 1 do
   begin
     memLog.Lines.Add(LogLinesCopy.Strings[i]);
+    memLog.SelStart := Length(memLog.Text);
 
     // Clear the log if its too big
     if memLog.Lines.Count > 10000 then
@@ -128,11 +131,29 @@ begin
   Clients := Server.Lines.LockList;
   try
     for i := 0 to Clients.Count - 1 do
-      // if Clients.Objects[i] <> aLine then  // If you do not want to send text back to original client
+      // if Clients.Lines[i] <> aLine then  // If you do not want to send text back to original client
       Server.ExecCommand(Clients.Lines[i], 0, aData, False);
+
+    // You can shutdown a line here by calling Server.ShutdownLine,
+    // see following procecure
   finally
     Server.Lines.UnlockList;
   end;
+end;
+
+procedure TfrmMain.btnShutDownClientsClick(Sender: TObject);
+var
+  Clients: TSocketList;
+  i: Integer;
+begin
+  Clients := Server.Lines.LockList;
+  try
+    for i := 0 to Clients.Count - 1 do
+      Server.ShutDownLine(Clients.Lines[i]);
+  finally
+    Server.Lines.UnlockList;
+  end;
+
 end;
 
 end.

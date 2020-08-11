@@ -1,11 +1,11 @@
 ﻿[Closed Files]
-File_0=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas',0,1,104,64,117,0,0,,
-File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,1072,72,1087,0,0,,
-File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncCommandHandlers.pas',0,1,22,38,37,0,0,,
-File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncDBSrv.pas',0,1,121,71,132,0,0,,
-File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncDBCnt.pas',0,1,137,47,142,0,0,,
-File_5=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSocketList.pas',0,1,286,41,301,0,0,,
-File_6=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',0,1,1220,23,1226,0,0,,{1
+File_0=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',0,1,889,1,891,0,0,,
+File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,1270,42,1296,0,0,,{1,239,1}
+File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas',0,1,104,64,117,0,0,,
+File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncCommandHandlers.pas',0,1,22,38,37,0,0,,
+File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncDBSrv.pas',0,1,121,71,132,0,0,,
+File_5=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncDBCnt.pas',0,1,137,47,142,0,0,,
+File_6=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSocketList.pas',0,1,286,41,301,0,0,,
 File_7=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncCommandPacking.pas',0,1,1,7,14,0,0,,
 File_8=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\NetComRegister.pas',0,1,5,1,37,0,0,,
 File_9=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\win\Winapi.Winsock2.pas',0,1,2670,10,2686,0,0,,
@@ -71,8 +71,8 @@ EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
 CursorX=1
-CursorY=125
-TopLine=107
+CursorY=134
+TopLine=121
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -166,7 +166,7 @@ Visible=0
 Docked=1
 State=0
 Left=0
-Top=0
+Top=28
 Width=2769
 Height=1419
 MaxLeft=-1
@@ -239,7 +239,7 @@ SplitPos=111
 [PropInspDesignerSelection]
 ArrangeBy=Name
 SelectedItem=Caption,
-ExpandedItems=LiveBindings=0,"LiveBindings Designer=0",Margins=0,Border=0,BorderIcons=0,Fill=0,FormFactor=0
+ExpandedItems=Anchors=0,LiveBindings=0,"LiveBindings Designer=0",Margins=1,Padding=0,Size=0,StyledSettings=0,TextSettings=0,Border=0,BorderIcons=0,Fill=0,FormFactor=0
 
 [frmDesignPreview]
 PercentageSizes=1
@@ -490,8 +490,8 @@ Create=1
 Visible=0
 Docked=1
 State=0
-Left=-240
-Top=-285
+Left=-214
+Top=-259
 Width=1850
 Height=3140
 MaxLeft=-1

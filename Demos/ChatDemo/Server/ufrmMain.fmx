@@ -52,6 +52,20 @@ object frmMain: TfrmMain
       Text = 'Activate Server'
       OnClick = btnActivateServerClick
     end
+    object btnShutDownClients: TButton
+      Align = Right
+      Margins.Top = 5.000000000000000000
+      Margins.Right = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 424.000000000000000000
+      Position.Y = 5.000000000000000000
+      Size.Width = 154.000000000000000000
+      Size.Height = 30.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 2
+      Text = 'Shutdown Clients'
+      OnClick = btnShutDownClientsClick
+    end
   end
   object Server: TncServerSource
     EncryptionKey = 'SetEncryptionKey'
