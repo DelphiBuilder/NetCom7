@@ -114,10 +114,10 @@ type
   protected
     PropertyLock: TCriticalSection;
     ReadBuf: TBytes;
-    LineProcessor: TncReadyThread;
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
   public
+    LineProcessor: TncReadyThread;  // TODO: Put this back to protected
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
