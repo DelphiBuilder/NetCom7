@@ -64,14 +64,14 @@ TopLine=1
 LeftCol=1
 Elisions=
 Bookmarks=
-EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatDemoClient.dpr
+EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dpr
 
 [View1]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
 CursorX=1
-CursorY=126
-TopLine=86
+CursorY=95
+TopLine=74
 LeftCol=1
 Elisions=
 Bookmarks=
@@ -165,7 +165,7 @@ Visible=0
 Docked=1
 State=0
 Left=0
-Top=0
+Top=28
 Width=2769
 Height=1419
 MaxLeft=-1
@@ -234,6 +234,11 @@ LRDockWidth=1894
 Dockable=1
 StayOnTop=0
 SplitPos=111
+
+[PropInspDesignerSelection]
+ArrangeBy=Name
+SelectedItem=,
+ExpandedItems=Anchors=0,LiveBindings=0,"LiveBindings Designer=0",Margins=1,Padding=0,Size=0,StyledSettings=0,TextSettings=0
 
 [frmDesignPreview]
 PercentageSizes=1
@@ -484,8 +489,8 @@ Create=1
 Visible=0
 Docked=1
 State=0
-Left=-240
-Top=-285
+Left=-214
+Top=-259
 Width=1850
 Height=3140
 MaxLeft=-1
