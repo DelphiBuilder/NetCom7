@@ -433,11 +433,11 @@ begin
   if ReaderUseMainThread or (CommandProcessorType = cpReaderContextOnly) then
     if Socket is TncCustomTCPClient then
     begin
-      TncCustomTCPClient(Socket).LineProcessor.SocketProcess;
+      TncClientProcessor(Socket.LineProcessor).SocketProcess;
     end
     else if Socket is TncCustomTCPServer then
     begin
-      TncCustomTCPServer(Socket).LineProcessor.SocketProcess;
+      TncServerProcessor(Socket.LineProcessor).SocketProcess;
     end;
 end;
 
@@ -939,12 +939,12 @@ end;
 
 function TncSourceBase.GetReaderUseMainThread: Boolean;
 begin
-  Result := Socket.ReaderUseMainThread;
+  Result := Socket.EventsUseMainThread;
 end;
 
 procedure TncSourceBase.SetReaderUseMainThread(const Value: Boolean);
 begin
-  Socket.ReaderUseMainThread := Value;
+  Socket.EventsUseMainThread := Value;
 end;
 
 function TncSourceBase.GetCommandExecTimeout: Cardinal;
