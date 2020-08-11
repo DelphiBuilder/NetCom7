@@ -21,7 +21,6 @@ uses
 
 type
   TncCommandDirection = (cdIncoming, cdOutgoing);
-  TCommandProcessorType = (cpReaderContextOnly, cpThreadPool);
 
   ENetComInvalidCommandHandler = class(Exception);
   ENetComCommandExecutionTimeout = class(Exception);
@@ -47,12 +46,13 @@ const
   DefExecThreadsPerCPU = 5;
   DefExecThreadsGrowUpto = 100;
 
+  DefEventsUseMainThread = False;
+  DefNoDelay = True;
+
   DefCompression = zcNone;
   DefEncryption = etNoEncryption;
   DefEncryptionKey = 'SetEncryptionKey';
   DefEncryptOnHashedKey = True;
-
-  DefCommandProcessorType = cpThreadPool;
 
 type
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ type
     FCommandProcessorThreads: Integer;
     FCommandProcessorThreadsPerCPU: Integer;
     FCommandProcessorThreadsGrowUpto: Integer;
-    FCommandProcessorType: TCommandProcessorType;
+    FEventsUseMainThread: Boolean;
     FCompression: TncCompressionLevel;
     FEncryption: TEncryptorType;
     FEncryptionKey: string;
@@ -142,8 +142,6 @@ type
     procedure SetPort(const Value: Integer);
     function GetReaderThreadPriority: TncThreadPriority;
     procedure SetReaderThreadPriority(const Value: TncThreadPriority);
-    function GetReaderUseMainThread: Boolean;
-    procedure SetReaderUseMainThread(const Value: Boolean);
     function GetOnConnected: TncOnSourceConnectDisconnect;
     procedure SetOnConnected(const Value: TncOnSourceConnectDisconnect);
     function GetOnDisconnected: TncOnSourceConnectDisconnect;
@@ -160,8 +158,8 @@ type
     procedure SetCommandProcessorThreadsPerCPU(const Value: Integer);
     function GetCommandProcessorThreadsGrowUpto: Integer;
     procedure SetCommandProcessorThreadsGrowUpto(const Value: Integer);
-    function GetCommandProcessorType: TCommandProcessorType;
-    procedure SetCommandProcessorType(const Value: TCommandProcessorType);
+    function GetEventsUseMainThread: Boolean;
+    procedure SetEventsUseMainThread(const Value: Boolean);
     function GetCompression: TncCompressionLevel;
     procedure SetCompression(const Value: TncCompressionLevel);
     function GetEncryption: TEncryptorType;
@@ -216,7 +214,6 @@ type
     property Active: Boolean read GetActive write SetActive default False;
     property Port: Integer read GetPort write SetPort default DefPort;
     property ReaderThreadPriority: TncThreadPriority read GetReaderThreadPriority write SetReaderThreadPriority default DefReaderThreadPriority;
-    property ReaderUseMainThread: Boolean read GetReaderUseMainThread write SetReaderUseMainThread default False;
     property NoDelay: Boolean read GetNoDelay write SetNoDelay default True;
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
 
@@ -227,7 +224,7 @@ type
     property CommandProcessorThreadsPerCPU: Integer read GetCommandProcessorThreadsPerCPU write SetCommandProcessorThreadsPerCPU default DefExecThreadsPerCPU;
     property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto
       default DefExecThreadsGrowUpto;
-    property CommandProcessorType: TCommandProcessorType read GetCommandProcessorType write SetCommandProcessorType default DefCommandProcessorType;
+    property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
     property Compression: TncCompressionLevel read GetCompression write SetCompression default DefCompression;
     property Encryption: TEncryptorType read GetEncryption write SetEncryption default DefEncryption;
     property EncryptionKey: string read GetEncryptionKey write SetEncryptionKey;
@@ -271,7 +268,6 @@ type
     procedure WriteMessage(aLine: TncSourceLine; const aBuf: TBytes); override;
     function GetLine: TncLine;
   public
-    SocketCnt: TncTCPClient;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
@@ -298,7 +294,6 @@ type
   protected
     function GetLines: TThreadLineList;
   public
-    SocketSrv: TncTCPServer;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     property Lines: TThreadLineList read GetLines;
@@ -349,7 +344,7 @@ begin
   FCommandProcessorThreads := DefExecThreads;
   FCommandProcessorThreadsPerCPU := DefExecThreadsPerCPU;
   FCommandProcessorThreadsGrowUpto := DefExecThreadsGrowUpto;
-  FCommandProcessorType := DefCommandProcessorType;
+  FEventsUseMainThread := DefEventsUseMainThread;
   FCompression := DefCompression;
   FEncryption := DefEncryption;
   FEncryptionKey := DefEncryptionKey;
@@ -378,7 +373,7 @@ procedure TncSourceBase.Loaded;
 begin
   inherited Loaded;
 
-  if FCommandProcessorType = cpReaderContextOnly then
+  if FEventsUseMainThread then
     CommandProcessor.SetExecThreads(0, ntpNormal)
   else
   begin
@@ -430,7 +425,7 @@ end;
 
 procedure TncSourceBase.ProcessSocketEvents;
 begin
-  if ReaderUseMainThread or (CommandProcessorType = cpReaderContextOnly) then
+  if EventsUseMainThread then
     if Socket is TncCustomTCPClient then
     begin
       TncClientProcessor(Socket.LineProcessor).SocketProcess;
@@ -493,7 +488,7 @@ begin
   // Process command to be executed directly,
   // or add it to the thread pool to process
   aUnpackedCommand.ResultIsErrorString := False;
-  if CommandProcessorType = cpReaderContextOnly then
+  if EventsUseMainThread then
   begin
     // Handle the command directly
     // or send to appropriate subcomponent
@@ -811,7 +806,7 @@ begin
         begin
           // Wait for the command to come back
           ProcessSocketEvents;
-          if ReaderUseMainThread or (CommandProcessorType = cpReaderContextOnly) then
+          if EventsUseMainThread then
             WaitTime := 0
           else
             WaitTime := 100;
@@ -937,16 +932,6 @@ begin
   Socket.ReaderThreadPriority := Value;
 end;
 
-function TncSourceBase.GetReaderUseMainThread: Boolean;
-begin
-  Result := Socket.EventsUseMainThread;
-end;
-
-procedure TncSourceBase.SetReaderUseMainThread(const Value: Boolean);
-begin
-  Socket.EventsUseMainThread := Value;
-end;
-
 function TncSourceBase.GetCommandExecTimeout: Cardinal;
 begin
   PropertyLock.Acquire;
@@ -1008,11 +993,11 @@ begin
       FCommandProcessorThreadsPerCPU := 0;
 
     if not(csLoading in ComponentState) then
-      if FCommandProcessorType = cpThreadPool then
-        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-          FCommandProcessorThreadPriority)
+      if EventsUseMainThread then
+        CommandProcessor.SetExecThreads(0, ntpNormal)
       else
-        CommandProcessor.SetExecThreads(0, ntpNormal);
+        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+          FCommandProcessorThreadPriority);
   finally
     PropertyLock.Release;
   end;
@@ -1037,11 +1022,11 @@ begin
       FCommandProcessorThreads := 0;
 
     if not(csLoading in ComponentState) then
-      if FCommandProcessorType = cpThreadPool then
-        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-          FCommandProcessorThreadPriority)
+      if EventsUseMainThread then
+        CommandProcessor.SetExecThreads(0, ntpNormal)
       else
-        CommandProcessor.SetExecThreads(0, ntpNormal);
+        CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+          FCommandProcessorThreadPriority);
   finally
     PropertyLock.Release;
   end;
@@ -1068,24 +1053,24 @@ begin
   end;
 end;
 
-function TncSourceBase.GetCommandProcessorType: TCommandProcessorType;
+function TncSourceBase.GetEventsUseMainThread: Boolean;
 begin
   PropertyLock.Acquire;
   try
-    Result := FCommandProcessorType;
+    Result := FEventsUseMainThread;
   finally
     PropertyLock.Release;
   end;
 end;
 
-procedure TncSourceBase.SetCommandProcessorType(const Value: TCommandProcessorType);
+procedure TncSourceBase.SetEventsUseMainThread(const Value: Boolean);
 begin
   PropertyLock.Acquire;
   try
-    FCommandProcessorType := Value;
+    FEventsUseMainThread := Value;
 
     if not(csLoading in ComponentState) then
-      if Value = cpReaderContextOnly then
+      if Value then
         CommandProcessor.SetExecThreads(0, ntpNormal)
       else
         CommandProcessor.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
@@ -1348,12 +1333,12 @@ end;
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type
-  TncTCPClientSourceLine = class(TncTCPClient)
+  TncTCPClientSourceSocket = class(TncTCPClient)
   protected
     function CreateLineObject: TncLine; override;
   end;
 
-function TncTCPClientSourceLine.CreateLineObject: TncLine;
+function TncTCPClientSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
 end;
@@ -1364,9 +1349,9 @@ begin
 
   FOnReconnected := nil;
 
-  Socket := TncTCPClientSourceLine.Create(nil);
-  SocketCnt := TncTCPClientSourceLine(Socket); // just a reference so that we don't type cast all the time
+  Socket := TncTCPClientSourceSocket.Create(nil);
   Socket.Port := DefPort;
+  Socket.NoDelay := DefNoDelay;
   Socket.OnConnected := SocketConnected;
   Socket.OnDisconnected := SocketDisconnected;
   Socket.OnReadData := SocketReadData;
@@ -1381,7 +1366,7 @@ end;
 
 function TncClientSource.GetLine: TncLine;
 begin
-  Result := SocketCnt.Line;
+  Result := TncTCPClient(Socket).Line;
 end;
 
 procedure TncClientSource.WriteMessage(aLine: TncSourceLine; const aBuf: TBytes);
@@ -1459,12 +1444,12 @@ end;
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type
-  TncTCPServerSourceLine = class(TncTCPServer)
+  TncTCPServerSourceSocket = class(TncTCPServer)
   protected
     function CreateLineObject: TncLine; override;
   end;
 
-function TncTCPServerSourceLine.CreateLineObject: TncLine;
+function TncTCPServerSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
 end;
@@ -1473,9 +1458,8 @@ constructor TncServerSource.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  Socket := TncTCPServerSourceLine.Create(nil);
-  SocketSrv := TncTCPServerSourceLine(Socket); // just a reference so that we don't type cast all the time
-
+  Socket := TncTCPServerSourceSocket.Create(nil);
+  Socket.NoDelay := DefNoDelay;
   Socket.Port := DefPort;
   Socket.OnConnected := SocketConnected;
   Socket.OnDisconnected := SocketDisconnected;
@@ -1490,7 +1474,7 @@ end;
 
 function TncServerSource.GetLines: TThreadLineList;
 begin
-  Result := SocketSrv.Lines;
+  Result := TncTCPServer(Socket).Lines;
 end;
 
 end.

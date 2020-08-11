@@ -54,14 +54,22 @@ const
   DefReaderThreadPriority = ntpNormal;
   DefCntReconnectInterval = 1000;
   DefEventsUseMainThread = False;
-  DefNoDelay = True;
+  DefUseReaderThread = True;
+  DefNoDelay = False;
   DefKeepAlive = True;
 
 resourcestring
-  ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set port whilst the connection is active';
-  ECannotSetHostWhileConnectionIsActiveStr = 'Cannot set host whilst the connection is active';
+  ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set Port property whilst the connection is active';
+  ECannotSetHostWhileConnectionIsActiveStr = 'Cannot set Host property whilst the connection is active';
+  ECannotSetUseReaderThreadWhileActiveStr = 'Cannot set UseReaderThread property whilst the connection is active';
+  ECannotReceiveIfUseReaderThreadStr =
+    'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
 
 type
+  EPropertySetError = class(Exception);
+  ENonActiveSocket = class(Exception);
+  ECannotReceiveIfUseReaderThread = class(Exception);
+
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TThreadLineList
   // Thread safe object, used by the main components
@@ -110,14 +118,16 @@ type
     function GetKeepAlive: Boolean;
     procedure SetKeepAlive(const Value: Boolean);
   private
+    FUseReaderThread: Boolean;
     procedure DoActivate(aActivate: Boolean); virtual; abstract;
+    procedure SetUseReaderThread(const Value: Boolean);
   protected
     PropertyLock: TCriticalSection;
     ReadBuf: TBytes;
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
   public
-    LineProcessor: TncReadyThread;  // TODO: Put this back to protected
+    LineProcessor: TncReadyThread;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
@@ -125,6 +135,7 @@ type
     property Port: Integer read GetPort write SetPort default DefPort;
     property ReaderThreadPriority: TncThreadPriority read GetReaderThreadPriority write SetReaderThreadPriority default DefReaderThreadPriority;
     property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
+    property UseReaderThread: Boolean read FUseReaderThread write SetUseReaderThread default DefUseReaderThread;
     property NoDelay: Boolean read GetNoDelay write SetNoDelay default DefNoDelay;
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default DefKeepAlive;
     property OnConnected: TncOnConnectDisconnect read FOnConnected write FOnConnected;
@@ -164,6 +175,8 @@ type
     procedure Send(const aBuf; aBufSize: Integer); overload; inline;
     procedure Send(const aBytes: TBytes); overload; inline;
     procedure Send(const aStr: string); overload; inline;
+    function Receive(aTimeout: Cardinal = 2000): TBytes; inline;
+    function ReceiveRaw(var aBytes: TBytes): Integer; inline;
     property Host: string read GetHost write SetHost;
     property Reconnect: Boolean read GetReconnect write SetReconnect default True;
     property ReconnectInterval: Cardinal read GetReconnectInterval write SetReconnectInterval default DefCntReconnectInterval;
@@ -177,6 +190,7 @@ type
     property Host;
     property ReaderThreadPriority;
     property EventsUseMainThread;
+    property UseReaderThread;
     property NoDelay;
     property KeepAlive;
     property Reconnect;
@@ -219,6 +233,8 @@ type
     procedure Send(aLine: TncLine; const aBuf; aBufSize: Integer); overload; inline;
     procedure Send(aLine: TncLine; const aBytes: TBytes); overload; inline;
     procedure Send(aLine: TncLine; const aStr: string); overload; inline;
+    function Receive(aLine: TncLine; aTimeout: Cardinal = 2000): TBytes; inline;
+    function ReceiveRaw(aLine: TncLine; var aBytes: TBytes): Integer; inline;
   end;
 
   TncTCPServer = class(TncCustomTCPServer)
@@ -228,6 +244,7 @@ type
     property Port;
     property ReaderThreadPriority;
     property EventsUseMainThread;
+    property UseReaderThread;
     property NoDelay;
     property KeepAlive;
     property OnConnected;
@@ -336,6 +353,7 @@ begin
   FInitActive := False;
   FPort := DefPort;
   FEventsUseMainThread := DefEventsUseMainThread;
+  FUseReaderThread := DefUseReaderThread;
   FNoDelay := DefNoDelay;
   FKeepAlive := DefKeepAlive;
   FOnConnected := nil;
@@ -391,7 +409,7 @@ procedure TncTCPBase.SetPort(const Value: Integer);
 begin
   if not(csLoading in ComponentState) then
     if Active then
-      raise Exception.Create(ECannotSetPortWhileConnectionIsActiveStr);
+      raise EPropertySetError.Create(ECannotSetPortWhileConnectionIsActiveStr);
 
   PropertyLock.Acquire;
   try
@@ -440,6 +458,20 @@ begin
   PropertyLock.Acquire;
   try
     FEventsUseMainThread := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetUseReaderThread(const Value: Boolean);
+begin
+  if not(csLoading in ComponentState) then
+    if Active then
+      raise EPropertySetError.Create(ECannotSetUseReaderThreadWhileActiveStr);
+
+  PropertyLock.Acquire;
+  try
+    FUseReaderThread := Value;
   finally
     PropertyLock.Release;
   end;
@@ -568,9 +600,8 @@ begin
   LastConnectAttempt := TStopWatch.GetTimeStamp;
   WasConnected := True;
 
-  // We do not have to WaitForReady for this thread as it does not exit
-  // after line decactivation, it keeps running to handle reconnects
-  LineProcessor.Run; // Will just set events, this does not wait
+  if UseReaderThread then
+    LineProcessor.Run; // Will just set events, this does not wait
 end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
@@ -601,6 +632,31 @@ begin
   Send(BytesOf(aStr));
 end;
 
+function TncCustomTCPClient.Receive(aTimeout: Cardinal): TBytes;
+var
+  BufRead: Integer;
+begin
+  if UseReaderThread then
+    raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
+
+  if not Active then
+    Active := True;
+
+  if not ReadableAnySocket([Line.Handle], aTimeout) then
+  begin
+    SetLength(Result, 0);
+    Exit;
+  end;
+
+  BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
+  Result := Copy(ReadBuf, 0, BufRead)
+end;
+
+function TncCustomTCPClient.ReceiveRaw(var aBytes: TBytes): Integer;
+begin
+  Result := TncLineInternal(Line).RecvBuffer(aBytes[0], Length(aBytes));
+end;
+
 function TncCustomTCPClient.GetActive: Boolean;
 begin
   Result := Line.Active;
@@ -620,7 +676,7 @@ procedure TncCustomTCPClient.SetHost(const Value: string);
 begin
   if not(csLoading in ComponentState) then
     if Active then
-      raise Exception.Create(ECannotSetHostWhileConnectionIsActiveStr);
+      raise EPropertySetError.Create(ECannotSetHostWhileConnectionIsActiveStr);
 
   PropertyLock.Acquire;
   try
@@ -718,15 +774,15 @@ begin
       else
       // Is not Active, try reconnecting if was connected
       begin
-        // A minimal sleep time of 30 msec is required in Android before
-        // reattempting to connect on a recently deactivated network connection.
-        // We have put it to 50 for safety
-        Sleep(50);
-        if Terminated then
-          Break;
-
         // Logic for reconnect mode
         if FClientSocket.Reconnect and FClientSocket.WasConnected then
+        begin
+          // A minimal sleep time of 30 msec is required in Android before
+          // reattempting to connect on a recently deactivated network connection.
+          // We have put it to 50 for safety
+          Sleep(50);
+          if Terminated then
+            Break;
           if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval then
           begin
             FClientSocket.LastConnectAttempt := TStopWatch.GetTimeStamp;
@@ -755,6 +811,9 @@ begin
               else
                 SocketWasReconnected;
           end;
+        end
+        else
+          Exit;
       end;
     except
       // Something was disconnected, continue processing
@@ -767,6 +826,8 @@ end;
 
 constructor TncCustomTCPServer.Create(AOwner: TComponent);
 begin
+  inherited Create(AOwner);
+
   Listener := CreateLineObject;
   TncLineInternal(Listener).OnConnected := ListenerConnected;
   TncLineInternal(Listener).OnDisconnected := ListenerDisconnected;
@@ -778,8 +839,6 @@ begin
   except
     // Some Android devices do not like this
   end;
-
-  inherited Create(AOwner);
 end;
 
 destructor TncCustomTCPServer.Destroy;
@@ -834,12 +893,20 @@ end;
 
 procedure TncCustomTCPServer.ShutDownLine(aLine: TncLine);
 begin
-  PropertyLock.Acquire;
-  try
-    SetLength(LinesToShutDown, Length(LinesToShutDown) + 1);
-    LinesToShutDown[High(LinesToShutDown)] := aLine;
-  finally
-    PropertyLock.Release;
+  if UseReaderThread then
+  begin
+    PropertyLock.Acquire;
+    try
+      SetLength(LinesToShutDown, Length(LinesToShutDown) + 1);
+      LinesToShutDown[High(LinesToShutDown)] := aLine;
+    finally
+      PropertyLock.Release;
+    end;
+  end
+  else
+  begin
+    Lines.Remove(aLine);
+    aLine.Free;
   end;
 end;
 
@@ -850,7 +917,8 @@ begin
     SetLength(ReadSocketHandles, 1);
     ReadSocketHandles[0] := Listener.Handle;
     LineProcessor.WaitForReady;
-    LineProcessor.Run;
+    if UseReaderThread then
+      LineProcessor.Run;
   end
   else
   begin
@@ -881,11 +949,7 @@ procedure TncCustomTCPServer.ListenerDisconnected(aLine: TncLine);
 var
   i: Integer;
 begin
-  if aLine = Listener then
-  begin
-    // Nothing yet in logic
-  end
-  else
+  if aLine <> Listener then
   begin
     for i := 0 to High(ReadSocketHandles) do
       if ReadSocketHandles[i] = aLine.Handle then
@@ -917,6 +981,89 @@ end;
 procedure TncCustomTCPServer.Send(aLine: TncLine; const aStr: string);
 begin
   Send(aLine, BytesOf(aStr));
+end;
+
+function TncCustomTCPServer.Receive(aLine: TncLine; aTimeout: Cardinal): TBytes;
+var
+  i, j, ReadySocketsHigh: Integer;
+  BufRead: Integer;
+  DataSockets: TSocketList;
+  LineNdx: Integer;
+  Line: TncLine;
+  ReadySockets: TSocketHandleArray;
+begin
+  if UseReaderThread then
+    raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
+
+  SetLength(Result, 0);
+
+  ReadySockets := Readable(ReadSocketHandles, aTimeout);
+  ReadySocketsHigh := High(ReadySockets);
+
+  // First accept any new lines. This is done separatelly to looking for data,
+  // as a new line may have already written data, so it must be first accepted
+  i := 0;
+  while i <= ReadySocketsHigh do
+  begin
+    if ReadySockets[i] = Listener.Handle then
+    begin
+      // New line is here, accept it and create a new TncLine object
+      Lines.Add(TncLineInternal(Listener).AcceptLine);
+
+      // Now delete it from the ReadySockets so that we do not have to do an if
+      // "ReadySocket is not Listener handle" check again in the following loop
+      Delete(ReadySockets, i, 1);
+      ReadySocketsHigh := ReadySocketsHigh - 1;
+      i := i - 1;
+    end;
+    i := i + 1;
+  end;
+
+  if ReadySocketsHigh < 0 then
+    Exit;
+
+  DataSockets := Lines.LockList;
+  try
+    for i := 0 to ReadySocketsHigh do
+      if aLine.Handle = ReadySockets[i] then
+        try
+          LineNdx := DataSockets.IndexOf(ReadySockets[i]);
+          if LineNdx = -1 then
+          begin
+            // This should never happen but just in case
+            for j := 0 to High(ReadSocketHandles) do
+              if ReadSocketHandles[j] = ReadySockets[i] then
+              begin
+                ReadSocketHandles[j] := ReadSocketHandles[High(ReadSocketHandles)];
+                SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
+                Exit;
+              end;
+          end
+          else
+          begin
+            Line := DataSockets.Lines[LineNdx];
+            try
+              if not Line.Active then
+                Abort; // has disconnected
+
+              BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
+              Result := Copy(ReadBuf, 0, BufRead)
+            except
+              // A disconnect has happened, and was handled by ListenerDisconnected
+              DataSockets.Delete(LineNdx);
+              Line.Free;
+            end;
+          end;
+        except
+        end;
+  finally
+    Lines.UnlockList;
+  end;
+end;
+
+function TncCustomTCPServer.ReceiveRaw(aLine: TncLine; var aBytes: TBytes): Integer;
+begin
+  Result := TncLineInternal(aLine).RecvBuffer(aBytes[0], Length(aBytes));
 end;
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

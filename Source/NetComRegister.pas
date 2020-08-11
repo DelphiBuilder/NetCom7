@@ -102,7 +102,7 @@ var
 begin
   SplashScreenHandle := LoadBitmap(hInstance, ICON_SPLASH);
   try
-    SplashScreenServices.AddPluginBitmap(resPackageName + GetVersion, SplashScreenHandle, False, resLicence);
+    SplashScreenServices.AddPluginBitmap(resPackageName + ' ' + GetVersion, SplashScreenHandle, False, resLicence);
   finally
     DeleteObject(SplashScreenHandle);
   end;

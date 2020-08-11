@@ -32,14 +32,22 @@ interface
 uses SysUtils;
 
 type
-  TncCommandType = (ctInitiator, ctResponse);
   ENetComImproperMessageEncoding = class(Exception);
+
+  TncCommandType = (ctInitiator, ctResponse);
+  PncCommandType = ^TncCommandType;
+
+  TncCommandUniqueID = UInt32;
+  PncCommandUniqueID = ^TncCommandUniqueID;
+
+  TncCommandCmd = UInt32;
+  PncCommandCmd = ^TncCommandCmd;
 
   TncCommand = record
   public
     CommandType: TncCommandType;
-    UniqueID: Integer;
-    Cmd: Integer;
+    UniqueID: TncCommandUniqueID;
+    Cmd: TncCommandCmd;
     Data: TBytes;
     RequiresResult: Boolean;
     AsyncExecute: Boolean;
@@ -62,7 +70,6 @@ implementation
 
 procedure TncCommand.FromBytes(const aBytes: TBytes);
 type
-  PCmdType = ^TncCommandType;
   PBool = ^Boolean;
   PInt32 = ^Int32;
   PUInt64 = ^UInt64;
@@ -72,8 +79,8 @@ const
   BytesLen = SizeOf(UInt64);
 
   CommandTypeLen = SizeOf(TncCommandType);
-  UniqueIDLen = SizeOf(Int32);
-  CmdLen = SizeOf(Int32);
+  UniqueIDLen = SizeOf(TncCommandUniqueID);
+  CmdLen = SizeOf(TncCommandCmd);
   AsyncExecuteLen = SizeOf(Boolean);
   RequiresResultLen = SizeOf(Boolean);
   ResultIsErrorStringLen = SizeOf(Boolean);
@@ -88,13 +95,13 @@ begin
   AddrPtr := @aBytes[0];
 
   // Read command type
-  CommandType := PCmdType(AddrPtr)^;
+  CommandType := PncCommandType(AddrPtr)^;
   inc(AddrPtr, CommandTypeLen);
   // Read UniqueID
-  UniqueID := PInt32(AddrPtr)^;
+  UniqueID := PncCommandUniqueID(AddrPtr)^;
   inc(AddrPtr, UniqueIDLen);
   // Read Cmd
-  Cmd := PInt32(AddrPtr)^;
+  Cmd := PncCommandCmd(AddrPtr)^;
   inc(AddrPtr, CmdLen);
   // Read AsyncExecute
   AsyncExecute := PBool(AddrPtr)^;
@@ -156,7 +163,6 @@ end;
 
 function TncCommand.ToBytes: TBytes;
 type
-  PCmdType = ^TncCommandType;
   PBool = ^Boolean;
   PInt32 = ^Int32;
   PUInt64 = ^UInt64;
@@ -166,8 +172,8 @@ const
   BytesLen = SizeOf(UInt64);
 
   CommandTypeLen = SizeOf(TncCommandType);
-  UniqueIDLen = SizeOf(Int32);
-  CmdLen = SizeOf(Int32);
+  UniqueIDLen = SizeOf(TncCommandUniqueID);
+  CmdLen = SizeOf(TncCommandCmd);
   AsyncExecuteLen = SizeOf(Boolean);
   RequiresResultLen = SizeOf(Boolean);
   ResultIsErrorStringLen = SizeOf(Boolean);
@@ -197,13 +203,13 @@ begin
   AddrPtr := @Result[0];
 
   // Write command type
-  PCmdType(AddrPtr)^ := CommandType;
+  PncCommandType(AddrPtr)^ := CommandType;
   inc(AddrPtr, CommandTypeLen);
   // Write UniqueID
-  PInt32(AddrPtr)^ := UniqueID;
+  PncCommandUniqueID(AddrPtr)^ := UniqueID;
   inc(AddrPtr, UniqueIDLen);
   // Write Cmd
-  PInt32(AddrPtr)^ := Cmd;
+  PncCommandCmd(AddrPtr)^ := Cmd;
   inc(AddrPtr, CmdLen);
   // Write AnyncExecute
   PBool(AddrPtr)^ := AsyncExecute;

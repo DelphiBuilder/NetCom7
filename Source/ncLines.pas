@@ -98,6 +98,7 @@ type
 
     procedure EnableNoDelay; inline;
     procedure EnableKeepAlive; inline;
+    procedure EnableReuseAddress; inline;
 
     property OnConnected: TncLineOnConnectDisconnect read FOnConnected write FOnConnected;
     property OnDisconnected: TncLineOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
@@ -331,6 +332,9 @@ begin
       FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype, AddrResult^.ai_protocol);
       Check(FHandle);
       try
+{$IFNDEF MSWINDOWS}
+        EnableReuseAddress;
+{$ENDIF}
         // Connect to server
         Check(Connect(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen));
         SetConnected;
@@ -380,6 +384,9 @@ begin
     FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype, AddrResult^.ai_protocol);
     Check(FHandle);
     try
+{$IFNDEF MSWINDOWS}
+      EnableReuseAddress;
+{$ENDIF}
       // Setup the TCP listening socket
       Check(Bind(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen));
       Check(Listen(FHandle, SOMAXCONN));
@@ -488,11 +495,23 @@ procedure TncLine.EnableKeepAlive;
 var
   optval: Integer;
 begin
-  optval := Integer(True); // any non zero indicates true
+  optval := 1; // any non zero indicates true
 {$IFDEF MSWINDOWS}
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_KEEPALIVE, PAnsiChar(@optval), SizeOf(optval)));
 {$ELSE}
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_KEEPALIVE, optval, SizeOf(optval)));
+{$ENDIF}
+end;
+
+procedure TncLine.EnableReuseAddress;
+var
+  optval: Integer;
+begin
+  optval := 1;
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, PAnsiChar(@optval), SizeOf(optval)));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, optval, SizeOf(optval)));
 {$ENDIF}
 end;
 
