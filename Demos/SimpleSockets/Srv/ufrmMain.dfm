@@ -29,7 +29,6 @@ object frmMain: TfrmMain
     ReadOnly = True
     ScrollBars = ssVertical
     TabOrder = 0
-    ExplicitLeft = 10
   end
   object pnlToolbar: TPanel
     Left = 0
@@ -48,7 +47,7 @@ object frmMain: TfrmMain
       Height = 27
       Margins.Left = 5
       Margins.Top = 5
-      Margins.Right = 0
+      Margins.Right = 5
       Margins.Bottom = 5
       Align = alLeft
       Caption = 'Activate'
@@ -57,9 +56,9 @@ object frmMain: TfrmMain
     end
     object pblPort: TPanel
       AlignWithMargins = True
-      Left = 110
+      Left = 115
       Top = 3
-      Width = 417
+      Width = 412
       Height = 31
       Margins.Left = 0
       Margins.Right = 0
@@ -67,9 +66,11 @@ object frmMain: TfrmMain
       BevelOuter = bvNone
       FullRepaint = False
       TabOrder = 1
+      ExplicitLeft = 110
+      ExplicitWidth = 417
       object edtPort: TSpinEdit
         AlignWithMargins = True
-        Left = 291
+        Left = 0
         Top = 5
         Width = 121
         Height = 22
@@ -77,12 +78,28 @@ object frmMain: TfrmMain
         Margins.Top = 5
         Margins.Right = 5
         Margins.Bottom = 5
-        Align = alRight
+        Align = alLeft
         MaxValue = 0
         MinValue = 0
         TabOrder = 0
         Value = 16233
         OnChange = edtPortChange
+        ExplicitLeft = 291
+      end
+      object btnShutdownAllClients: TButton
+        AlignWithMargins = True
+        Left = 256
+        Top = 5
+        Width = 151
+        Height = 21
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Align = alRight
+        Caption = 'Shutdown all clients'
+        TabOrder = 1
+        OnClick = btnShutdownAllClientsClick
       end
     end
   end

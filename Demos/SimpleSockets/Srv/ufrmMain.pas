@@ -9,7 +9,7 @@ uses
   Posix.SysSocket, Posix.Unistd,
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Samples.Spin,
-  System.Diagnostics, ncLines, ncSockets;
+  System.Diagnostics, ncLines, ncSocketList, ncSockets;
 
 type
   TfrmMain = class(TForm)
@@ -19,6 +19,7 @@ type
     btnActivate: TButton;
     pblPort: TPanel;
     edtPort: TSpinEdit;
+    btnShutdownAllClients: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure TCPServerConnected(Sender: TObject; aLine: TncLine);
@@ -26,6 +27,7 @@ type
     procedure TCPServerReadData(Sender: TObject; aLine: TncLine; const aBuf: TArray<System.Byte>; aBufCount: Integer);
     procedure btnActivateClick(Sender: TObject);
     procedure edtPortChange(Sender: TObject);
+    procedure btnShutdownAllClientsClick(Sender: TObject);
   private
   public
   end;
@@ -83,6 +85,21 @@ begin
     raise; // Reraise the exception so as the user sees the error
   end;
 end;
+
+procedure TfrmMain.btnShutdownAllClientsClick(Sender: TObject);
+var
+  SocketList: TSocketList;
+  i: Integer;
+begin
+  SocketList := TCPServer.Lines.LockList;
+  try
+    for i := 0 to SocketList.Count - 1 do
+      TCPServer.ShutDownLine(SocketList.Lines[i]);
+  finally
+    TCPServer.Lines.UnlockList;
+  end;
+end;
+
 
 procedure TfrmMain.TCPServerConnected(Sender: TObject; aLine: TncLine);
 begin
