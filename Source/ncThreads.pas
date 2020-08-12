@@ -262,7 +262,11 @@ var
   i: Integer;
 begin
   for i := 0 to high(Threads) do
+  try
     Threads[i].Priority := FromNCThreadPriority(aPriority);
+  except
+    // Sone android devices do not like this
+  end;
 end;
 
 procedure TncThreadPool.ShutDown;

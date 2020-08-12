@@ -409,14 +409,9 @@ procedure TncSourceBase.Loaded;
 begin
   inherited Loaded;
 
-  if FEventsUseMainThread then
-    HandleCommandThreadPool.SetExecThreads(0, ntpNormal)
-  else
-  begin
-    HandleCommandThreadPool.SetThreadPriority(FCommandProcessorThreadPriority);
-    HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-      FCommandProcessorThreadPriority);
-  end;
+  HandleCommandThreadPool.SetThreadPriority(FCommandProcessorThreadPriority);
+  HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
+    FCommandProcessorThreadPriority);
 
   if WasSetActive then
     Socket.Active := True;
@@ -944,13 +939,7 @@ begin
   PropertyLock.Acquire;
   try
     FEventsUseMainThread := Value;
-
-    if not(csLoading in ComponentState) then
-      if Value then
-        HandleCommandThreadPool.SetExecThreads(0, ntpNormal)
-      else
-        HandleCommandThreadPool.SetExecThreads(Max(1, Max(FCommandProcessorThreads, GetNumberOfProcessors * FCommandProcessorThreadsPerCPU)),
-          FCommandProcessorThreadPriority);
+    Socket.EventsUseMainThread := Value;
   finally
     PropertyLock.Release;
   end;
