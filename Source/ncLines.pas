@@ -428,10 +428,10 @@ begin
 {$ENDIF}
     except
     end;
-  end;
-  try
-    SetDisconnected;
-  except
+    try
+      SetDisconnected;
+    except
+    end;
   end;
 end;
 

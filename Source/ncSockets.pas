@@ -256,6 +256,7 @@ type
   private
     FServerSocket: TncCustomTCPServer;
     ReadySockets: TSocketHandleArray;
+    procedure CheckLinesToShutDown;
   public
     constructor Create(aServerSocket: TncCustomTCPServer);
     procedure SocketProcess; inline;
@@ -763,7 +764,7 @@ begin
     try
       if FClientSocket.Line.Active then // Repeat reading socket until disconnected
       begin
-        if ReadableAnySocket(FClientSocket.ReadSocketHandles, 500) then
+        if ReadableAnySocket(FClientSocket.ReadSocketHandles, 250) then
           if FClientSocket.EventsUseMainThread then
             Synchronize(SocketProcess) // for synchronize
           else
@@ -777,8 +778,8 @@ begin
         begin
           // A minimal sleep time of 30 msec is required in Android before
           // reattempting to connect on a recently deactivated network connection.
-          // We have put it to 50 for safety
-          Sleep(50);
+          // We have put it to 60 for safety
+          Sleep(60);
           if Terminated then
             Break;
           if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval * TTimeSpan.TicksPerMillisecond then
@@ -1035,6 +1036,8 @@ var
   DataSockets: TSocketList;
   Line: TncLine;
 begin
+  CheckLinesToShutDown;
+
   // DataSockets list is handled by this thread, so we don't lock the list
   // We do this as we need the list to be unlocked if the programmer
   // needs to access it/lock it from the OnReadData handler
@@ -1046,6 +1049,7 @@ begin
       // (It may be locked from code running in the OnReadData)
       if FServerSocket.Lines.FLock.TryEnter then
         try
+          CheckLinesToShutDown;
           // New line is here, accept it and create a new TncLine object
           FServerSocket.Lines.Add(TncLineInternal(FServerSocket.Listener).AcceptLine);
         finally
@@ -1062,39 +1066,40 @@ begin
       end;
 end;
 
-procedure TncServerProcessor.ProcessEvent;
-
-  procedure CheckLinesToShutDown;
-  var
-    i: Integer;
-  begin
-    // The list may be locked from custom code executed in the OnReadData handler
-    // So we will not delete anything, or lock the list, until this lock is freed
-    if FServerSocket.Lines.FLock.TryEnter then
+procedure TncServerProcessor.CheckLinesToShutDown;
+var
+  i: Integer;
+begin
+  // The list may be locked from custom code executed in the OnReadData handler
+  // So we will not delete anything, or lock the list, until this lock is freed
+  if FServerSocket.Lines.FLock.TryEnter then
+    try
+      FServerSocket.ShutDownLock.Acquire;
       try
-        FServerSocket.ShutDownLock.Acquire;
-        try
-          for i := 0 to High(FServerSocket.LinesToShutDown) do
-            try
-              TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle;
-            except
-            end;
-          SetLength(FServerSocket.LinesToShutDown, 0);
-        finally
-          FServerSocket.ShutDownLock.Release;
-        end;
+        for i := 0 to High(FServerSocket.LinesToShutDown) do
+          try
+            if FServerSocket.LinesToShutDown[i].Active then
+              TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle
+            else
+              FServerSocket.DataSocketDisconnected(FServerSocket.LinesToShutDown[i]);
+          except
+          end;
+        SetLength(FServerSocket.LinesToShutDown, 0);
       finally
-        FServerSocket.Lines.FLock.Leave;
+        FServerSocket.ShutDownLock.Release;
       end;
-  end;
+    finally
+      FServerSocket.Lines.FLock.Leave;
+    end;
+end;
 
+procedure TncServerProcessor.ProcessEvent;
 begin
   if FServerSocket.EventsUseMainThread then
     while FServerSocket.Listener.Active and (not Terminated) do
       try
         ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
         Synchronize(SocketProcess);
-        CheckLinesToShutDown;
       except
       end
   else
@@ -1102,7 +1107,6 @@ begin
       try
         ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
         SocketProcess;
-        CheckLinesToShutDown;
       except
       end;
 end;
