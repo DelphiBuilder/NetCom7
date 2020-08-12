@@ -592,7 +592,7 @@ begin
     except
     end;
 
-  if Assigned(OnConnected) and not (csDestroying in ComponentState) then
+  if Assigned(OnConnected) and not(csDestroying in ComponentState) then
     try
       OnConnected(Self, aLine);
     except
@@ -607,7 +607,7 @@ end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
 begin
-  if Assigned(OnDisconnected) and not (csDestroying in ComponentState) then
+  if Assigned(OnDisconnected) and not(csDestroying in ComponentState) then
     try
       OnDisconnected(Self, aLine);
     except
@@ -923,7 +923,7 @@ begin
       except
       end;
 
-    if Assigned(OnConnected) and not (csDestroying in ComponentState) then
+    if Assigned(OnConnected) and not(csDestroying in ComponentState) then
       try
         OnConnected(Self, aLine);
       except
@@ -937,12 +937,6 @@ var
 begin
   if aLine <> Listener then
   begin
-    if Assigned(OnDisconnected) and not (csDestroying in ComponentState) then
-      try
-        OnDisconnected(Self, aLine);
-      except
-      end;
-
     for i := 0 to High(ReadSocketHandles) do
       if ReadSocketHandles[i] = aLine.Handle then
       begin
@@ -955,6 +949,12 @@ begin
     // destroy the line (the lock might be held by code in the OnReadData)
     if Lines.FLock.TryEnter then
       try
+        if Assigned(OnDisconnected) and not(csDestroying in ComponentState) then
+          try
+            OnDisconnected(Self, aLine);
+          except
+          end;
+
         Lines.FList.Delete(Lines.FList.IndexOf(aLine.Handle));
         aLine.Free;
       finally
