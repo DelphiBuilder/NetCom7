@@ -545,7 +545,7 @@ begin
     IDSent := UniqueSentID;
 
     // Random is here for encryption purposes
-    UniqueSentID := (UniqueSentID + TncCommandUniqueID(Random(4096))) mod High(TncCommandUniqueID);
+    UniqueSentID := UniqueSentID + TncCommandUniqueID(Random(4096)) mod High(TncCommandUniqueID);
 
     Command.CommandType := ctInitiator;
     Command.UniqueID := IDSent;

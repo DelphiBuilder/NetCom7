@@ -40,7 +40,7 @@ type
   protected
     procedure Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent);
     procedure Grow;
-    class function CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Integer; inline; static;
+    class function CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Int64; inline; static;
   public
     destructor Destroy; override;
 
@@ -157,9 +157,9 @@ begin
   Inc(FCount);
 end;
 
-class function TPendingCommandsList.CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Integer;
+class function TPendingCommandsList.CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Int64;
 begin
-  Result := aUniqueID1 - aUniqueID2;
+  Result := Int64(aUniqueID1) - Int64(aUniqueID2);
 end;
 
 function TPendingCommandsList.GetUniqueID(Index: Integer): TncCommandUniqueID;

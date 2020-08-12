@@ -37,7 +37,7 @@ type
   protected
     procedure Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
     procedure Grow;
-    class function CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Integer; inline; static;
+    class function CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Int64; inline; static;
   public
     destructor Destroy; override;
 
@@ -153,9 +153,9 @@ begin
   Inc(FCount);
 end;
 
-class function TSocketList.CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Integer;
+class function TSocketList.CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Int64;
 begin
-  Result := aSocketHandle1 - aSocketHandle2;
+  Result := Int64(aSocketHandle1) - Int64(aSocketHandle2);
 end;
 
 function TSocketList.GetSocketHandle(Index: Integer): TSocketHandle;
