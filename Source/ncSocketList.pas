@@ -37,7 +37,6 @@ type
   protected
     procedure Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
     procedure Grow;
-    class function CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Int64; inline; static;
   public
     destructor Destroy; override;
 
@@ -96,7 +95,7 @@ end;
 
 function TSocketList.Find(const aSocketHandle: TSocketHandle; var aIndex: Integer): Boolean;
 var
-  Low, High, Mid, Comparison: Integer;
+  Low, High, Mid: Integer;
 begin
   Result := False;
   Low := 0;
@@ -104,13 +103,12 @@ begin
   while Low <= High do
   begin
     Mid := (Low + High) shr 1;
-    Comparison := CompareSockets(FList[Mid].FSocketHandle, aSocketHandle);
-    if Comparison < 0 then
+    if aSocketHandle > FList[Mid].FSocketHandle then
       Low := Mid + 1
     else
     begin
       High := Mid - 1;
-      if Comparison = 0 then
+      if aSocketHandle = FList[Mid].FSocketHandle then
       begin
         Result := True;
         Low := Mid;
@@ -151,11 +149,6 @@ begin
     FLine := aLine;
   end;
   Inc(FCount);
-end;
-
-class function TSocketList.CompareSockets(const aSocketHandle1, aSocketHandle2: TSocketHandle): Int64;
-begin
-  Result := Int64(aSocketHandle1) - Int64(aSocketHandle2);
 end;
 
 function TSocketList.GetSocketHandle(Index: Integer): TSocketHandle;

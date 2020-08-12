@@ -40,7 +40,6 @@ type
   protected
     procedure Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent);
     procedure Grow;
-    class function CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Int64; inline; static;
   public
     destructor Destroy; override;
 
@@ -100,7 +99,7 @@ end;
 
 function TPendingCommandsList.Find(const aUniqueID: TncCommandUniqueID; var aIndex: Integer): Boolean;
 var
-  Low, High, Mid, Comparison: Integer;
+  Low, High, Mid: Integer;
 begin
   Result := False;
   Low := 0;
@@ -108,13 +107,12 @@ begin
   while Low <= High do
   begin
     Mid := (Low + High) shr 1;
-    Comparison := CompareUniqueIDs(FList[Mid].FUniqueID, aUniqueID);
-    if Comparison < 0 then
+    if aUniqueID > FList[Mid].FUniqueID then
       Low := Mid + 1
     else
     begin
       High := Mid - 1;
-      if Comparison = 0 then
+      if aUniqueID = FList[Mid].FUniqueID then
       begin
         Result := True;
         Low := Mid;
@@ -155,11 +153,6 @@ begin
     FReceivedResultEvent := aReceivedResultEvent;
   end;
   Inc(FCount);
-end;
-
-class function TPendingCommandsList.CompareUniqueIDs(const aUniqueID1, aUniqueID2: TncCommandUniqueID): Int64;
-begin
-  Result := Int64(aUniqueID1) - Int64(aUniqueID2);
 end;
 
 function TPendingCommandsList.GetUniqueID(Index: Integer): TncCommandUniqueID;
