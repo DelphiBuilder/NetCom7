@@ -258,7 +258,7 @@ type
     ReadySockets: TSocketHandleArray;
   public
     constructor Create(aServerSocket: TncCustomTCPServer);
-    procedure SocketProcess; // inline;
+    procedure SocketProcess; inline;
     procedure ProcessEvent; override;
   end;
 
@@ -1084,65 +1084,58 @@ begin
 
   // First accept any new lines. This is done separatelly to looking for data,
   // as a new line may have already written data, so it must be first accepted
-  i := 0;
-  while i <= ReadySocketsHigh do
-  begin
+  for i := 0 to ReadySocketsHigh do
     if ReadySockets[i] = FServerSocket.Listener.Handle then
-    begin
-      // New line is here, accept it and create a new TncLine object
-      FServerSocket.Lines.Add(TncLineInternal(FServerSocket.Listener).AcceptLine);
-
-      // Now delete it from the ReadySockets so that we do not have to do an if
-      // "ReadySocket is not Listener handle" check again in the following loop
-      Delete(ReadySockets, i, 1);
-      ReadySocketsHigh := ReadySocketsHigh - 1;
-      i := i - 1;
-    end;
-    i := i + 1;
-  end;
-
-  if ReadySocketsHigh < 0 then
-    Exit;
+      // We will process new lines only if the Lines thread list is not locked
+      // (It may be locked from code running in the OnReadData)
+      if FServerSocket.Lines.FLock.TryEnter then
+        try
+          // New line is here, accept it and create a new TncLine object
+          FServerSocket.Lines.Add(TncLineInternal(FServerSocket.Listener).AcceptLine);
+        finally
+          FServerSocket.Lines.FLock.Leave;
+        end;
 
   // DataSockets list is handled by this thread, so we don't lock the list
   // We do this as we need the list to be unlocked if the programmer
   // needs to access it/lock it from the OnReadData handler
   DataSockets := FServerSocket.Lines.FList;
   for i := 0 to ReadySocketsHigh do
-    try
-      LineNdx := DataSockets.IndexOf(ReadySockets[i]);
-      if LineNdx = -1 then
-      begin
-        // This should never happen but just in case
-        for j := 0 to High(FServerSocket.ReadSocketHandles) do
-          if FServerSocket.ReadSocketHandles[j] = ReadySockets[i] then
-          begin
-            FServerSocket.ReadSocketHandles[j] := FServerSocket.ReadSocketHandles[High(FServerSocket.ReadSocketHandles)];
-            SetLength(FServerSocket.ReadSocketHandles, Length(FServerSocket.ReadSocketHandles) - 1);
-            Exit;
+    if ReadySockets[i] <> FServerSocket.Listener.Handle then
+      try
+        LineNdx := DataSockets.IndexOf(ReadySockets[i]);
+        if LineNdx = -1 then
+        begin
+          // This should never happen but just in case
+          for j := 0 to High(FServerSocket.ReadSocketHandles) do
+            if FServerSocket.ReadSocketHandles[j] = ReadySockets[i] then
+            begin
+              FServerSocket.ReadSocketHandles[j] := FServerSocket.ReadSocketHandles[High(FServerSocket.ReadSocketHandles)];
+              SetLength(FServerSocket.ReadSocketHandles, Length(FServerSocket.ReadSocketHandles) - 1);
+              Exit;
+            end;
+          Exit;
+        end
+        else
+        begin
+          Line := DataSockets.Lines[LineNdx];
+          try
+            if not Line.Active then
+              Abort; // has disconnected
+
+            BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
+          except
+            // A disconnect has happened, and was handled by ListenerDisconnected
+            // Add the line to be shut down, since we cannot delete it here
+            // as we have not locked the list
+            FServerSocket.ShutDownLine(Line);
+            raise;
           end;
-        Exit;
-      end
-      else
-      begin
-        Line := DataSockets.Lines[LineNdx];
-        try
-          if not Line.Active then
-            Abort; // has disconnected
-
-          BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
-
           if Assigned(FServerSocket.OnReadData) then
             FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
-        except
-          // A disconnect has happened, and was handled by ListenerDisconnected
-          // Add the line to be shut down, since we cannot delete it here
-          // as we have not locked the list
-          FServerSocket.ShutDownLine(Line);
         end;
+      except
       end;
-    except
-    end;
 end;
 
 procedure TncServerProcessor.ProcessEvent;
