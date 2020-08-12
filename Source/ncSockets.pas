@@ -1126,9 +1126,18 @@ begin
             BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
           except
             // A disconnect has happened, and was handled by ListenerDisconnected
-            // Add the line to be shut down, since we cannot delete it here
-            // as we have not locked the list
-            FServerSocket.ShutDownLine(Line);
+            // Try to see first if we can lock the list so that we immediatelly destroy the line
+            if FServerSocket.Lines.FLock.TryEnter then
+              try
+                DataSockets.Delete(LineNdx);
+                Line.Free;
+              finally
+                FServerSocket.Lines.FLock.Leave;
+              end
+            else
+              // Otherwise add the line to be shut down, since we cannot delete it here
+              // as we cannot lock the list
+              FServerSocket.ShutDownLine(Line);
             raise;
           end;
           if Assigned(FServerSocket.OnReadData) then
