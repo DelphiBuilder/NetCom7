@@ -432,6 +432,8 @@ begin
       SetDisconnected;
     except
     end;
+
+    FHandle := InvalidSocket;
   end;
 end;
 

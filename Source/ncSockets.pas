@@ -40,7 +40,7 @@ interface
 
 uses
 {$IFDEF MSWINDOWS}
-  WinApi.Winsock2,
+  Winapi.Windows, Winapi.Winsock2,
 {$ELSE}
   Posix.SysSocket, Posix.Unistd,
 {$ENDIF}
@@ -122,7 +122,7 @@ type
     procedure DoActivate(aActivate: Boolean); virtual; abstract;
     procedure SetUseReaderThread(const Value: Boolean);
   protected
-    PropertyLock: TCriticalSection;
+    PropertyLock, ShutDownLock: TCriticalSection;
     ReadBuf: TBytes;
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
@@ -222,8 +222,8 @@ type
     Listener: TncLine;
     ReadSocketHandles: TSocketHandleArray;
     LinesToShutDown: array of TncLine;
-    procedure ListenerConnected(aLine: TncLine);
-    procedure ListenerDisconnected(aLine: TncLine);
+    procedure DataSocketConnected(aLine: TncLine);
+    procedure DataSocketDisconnected(aLine: TncLine);
     procedure DoActivate(aActivate: Boolean); override;
   public
     Lines: TThreadLineList;
@@ -348,6 +348,7 @@ begin
   inherited Create(AOwner);
 
   PropertyLock := TCriticalSection.Create;
+  ShutDownLock := TCriticalSection.Create;
 
   FInitActive := False;
   FPort := DefPort;
@@ -364,6 +365,7 @@ end;
 
 destructor TncTCPBase.Destroy;
 begin
+  ShutDownLock.Free;
   PropertyLock.Free;
   inherited Destroy;
 end;
@@ -825,8 +827,8 @@ begin
   inherited Create(AOwner);
 
   Listener := CreateLineObject;
-  TncLineInternal(Listener).OnConnected := ListenerConnected;
-  TncLineInternal(Listener).OnDisconnected := ListenerDisconnected;
+  TncLineInternal(Listener).OnConnected := DataSocketConnected;
+  TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
 
   Lines := TThreadLineList.Create;
   LineProcessor := TncServerProcessor.Create(Self);
@@ -859,9 +861,6 @@ begin
 end;
 
 procedure TncCustomTCPServer.DoActivate(aActivate: Boolean);
-var
-  Sockets: TSocketList;
-  i: Integer;
 begin
   if aActivate = GetActive then
     Exit;
@@ -870,20 +869,11 @@ begin
     TncLineInternal(Listener).CreateServerHandle(FPort)
   else
   begin
-{$HINTS off}
-    Sockets := Lines.LockList;
-    try
-      for i := 0 to Sockets.Count - 1 do
-        try
-          TncLineInternal(Sockets.Lines[i]).DestroyHandle;
-          TncLineInternal(Sockets.Lines[i]).Free;
-        except
-        end;
-      Sockets.Clear;
-    finally
-      Lines.UnlockList;
-    end;
     TncLineInternal(Listener).DestroyHandle;
+    LineProcessor.WaitForReady;
+
+    while Lines.FList.Count > 0 do
+      TncLineInternal(Lines.FList.Lines[0]).DestroyHandle;
   end;
 end;
 
@@ -891,12 +881,12 @@ procedure TncCustomTCPServer.ShutDownLine(aLine: TncLine);
 begin
   if UseReaderThread then
   begin
-    PropertyLock.Acquire;
+    ShutDownLock.Acquire;
     try
       SetLength(LinesToShutDown, Length(LinesToShutDown) + 1);
       LinesToShutDown[High(LinesToShutDown)] := aLine;
     finally
-      PropertyLock.Release;
+      ShutDownLock.Release;
     end;
   end
   else
@@ -906,7 +896,7 @@ begin
   end;
 end;
 
-procedure TncCustomTCPServer.ListenerConnected(aLine: TncLine);
+procedure TncCustomTCPServer.DataSocketConnected(aLine: TncLine);
 begin
   if aLine = Listener then
   begin
@@ -941,12 +931,18 @@ begin
   end;
 end;
 
-procedure TncCustomTCPServer.ListenerDisconnected(aLine: TncLine);
+procedure TncCustomTCPServer.DataSocketDisconnected(aLine: TncLine);
 var
   i: Integer;
 begin
   if aLine <> Listener then
   begin
+    if Assigned(OnDisconnected) then
+      try
+        OnDisconnected(Self, aLine);
+      except
+      end;
+
     for i := 0 to High(ReadSocketHandles) do
       if ReadSocketHandles[i] = aLine.Handle then
       begin
@@ -955,11 +951,14 @@ begin
         Break;
       end;
 
-    if Assigned(OnDisconnected) then
-      try
-        OnDisconnected(Self, aLine);
-      except
-      end;
+    // Try to see first if we can lock the list so that we immediatelly destroy the line
+    Lines.FLock.Acquire;
+    try
+      Lines.FList.Delete(Lines.FList.IndexOf(aLine.Handle));
+      aLine.Free;
+    finally
+      Lines.FLock.Release;
+    end
   end;
 end;
 
@@ -981,10 +980,9 @@ end;
 
 function TncCustomTCPServer.Receive(aLine: TncLine; aTimeout: Cardinal): TBytes;
 var
-  i, j, ReadySocketsHigh: Integer;
+  i: Integer;
   BufRead: Integer;
   DataSockets: TSocketList;
-  LineNdx: Integer;
   Line: TncLine;
   ReadySockets: TSocketHandleArray;
 begin
@@ -992,64 +990,19 @@ begin
     raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
 
   SetLength(Result, 0);
-
   ReadySockets := Readable(ReadSocketHandles, aTimeout);
-  ReadySocketsHigh := High(ReadySockets);
-
-  // First accept any new lines. This is done separatelly to looking for data,
-  // as a new line may have already written data, so it must be first accepted
-  i := 0;
-  while i <= ReadySocketsHigh do
-  begin
-    if ReadySockets[i] = Listener.Handle then
-    begin
-      // New line is here, accept it and create a new TncLine object
-      Lines.Add(TncLineInternal(Listener).AcceptLine);
-
-      // Now delete it from the ReadySockets so that we do not have to do an if
-      // "ReadySocket is not Listener handle" check again in the following loop
-      Delete(ReadySockets, i, 1);
-      ReadySocketsHigh := ReadySocketsHigh - 1;
-      i := i - 1;
-    end;
-    i := i + 1;
-  end;
-
-  if ReadySocketsHigh < 0 then
-    Exit;
 
   DataSockets := Lines.LockList;
   try
-    for i := 0 to ReadySocketsHigh do
-      if aLine.Handle = ReadySockets[i] then
+    for i := 0 to High(ReadySockets) do
+      if ReadySockets[i] = Listener.Handle then
+        // New line is here, accept it and create a new TncLine object
+        Lines.Add(TncLineInternal(Listener).AcceptLine)
+      else if aLine.Handle = ReadySockets[i] then
         try
-          LineNdx := DataSockets.IndexOf(ReadySockets[i]);
-          if LineNdx = -1 then
-          begin
-            // This should never happen but just in case
-            for j := 0 to High(ReadSocketHandles) do
-              if ReadSocketHandles[j] = ReadySockets[i] then
-              begin
-                ReadSocketHandles[j] := ReadSocketHandles[High(ReadSocketHandles)];
-                SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
-                Exit;
-              end;
-          end
-          else
-          begin
-            Line := DataSockets.Lines[LineNdx];
-            try
-              if not Line.Active then
-                Abort; // has disconnected
-
-              BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
-              Result := Copy(ReadBuf, 0, BufRead)
-            except
-              // A disconnect has happened, and was handled by ListenerDisconnected
-              DataSockets.Delete(LineNdx);
-              Line.Free;
-            end;
-          end;
+          Line := DataSockets.Lines[DataSockets.IndexOf(ReadySockets[i])];
+          BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
+          Result := Copy(ReadBuf, 0, BufRead)
         except
         end;
   finally
@@ -1074,18 +1027,18 @@ end;
 
 procedure TncServerProcessor.SocketProcess;
 var
-  i, j, ReadySocketsHigh: Integer;
+  i: Integer;
   BufRead: Integer;
   DataSockets: TSocketList;
-  LineNdx: Integer;
   Line: TncLine;
 begin
-  ReadySocketsHigh := High(ReadySockets);
-
-  // First accept any new lines. This is done separatelly to looking for data,
-  // as a new line may have already written data, so it must be first accepted
-  for i := 0 to ReadySocketsHigh do
+  // DataSockets list is handled by this thread, so we don't lock the list
+  // We do this as we need the list to be unlocked if the programmer
+  // needs to access it/lock it from the OnReadData handler
+  DataSockets := FServerSocket.Lines.FList;
+  for i := 0 to High(ReadySockets) do
     if ReadySockets[i] = FServerSocket.Listener.Handle then
+    begin
       // We will process new lines only if the Lines thread list is not locked
       // (It may be locked from code running in the OnReadData)
       if FServerSocket.Lines.FLock.TryEnter then
@@ -1095,54 +1048,13 @@ begin
         finally
           FServerSocket.Lines.FLock.Leave;
         end;
-
-  // DataSockets list is handled by this thread, so we don't lock the list
-  // We do this as we need the list to be unlocked if the programmer
-  // needs to access it/lock it from the OnReadData handler
-  DataSockets := FServerSocket.Lines.FList;
-  for i := 0 to ReadySocketsHigh do
-    if ReadySockets[i] <> FServerSocket.Listener.Handle then
+    end
+    else
       try
-        LineNdx := DataSockets.IndexOf(ReadySockets[i]);
-        if LineNdx = -1 then
-        begin
-          // This should never happen but just in case
-          for j := 0 to High(FServerSocket.ReadSocketHandles) do
-            if FServerSocket.ReadSocketHandles[j] = ReadySockets[i] then
-            begin
-              FServerSocket.ReadSocketHandles[j] := FServerSocket.ReadSocketHandles[High(FServerSocket.ReadSocketHandles)];
-              SetLength(FServerSocket.ReadSocketHandles, Length(FServerSocket.ReadSocketHandles) - 1);
-              Exit;
-            end;
-          Exit;
-        end
-        else
-        begin
-          Line := DataSockets.Lines[LineNdx];
-          try
-            if not Line.Active then
-              Abort; // has disconnected
-
-            BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
-          except
-            // A disconnect has happened, and was handled by ListenerDisconnected
-            // Try to see first if we can lock the list so that we immediatelly destroy the line
-            if FServerSocket.Lines.FLock.TryEnter then
-              try
-                DataSockets.Delete(LineNdx);
-                Line.Free;
-              finally
-                FServerSocket.Lines.FLock.Leave;
-              end
-            else
-              // Otherwise add the line to be shut down, since we cannot delete it here
-              // as we cannot lock the list
-              FServerSocket.ShutDownLine(Line);
-            raise;
-          end;
-          if Assigned(FServerSocket.OnReadData) then
-            FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
-        end;
+        Line := DataSockets.Lines[DataSockets.IndexOf(ReadySockets[i])];
+        BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
+        if Assigned(FServerSocket.OnReadData) then
+          FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
       except
       end;
 end;
@@ -1157,7 +1069,7 @@ procedure TncServerProcessor.ProcessEvent;
     // So we will not delete anything, or lock the list, until this lock is freed
     if FServerSocket.Lines.FLock.TryEnter then
       try
-        FServerSocket.PropertyLock.Acquire;
+        FServerSocket.ShutDownLock.Acquire;
         try
           for i := 0 to High(FServerSocket.LinesToShutDown) do
             try
@@ -1167,7 +1079,7 @@ procedure TncServerProcessor.ProcessEvent;
             end;
           SetLength(FServerSocket.LinesToShutDown, 0);
         finally
-          FServerSocket.PropertyLock.Release;
+          FServerSocket.ShutDownLock.Release;
         end;
       finally
         FServerSocket.Lines.FLock.Leave;
