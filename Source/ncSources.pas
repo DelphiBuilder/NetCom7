@@ -467,7 +467,7 @@ begin
   for i := 0 to High(CommandHandlers) do
     try
       if Assigned(CommandHandlers[i].OnConnected) then
-        CommandHandlers[i].OnConnected(Sender, TncSourceLine(aLine));
+        CommandHandlers[i].OnConnected(Sender, aLine);
     except
     end;
 end;
@@ -478,14 +478,14 @@ var
 begin
   if Assigned(FOnDisconnected) then
     try
-      OnDisconnected(Sender, TncSourceLine(aLine));
+      OnDisconnected(Sender, aLine);
     except
     end;
 
   for i := 0 to High(CommandHandlers) do
     try
       if Assigned(CommandHandlers[i].OnDisconnected) then
-        CommandHandlers[i].OnDisconnected(Sender, TncSourceLine(aLine));
+        CommandHandlers[i].OnDisconnected(Sender, aLine);
     except
     end;
 end;
@@ -493,7 +493,7 @@ end;
 procedure TncSourceBase.SocketReconnected(Sender: TObject; aLine: TncLine);
 begin
   if Assigned(TncClientSource(Self).OnReconnected) then
-    TncClientSource(Self).OnReconnected(Sender, TncSourceLine(aLine));
+    TncClientSource(Self).OnReconnected(Sender, aLine);
 end;
 
 procedure TncSourceBase.WriteMessage(aLine: TncSourceLine; const aBuf: TBytes);
@@ -562,7 +562,6 @@ begin
 
     if aRequiresResult and (not aAsyncExecute) then
     begin
-      aLine.LastReceived := TStopWatch.GetTimeStamp;
       ReceivedResultEvent := TEvent.Create;
       PendingNdx := PendingCommandsList.Add(IDSent, ReceivedResultEvent);
       try
@@ -588,6 +587,7 @@ begin
   SetLength(Result, 0);
   try
     try
+      aLine.LastReceived := TStopWatch.GetTimeStamp;
       while ReceivedResultEvent.WaitFor(10) <> wrSignaled do
       begin
         if not aLine.Active then
@@ -716,25 +716,35 @@ begin
     ctInitiator:
       begin
         // Handle the command from the thread pool
-        HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
-        HandleCommandThread.WorkType := htwtOnHandleCommand;
-        HandleCommandThread.OnHandleCommand := OnHandleCommand;
-        HandleCommandThread.Source := Self;
-        HandleCommandThread.Line := aLine;
-        HandleCommandThread.Command := Command;
-        HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        HandleCommandThreadPool.Serialiser.Acquire;
+        try
+          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+          HandleCommandThread.WorkType := htwtOnHandleCommand;
+          HandleCommandThread.OnHandleCommand := OnHandleCommand;
+          HandleCommandThread.Source := Self;
+          HandleCommandThread.Line := aLine;
+          HandleCommandThread.Command := Command;
+          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        finally
+          HandleCommandThreadPool.Serialiser.Release;
+        end;
       end;
     ctResponse:
       if Command.AsyncExecute then
       begin
         // Handle the command from the thread pool
-        HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
-        HandleCommandThread.WorkType := htwtAsyncResponse;
-        HandleCommandThread.OnAsyncExecCommandResult := OnAsyncExecCommandResult;
-        HandleCommandThread.Source := Self;
-        HandleCommandThread.Line := aLine;
-        HandleCommandThread.Command := Command;
-        HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        HandleCommandThreadPool.Serialiser.Acquire;
+        try
+          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+          HandleCommandThread.WorkType := htwtAsyncResponse;
+          HandleCommandThread.OnAsyncExecCommandResult := OnAsyncExecCommandResult;
+          HandleCommandThread.Source := Self;
+          HandleCommandThread.Line := aLine;
+          HandleCommandThread.Command := Command;
+          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        finally
+          HandleCommandThreadPool.Serialiser.Release;
+        end;
       end
       else
       begin

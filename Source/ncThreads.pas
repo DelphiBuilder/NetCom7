@@ -61,9 +61,9 @@ type
     ThreadClass: TncReadyThreadClass;
     procedure ShutDown;
   protected
-    Serialiser: TCriticalSection;
     Threads: array of TncReadyThread;
   public
+    Serialiser: TCriticalSection;
     constructor Create(aWorkerThreadClass: TncReadyThreadClass);
     destructor Destroy; override;
     function RequestReadyThread: TncReadyThread;
@@ -172,48 +172,43 @@ function TncThreadPool.RequestReadyThread: TncReadyThread;
 var
   i: Integer;
 begin
-  Serialiser.Acquire;
-  try
-    // Keep repeating until a ready thread is found
-    repeat
-      for i := 0 to High(Threads) do
+  // Keep repeating until a ready thread is found
+  repeat
+    for i := 0 to High(Threads) do
+    begin
+      if Threads[i].ReadyEvent.WaitFor(0) = wrSignaled then
       begin
-        if Threads[i].ReadyEvent.WaitFor(0) = wrSignaled then
-        begin
-          Threads[i].ReadyEvent.ResetEvent;
-          Result := Threads[i];
-          Exit;
-        end;
+        Threads[i].ReadyEvent.ResetEvent;
+        Result := Threads[i];
+        Exit;
       end;
-      // We will get here if no threads were ready
-      if (Length(Threads) < FGrowUpto) then
+    end;
+    // We will get here if no threads were ready
+    if (Length(Threads) < FGrowUpto) then
+    begin
+      // Create a new thread to handle commands
+      i := Length(Threads);
+      SetLength(Threads, i + 1); // i now holds High(Threads)
+      try
+        Threads[i] := ThreadClass.Create;
+      except
+        // Cannot create any new thread
+        // Set length back to what it was, and continue waiting until
+        // any other thread is ready
+        SetLength(Threads, i);
+        Continue;
+      end;
+      Threads[i].Priority := Threads[0].Priority;
+      if Threads[i].ReadyEvent.WaitFor(1000) = wrSignaled then
       begin
-        // Create a new thread to handle commands
-        i := Length(Threads);
-        SetLength(Threads, i + 1); // i now holds High(Threads)
-        try
-          Threads[i] := ThreadClass.Create;
-        except
-          // Cannot create any new thread
-          // Set length back to what it was, and continue waiting until
-          // any other thread is ready
-          SetLength(Threads, i);
-          Continue;
-        end;
-        Threads[i].Priority := Threads[0].Priority;
-        if Threads[i].ReadyEvent.WaitFor(1000) = wrSignaled then
-        begin
-          Threads[i].ReadyEvent.ResetEvent;
-          Result := Threads[i];
-          Exit;
-        end;
-      end
-      else
-        TThread.Yield; // Was Sleep(1);
-    until False;
-  finally
-    Serialiser.Release;
-  end;
+        Threads[i].ReadyEvent.ResetEvent;
+        Result := Threads[i];
+        Exit;
+      end;
+    end
+    else
+      TThread.Yield; // Was Sleep(1);
+  until False;
 end;
 
 // Between requesting a ready thread and executing it, we normally fill in
@@ -230,7 +225,7 @@ begin
   // Terminate any not needed threads
   if aThreadCount < Length(Threads) then
   begin
-    for i := aThreadCount to high(Threads) do
+    for i := aThreadCount to High(Threads) do
       try
         Threads[i].Terminate;
         Threads[i].WakeupEvent.SetEvent;
@@ -262,11 +257,11 @@ var
   i: Integer;
 begin
   for i := 0 to high(Threads) do
-  try
-    Threads[i].Priority := FromNCThreadPriority(aPriority);
-  except
-    // Sone android devices do not like this
-  end;
+    try
+      Threads[i].Priority := FromNCThreadPriority(aPriority);
+    except
+      // Sone android devices do not like this
+    end;
 end;
 
 procedure TncThreadPool.ShutDown;
