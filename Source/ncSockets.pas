@@ -1076,7 +1076,6 @@ procedure TncServerProcessor.ProcessEvent;
         try
           for i := 0 to High(FServerSocket.LinesToShutDown) do
             try
-              TncLineInternal(FServerSocket.LinesToShutDown[i]).FActive := True;
               TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle;
             except
             end;
