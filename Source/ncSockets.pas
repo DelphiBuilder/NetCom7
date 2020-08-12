@@ -592,7 +592,7 @@ begin
     except
     end;
 
-  if Assigned(OnConnected) then
+  if Assigned(OnConnected) and not (csDestroying in ComponentState) then
     try
       OnConnected(Self, aLine);
     except
@@ -607,7 +607,7 @@ end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
 begin
-  if Assigned(OnDisconnected) then
+  if Assigned(OnDisconnected) and not (csDestroying in ComponentState) then
     try
       OnDisconnected(Self, aLine);
     except
@@ -923,7 +923,7 @@ begin
       except
       end;
 
-    if Assigned(OnConnected) then
+    if Assigned(OnConnected) and not (csDestroying in ComponentState) then
       try
         OnConnected(Self, aLine);
       except
@@ -937,7 +937,7 @@ var
 begin
   if aLine <> Listener then
   begin
-    if Assigned(OnDisconnected) then
+    if Assigned(OnDisconnected) and not (csDestroying in ComponentState) then
       try
         OnDisconnected(Self, aLine);
       except
@@ -951,14 +951,17 @@ begin
         Break;
       end;
 
-    // Try to see first if we can lock the list so that we immediatelly destroy the line
-    Lines.FLock.Acquire;
-    try
-      Lines.FList.Delete(Lines.FList.IndexOf(aLine.Handle));
-      aLine.Free;
-    finally
-      Lines.FLock.Release;
-    end
+    // Try to see first if we can lock the list so that we immediatelly
+    // destroy the line (the lock might be held by code in the OnReadData)
+    if Lines.FLock.TryEnter then
+      try
+        Lines.FList.Delete(Lines.FList.IndexOf(aLine.Handle));
+        aLine.Free;
+      finally
+        Lines.FLock.Leave;
+      end
+    else
+      ShutDownLine(aLine);
   end;
 end;
 
@@ -1073,8 +1076,7 @@ procedure TncServerProcessor.ProcessEvent;
         try
           for i := 0 to High(FServerSocket.LinesToShutDown) do
             try
-              FServerSocket.Lines.Remove(FServerSocket.LinesToShutDown[i]);
-              FServerSocket.LinesToShutDown[i].Free;
+              TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle;
             except
             end;
           SetLength(FServerSocket.LinesToShutDown, 0);
