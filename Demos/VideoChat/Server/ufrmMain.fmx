@@ -1,0 +1,35 @@
+object frmMain: TfrmMain
+  Left = 0
+  Top = 0
+  Caption = 'NetCom Video Chat Server'
+  ClientHeight = 480
+  ClientWidth = 640
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  DesignerMasterStyle = 0
+  object memLog: TMemo
+    Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+    DataDetectorTypes = []
+    Align = Client
+    Size.Width = 640.000000000000000000
+    Size.Height = 480.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+    Viewport.Width = 636.000000000000000000
+    Viewport.Height = 476.000000000000000000
+  end
+  object Server: TncServerSource
+    Port = 17244
+    CommandProcessorThreadsPerCPU = 2
+    CommandProcessorThreadsGrowUpto = 20
+    EncryptionKey = 'SetEncryptionKey'
+    OnConnected = ServerConnected
+    OnDisconnected = ServerDisconnected
+    OnHandleCommand = ServerHandleCommand
+    Left = 40
+    Top = 40
+  end
+end

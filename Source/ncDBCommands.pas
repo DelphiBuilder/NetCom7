@@ -2,7 +2,7 @@ unit ncDBCommands;
 
 interface
 
-uses Classes, SysUtils, DB, ADODB, ADOInt, ncSources, ncSerializeADO;
+uses Classes, SysUtils, DB, ADODB, ADOInt, ncCommandPacking, ncSources, ncSerializeADO;
 
 const
   ncDBOpenDataset = 0; // uses TDBDatasetData as param
@@ -11,7 +11,7 @@ const
   ncDBExecDataset = 3; // uses TDBDatasetData as param
 
 type
-  TDBDatasetData = class(TncCommandData)
+  TDBDatasetData = class
   public
     SQL: string;
     Parameters: TBytes;
@@ -19,8 +19,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function FromBytes(aBytes: TBytes): Integer; override;
-    function ToBytes: TBytes; override;
+    function FromBytes(aBytes: TBytes): Integer; virtual;
+    function ToBytes: TBytes; virtual;
   end;
 
   TDBUpdateDatasetData = class(TDBDatasetData)
@@ -51,7 +51,7 @@ end;
 
 function TDBDatasetData.FromBytes(aBytes: TBytes): Integer;
 begin
-  Result := inherited FromBytes(aBytes);
+  Result := 0;
 
   SQL := ReadString(aBytes, Result);
   Parameters := ReadBytes(aBytes, Result);
@@ -62,8 +62,8 @@ var
   BufLen: Integer;
 begin
   // This is intended for the use of WriteMessageEmbeddedBufferLen
-  Result := inherited ToBytes;
-  BufLen := Length(Result);
+  SetLength(Result, 0);
+  BufLen := 0;
 
   WriteString(SQL, Result, BufLen);
   WriteBytes(Parameters, Result, BufLen);

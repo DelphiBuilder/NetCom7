@@ -3,11 +3,11 @@ unit udmMain;
 interface
 
 uses
-  SysUtils, Classes, ncSockets, ncSources, DB, ADODB, ncDBCnt;
+  System.Classes, System.SysUtils, Data.DB, Data.Win.ADODB, ncSockets, ncSources, ncDBCnt;
 
 type
   TdmMain = class(TDataModule)
-    ncClientSource1: TncClientSource;
+    ncClientSource: TncClientSource;
     ncDBDataset1: TncDBDataset;
     DataSource1: TDataSource;
     ncDBDataset2: TncDBDataset;

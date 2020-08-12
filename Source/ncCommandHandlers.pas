@@ -2,39 +2,38 @@ unit ncCommandHandlers;
 
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 interface
 
 uses
-  Windows, Classes, SysUtils, SyncObjs, Rtti, ncSources;
+  System.Classes, System.SysUtils, System.SyncObjs, System.Rtti, ncSources;
 
 type
   TncCustomCommandHandler = class(TComponent, IncCommandHandler)
   private
-    PropertyLock: TCriticalSection;
-  private
     FSource: TncSourceBase;
+    FPeerCommandHandler: string;
     FOnConnected: TncOnSourceConnectDisconnect;
     FOnDisconnected: TncOnSourceConnectDisconnect;
     FOnHandleCommand: TncOnSourceHandleCommand;
-    FPeerCommandHandler: string;
+    FOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
     procedure SetSource(const Value: TncSourceBase);
+    function GetPeerCommandHandler: string;
+    procedure SetPeerCommandHandler(const Value: string);
     function GetOnConnected: TncOnSourceConnectDisconnect;
     procedure SetOnConnected(const Value: TncOnSourceConnectDisconnect);
     function GetOnDisconnected: TncOnSourceConnectDisconnect;
     procedure SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
     function GetOnHandleCommand: TncOnSourceHandleCommand;
     procedure SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
-    function GetPeerCommandHandler: string;
-    procedure SetPeerCommandHandler(const Value: string);
+    function GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
+    procedure SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure Connected(aLine: TncSourceLine);
-    procedure Disconnected(aLine: TncSourceLine);
     function GetComponentName: string;
 
     property Source: TncSourceBase read FSource write SetSource;
@@ -42,12 +41,13 @@ type
     property OnConnected: TncOnSourceConnectDisconnect read GetOnConnected write SetOnConnected;
     property OnDisconnected: TncOnSourceConnectDisconnect read GetOnDisconnected write SetOnDisconnected;
     property OnHandleCommand: TncOnSourceHandleCommand read GetOnHandleCommand write SetOnHandleCommand;
+    property OnAsyncExecCommandResult: TncOnAsyncExecCommandResult read GetOnAsyncExecCommandResult write SetOnAsyncExecCommandResult;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; aAsyncExecute: Boolean = False;
-      const aPeerComponentHandler: string = ''): TBytes;
+    function ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True;
+      aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''): TBytes;
   published
   end;
 
@@ -68,17 +68,16 @@ implementation
 constructor TncCustomCommandHandler.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  PropertyLock := TCriticalSection.Create;
   FSource := nil;
   FOnConnected := nil;
   FOnDisconnected := nil;
   FOnHandleCommand := nil;
+  FOnAsyncExecCommandResult := nil;
 end;
 
 destructor TncCustomCommandHandler.Destroy;
 begin
   Source := nil;
-  PropertyLock.Free;
   inherited Destroy;
 end;
 
@@ -99,6 +98,19 @@ begin
   end;
 end;
 
+function TncCustomCommandHandler.ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True;
+  aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''): TBytes;
+begin
+  if not Assigned(Source) then
+    raise Exception.Create('Cannot execute with no source object');
+
+  // If no override, we use the component's command handler (the property)
+  if aPeerComponentHandler = '' then
+    Result := Source.ExecCommand(aLine, aCmd, aData, aRequiresResult, aAsyncExecute, PeerCommandHandler)
+  else
+    Result := Source.ExecCommand(aLine, aCmd, aData, aRequiresResult, aAsyncExecute, aPeerComponentHandler);
+end;
+
 procedure TncCustomCommandHandler.SetSource(const Value: TncSourceBase);
 begin
   if FSource <> Value then
@@ -113,29 +125,14 @@ begin
   end;
 end;
 
-procedure TncCustomCommandHandler.Connected(aLine: TncSourceLine);
+function TncCustomCommandHandler.GetPeerCommandHandler: string;
 begin
-  if Assigned(OnConnected) then
-    OnConnected(Self, aLine);
+  Result := FPeerCommandHandler;
 end;
 
-procedure TncCustomCommandHandler.Disconnected(aLine: TncSourceLine);
+procedure TncCustomCommandHandler.SetPeerCommandHandler(const Value: string);
 begin
-  if Assigned(OnDisconnected) then
-    OnDisconnected(Self, aLine);
-end;
-
-function TncCustomCommandHandler.ExecCommand(aLine: TncSourceLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; aAsyncExecute: Boolean = False;
-  const aPeerComponentHandler: string = ''): TBytes;
-begin
-  if not Assigned(Source) then
-    raise Exception.Create('Cannot execute with no source object');
-
-  // If no override, we use the component's command handler (the property)
-  if aPeerComponentHandler = '' then
-    Result := Source.ExecCommand(aLine, aCmd, aData, aRequiresResult, aAsyncExecute, PeerCommandHandler)
-  else
-    Result := Source.ExecCommand(aLine, aCmd, aData, aRequiresResult, aAsyncExecute, aPeerComponentHandler);
+  FPeerCommandHandler := Value;
 end;
 
 function TncCustomCommandHandler.GetComponentName: string;
@@ -145,82 +142,42 @@ end;
 
 function TncCustomCommandHandler.GetOnConnected: TncOnSourceConnectDisconnect;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnConnected;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnConnected;
 end;
 
 procedure TncCustomCommandHandler.SetOnConnected(const Value: TncOnSourceConnectDisconnect);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnConnected := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnConnected := Value;
 end;
 
 function TncCustomCommandHandler.GetOnDisconnected: TncOnSourceConnectDisconnect;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnDisconnected;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnDisconnected;
 end;
 
 procedure TncCustomCommandHandler.SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnDisconnected := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnDisconnected := Value;
 end;
 
 function TncCustomCommandHandler.GetOnHandleCommand: TncOnSourceHandleCommand;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FOnHandleCommand;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnHandleCommand;
 end;
 
 procedure TncCustomCommandHandler.SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
 begin
-  PropertyLock.Acquire;
-  try
-    FOnHandleCommand := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnHandleCommand := Value;
 end;
 
-function TncCustomCommandHandler.GetPeerCommandHandler: string;
+function TncCustomCommandHandler.GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
 begin
-  PropertyLock.Acquire;
-  try
-    Result := FPeerCommandHandler;
-  finally
-    PropertyLock.Release;
-  end;
+  Result := FOnAsyncExecCommandResult;
 end;
 
-procedure TncCustomCommandHandler.SetPeerCommandHandler(const Value: string);
+procedure TncCustomCommandHandler.SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
 begin
-  PropertyLock.Acquire;
-  try
-    FPeerCommandHandler := Value;
-  finally
-    PropertyLock.Release;
-  end;
+  FOnAsyncExecCommandResult := Value;
 end;
 
 end.

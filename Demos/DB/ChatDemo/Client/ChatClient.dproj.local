@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2018/09/21 12:49:51.000.179,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/09/24 13:18:27.000.279,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/10/10 13:56:06.000.238,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/10/16 10:56:54.000.938,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/10/16 11:40:09.000.191,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/11/04 15:48:45.000.203,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/11/04 16:17:18.000.148,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/11/04 16:17:48.000.272,=C:\Users\Programmer\Documents\Development\Projects\Unit1.pas</Transaction>
+    <Transaction>2018/11/23 20:02:18.000.772,=C:\Users\Programmer\Documents\Development\Projects\Unit2.pas</Transaction>
+    <Transaction>2019/02/27 18:05:16.000.392,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/02/27 18:06:31.000.995,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/02/27 18:12:19.000.197,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/03/05 12:15:54.000.434,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/03/05 13:06:38.000.677,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/03/11 18:09:12.000.176,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/03/25 16:12:14.000.258,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/05/29 14:49:59.000.196,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/05/31 18:08:29.000.138,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/08/21 21:29:49.000.507,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/09/18 13:39:12.000.759,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/11/09 19:07:03.000.902,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2019/12/15 14:13:57.000.985,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/04/13 08:49:52.000.721,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/04/14 04:39:08.000.542,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/04/15 03:31:58.000.910,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/06/01 10:58:58.000.571,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/06/01 11:04:10.000.068,C:\Users\Programmer\Documents\Development\Projects\ChatDemo\Client\ufrmMain.fmx=C:\Users\Programmer\Documents\Development\Projects\Unit3.fmx</Transaction>
+    <Transaction>2020/06/01 11:04:10.000.068,C:\Users\Programmer\Documents\Development\Projects\ChatDemo\Client\ufrmMain.pas=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
+    <Transaction>2020/06/01 11:04:17.000.240,C:\Users\Programmer\Documents\Development\Projects\ChatDemo\Client\ChatDemoClient.dproj=C:\Users\Programmer\Documents\Development\Projects\Project1.dproj</Transaction>
+    <Transaction>2020/08/10 16:11:38.249,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dproj=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatDemoClient.dproj</Transaction>
+  </Transactions>
+	<ActiveMobileDevice>
+		<NoProfile iOSSimulator="iPhone5" Android64="Y5LFKVQGYTL7JRV4" Android="Y5LFKVQGYTL7JRV4"/>
+	</ActiveMobileDevice>
+</BorlandProject>

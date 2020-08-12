@@ -1,0 +1,78 @@
+object frmMain: TfrmMain
+  Left = 0
+  Top = 0
+  Caption = 'Chat Server'
+  ClientHeight = 339
+  ClientWidth = 583
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  DesignerMasterStyle = 0
+  object memLog: TMemo
+    Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+    DataDetectorTypes = []
+    ReadOnly = True
+    Align = Client
+    Margins.Left = 5.000000000000000000
+    Margins.Top = 5.000000000000000000
+    Margins.Right = 5.000000000000000000
+    Margins.Bottom = 5.000000000000000000
+    Size.Width = 573.000000000000000000
+    Size.Height = 289.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+    Viewport.Width = 569.000000000000000000
+    Viewport.Height = 285.000000000000000000
+  end
+  object tmrUpdateLog: TTimer
+    Interval = 1
+    OnTimer = tmrUpdateLogTimer
+    Left = 96
+    Top = 32
+  end
+  object ToolBar1: TToolBar
+    Size.Width = 583.000000000000000000
+    Size.Height = 40.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    TabStop = False
+    object btnActivateServer: TButton
+      Align = Left
+      Margins.Left = 5.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 5.000000000000000000
+      Position.Y = 5.000000000000000000
+      Size.Width = 137.000000000000000000
+      Size.Height = 30.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      Text = 'Activate Server'
+      OnClick = btnActivateServerClick
+    end
+    object btnShutDownClients: TButton
+      Align = Right
+      Margins.Top = 5.000000000000000000
+      Margins.Right = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 424.000000000000000000
+      Position.Y = 5.000000000000000000
+      Size.Width = 154.000000000000000000
+      Size.Height = 30.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 2
+      Text = 'Shutdown Clients'
+      OnClick = btnShutDownClientsClick
+    end
+  end
+  object Server: TncServerSource
+    EncryptionKey = 'SetEncryptionKey'
+    OnConnected = ServerConnected
+    OnDisconnected = ServerDisconnected
+    OnHandleCommand = ServerHandleCommand
+    Left = 32
+    Top = 32
+  end
+end

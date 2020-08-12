@@ -4,10 +4,10 @@ unit ncEncCrypt2;
 
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
-{$IF CompilerVersion >= 21.0 }
-{$WEAKLINKRTTI ON }
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([]) }
-{$IFEND }
+{$IF CompilerVersion >= 21.0}
+{$WEAKLINKRTTI ON}
+{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 interface
 
@@ -61,7 +61,7 @@ interface
       { Update the hash buffer with Size bytes of data from Buffer }
       procedure UpdateStream(Stream: TStream; Size: longword);
       { Update the hash buffer with Size bytes of data from the stream }
-      procedure UpdateStr(const Str: AnsiString);
+      procedure UpdateStr(const Str: string);
       { Update the hash buffer with the string }
 
       destructor Destroy; override;
@@ -97,7 +97,7 @@ interface
 
       procedure Init(const Key; Size: longword; InitVector: pointer); virtual;
       { Do key setup based on the data in Key, size is in bits }
-      procedure InitStr(const Key: AnsiString; HashType: TncEnc_hashclass);
+      procedure InitStr(const Key: string; HashType: TncEnc_hashclass);
       { Do key setup based on a hash of the key string }
       procedure Burn; virtual;
       { Clear all stored key information }
@@ -210,9 +210,12 @@ implementation
     end;
   end;
 
-  procedure TncEnc_hash.UpdateStr(const Str: AnsiString);
+  procedure TncEnc_hash.UpdateStr(const Str: string);
+  var
+    Bytes: TBytes;
   begin
-    Update(Str[1], Length(Str));
+    Bytes := BytesOf(Str);
+    Update(Bytes[0], Length(Bytes));
   end;
 
   destructor TncEnc_hash.Destroy;
@@ -234,7 +237,7 @@ implementation
       fInitialized := true;
   end;
 
-  procedure TncEnc_cipher.InitStr(const Key: AnsiString; HashType: TncEnc_hashclass);
+  procedure TncEnc_cipher.InitStr(const Key: string; HashType: TncEnc_hashclass);
   var
     Hash: TncEnc_hash;
     Digest: pointer;

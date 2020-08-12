@@ -3,7 +3,7 @@ object dmMain: TdmMain
   OnCreate = DataModuleCreate
   Height = 351
   Width = 376
-  object ncClientSource1: TncClientSource
+  object ncClientSource: TncClientSource
     Port = 18753
     EncryptionKey = 'SetEncryptionKey'
     Host = 'localhost'
@@ -13,7 +13,7 @@ object dmMain: TdmMain
   object ncDBDataset1: TncDBDataset
     CursorType = ctStatic
     LockType = ltBatchOptimistic
-    Source = ncClientSource1
+    Source = ncClientSource
     PeerCommandHandler = 'DBServer'
     SQL.Strings = (
       'select * from Customers')
@@ -29,7 +29,7 @@ object dmMain: TdmMain
   object ncDBDataset2: TncDBDataset
     CursorType = ctStatic
     LockType = ltBatchOptimistic
-    Source = ncClientSource1
+    Source = ncClientSource
     PeerCommandHandler = 'DBServer'
     SQL.Strings = (
       'select * from Orders'

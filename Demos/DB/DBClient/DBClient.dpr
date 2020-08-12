@@ -1,7 +1,7 @@
 program DBClient;
 
 uses
-  Forms,
+  Vcl.Forms,
   ufrmMain in 'ufrmMain.pas' {frmMain},
   udmMain in 'udmMain.pas' {dmMain: TDataModule};
 

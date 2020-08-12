@@ -1,7 +1,8 @@
 object Form1: TForm1
   Left = 0
   Top = 0
-  Caption = 'Form1'
+  ActiveControl = edtDataToSend
+  Caption = 'TCPClient'
   ClientHeight = 243
   ClientWidth = 527
   Color = clBtnFace
@@ -11,35 +12,162 @@ object Form1: TForm1
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  Position = poScreenCenter
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
-  object Memo1: TMemo
+  object memLog: TMemo
+    AlignWithMargins = True
+    Left = 5
+    Top = 37
+    Width = 517
+    Height = 169
+    Margins.Left = 5
+    Margins.Top = 0
+    Margins.Right = 5
+    Margins.Bottom = 5
+    Align = alClient
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 1
+  end
+  object pnlToolbar: TPanel
     Left = 0
     Top = 0
     Width = 527
-    Height = 243
-    Align = alClient
-    Lines.Strings = (
-      'Memo1')
-    TabOrder = 1
-  end
-  object Button1: TButton
-    Left = 236
-    Top = 128
-    Width = 75
-    Height = 25
-    Caption = 'Button1'
+    Height = 37
+    Align = alTop
+    BevelOuter = bvNone
+    FullRepaint = False
     TabOrder = 0
-    OnClick = Button1Click
+    object btnActivate: TButton
+      AlignWithMargins = True
+      Left = 5
+      Top = 5
+      Width = 105
+      Height = 27
+      Margins.Left = 5
+      Margins.Top = 5
+      Margins.Right = 0
+      Margins.Bottom = 5
+      Align = alLeft
+      Caption = 'Activate'
+      TabOrder = 0
+      OnClick = btnActivateClick
+    end
+    object pnlAddress: TPanel
+      AlignWithMargins = True
+      Left = 110
+      Top = 3
+      Width = 417
+      Height = 31
+      Margins.Left = 0
+      Margins.Right = 0
+      Align = alClient
+      BevelOuter = bvNone
+      FullRepaint = False
+      TabOrder = 1
+      object edtHost: TEdit
+        AlignWithMargins = True
+        Left = 5
+        Top = 5
+        Width = 281
+        Height = 21
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Align = alClient
+        TabOrder = 0
+        Text = 'LocalHost'
+        TextHint = 'Enter host address'
+        OnChange = edtHostChange
+      end
+      object edtPort: TSpinEdit
+        AlignWithMargins = True
+        Left = 291
+        Top = 5
+        Width = 121
+        Height = 22
+        Margins.Left = 0
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Align = alRight
+        MaxValue = 0
+        MinValue = 0
+        TabOrder = 1
+        Value = 16233
+        OnChange = edtPortChange
+      end
+    end
   end
-  object ncTCPClient1: TncTCPClient
+  object Panel1: TPanel
+    Left = 0
+    Top = 211
+    Width = 527
+    Height = 32
+    Margins.Left = 5
+    Margins.Top = 0
+    Margins.Right = 5
+    Margins.Bottom = 5
+    Align = alBottom
+    BevelOuter = bvNone
+    FullRepaint = False
+    TabOrder = 2
+    object btnSendData: TButton
+      AlignWithMargins = True
+      Left = 5
+      Top = 0
+      Width = 105
+      Height = 27
+      Margins.Left = 5
+      Margins.Top = 0
+      Margins.Right = 0
+      Margins.Bottom = 5
+      Align = alLeft
+      Caption = 'Send'
+      Default = True
+      TabOrder = 0
+      OnClick = btnSendDataClick
+    end
+    object Panel2: TPanel
+      AlignWithMargins = True
+      Left = 110
+      Top = 3
+      Width = 417
+      Height = 26
+      Margins.Left = 0
+      Margins.Right = 0
+      Align = alClient
+      BevelOuter = bvNone
+      FullRepaint = False
+      TabOrder = 1
+      object edtDataToSend: TEdit
+        AlignWithMargins = True
+        Left = 5
+        Top = 0
+        Width = 407
+        Height = 21
+        Margins.Left = 5
+        Margins.Top = 0
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Align = alClient
+        TabOrder = 0
+        Text = 'This is some text data'
+        TextHint = 'Enter data to send here'
+        OnEnter = edtDataToSendEnter
+        OnExit = edtDataToSendExit
+      end
+    end
+  end
+  object TCPClient: TncTCPClient
     Host = 'localhost'
-    ReaderUseMainThread = True
-    OnConnected = ncTCPClient1Connected
-    OnDisconnected = ncTCPClient1Disconnected
-    OnReadData = ncTCPClient1ReadData
-    OnReconnected = ncTCPClient1Reconnected
+    OnConnected = TCPClientConnected
+    OnDisconnected = TCPClientDisconnected
+    OnReadData = TCPClientReadData
+    OnReconnected = TCPClientReconnected
     Left = 92
     Top = 52
   end
