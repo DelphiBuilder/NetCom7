@@ -72,7 +72,6 @@ type
 
   TncLine = class(TObject)
   private
-    FActive: Boolean;
     FLastSent: Int64;
     FLastReceived: Int64;
     FPeerIP: string;
@@ -89,6 +88,7 @@ type
     procedure SetLastReceived(const Value: Int64);
     procedure SetLastSent(const Value: Int64);
   protected
+    FActive: Boolean;
     function CreateLineObject: TncLine; virtual;
     procedure Check(aCmdRes: Integer); inline;
 
