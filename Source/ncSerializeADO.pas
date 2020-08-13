@@ -258,7 +258,6 @@ begin
       raise Exception.Create('Cannot pack specified parameter');
     end;
   end;
-
 end;
 
 function ParametersToBytes(aParameters: TParameters): TBytes;
@@ -313,7 +312,7 @@ begin
     Result.Position := 0;
   except
     Result.Free;
-    raise ;
+    raise;
   end;
 end;
 
@@ -329,7 +328,6 @@ begin
   end;
 end;
 
-
 function StreamToRecordset(const aStream: TBytesStream; aConnection: TADOConnection = nil): _Recordset;
 var
   ADOStream: IStream;
@@ -344,13 +342,13 @@ begin
 
       // You need to Set_ActiveConnection in order to be able to update a recordset.
       if Assigned(aConnection) then
-          Result.Set_ActiveConnection(aConnection.ConnectionObject);
+        Result.Set_ActiveConnection(aConnection.ConnectionObject);
     finally
       ADOStream := nil;
     end;
   except
     Result := nil;
-    raise ;
+    raise;
   end;
 end;
 
@@ -366,6 +364,5 @@ begin
     Stream.Free;
   end;
 end;
-
 
 end.

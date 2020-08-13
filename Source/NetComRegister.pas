@@ -78,7 +78,9 @@ begin
     finally
       FreeMem(VerInfo, VerInfoSize);
     end;
-  end;
+  end
+  else
+    Result := '1.0.0.0';
 end;
 
 const
@@ -93,7 +95,6 @@ resourcestring
   resPackageName = 'NetCom7 Network Communications Framework';
   resLicence = 'Full Edition for RAD Studio';
   resAboutCopyright = 'Copyright © 2020 Bill Demos (VasDemos@yahoo.co.uk)';
-  resAboutTitle = 'NetCom7 Network Communications Framework';
   resAboutDescription =
     'Netcom7 Communicatios Framework enables you to use communication components with the ease of use of the Delphi programming language. Create and handle client/server sockets, sources and DB elements with no single line of API calls.';
 

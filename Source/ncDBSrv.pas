@@ -43,7 +43,7 @@ type
   public
     ADOQuery: TADOQuery;
 
-    constructor Create(aConnectionString, aSQL: string; aSerialiser: TCriticalSection);
+    constructor Create(const aConnectionString, aSQL: string; aSerialiser: TCriticalSection);
     destructor Destroy; override;
     function GetResult(aParams: TBytes; aUseCache: Boolean): TBytes;
     function Update(aUpdates: _recordset): TBytes;
@@ -61,9 +61,9 @@ type
     // Returns the corresponding TReadyQueryItem (creates it if it does not exist).
     constructor Create;
     destructor Destroy; override;
-    function GetQuery(aSQL: string): TReadyQueryItem;
+    function GetQuery(const aSQL: string): TReadyQueryItem;
 
-    procedure SetConnectionString(aConnectionString: string);
+    procedure SetConnectionString(const aConnectionString: string);
   end;
 
   TncDBServer = class(TncCustomCommandHandler)
@@ -144,6 +144,7 @@ var
   ListRQ: TReadyQueryItem;
   i: Integer;
 begin
+  SetLength(Result, 0);
 
   PropertyLock.Acquire;
   try
@@ -240,9 +241,7 @@ begin
           DatasetData.Free;
         end;
       end;
-
   end;
-
 end;
 
 procedure TncDBServer.Notification(AComponent: TComponent; Operation: TOperation);
@@ -304,7 +303,7 @@ end;
 
 { TReadyQueryItem }
 
-constructor TReadyQueryItem.Create(aConnectionString, aSQL: string; aSerialiser: TCriticalSection);
+constructor TReadyQueryItem.Create(const aConnectionString, aSQL: string; aSerialiser: TCriticalSection);
 begin
   FSerialiser := aSerialiser;
 
@@ -465,7 +464,7 @@ begin
   inherited;
 end;
 
-function TReadyQueryList.GetQuery(aSQL: string): TReadyQueryItem;
+function TReadyQueryList.GetQuery(const aSQL: string): TReadyQueryItem;
 var
   Ndx: Integer;
 begin
@@ -484,7 +483,7 @@ begin
   end;
 end;
 
-procedure TReadyQueryList.SetConnectionString(aConnectionString: string);
+procedure TReadyQueryList.SetConnectionString(const aConnectionString: string);
 begin
   Serialiser.Acquire;
   try

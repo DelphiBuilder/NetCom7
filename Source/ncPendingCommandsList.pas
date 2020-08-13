@@ -31,9 +31,9 @@ type
     FList: TPendingCommandItemsList;
     FCount: Integer;
     FCapacity: Integer;
-    function GetUniqueID(Index: Integer): TncCommandUniqueID; register;
-    function GetReceivedResultEvent(Index: Integer): TEvent; register;
-    procedure PutReceivedResultEvent(Index: Integer; aReceivedResultEvent: TEvent);
+    function GetUniqueIDs(Index: Integer): TncCommandUniqueID; register;
+    function GetReceivedResultEvents(Index: Integer): TEvent; register;
+    procedure PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TEvent);
     function GetResults(Index: Integer): TncCommand;
     procedure PutResults(Index: Integer; const aResult: TncCommand);
     procedure SetCapacity(aNewCapacity: Integer);
@@ -50,8 +50,8 @@ type
     function IndexOf(const aUniqueID: TncCommandUniqueID): Integer; register;
 
     property Count: Integer read FCount;
-    property UniqueIDs[index: Integer]: TncCommandUniqueID read GetUniqueID; default;
-    property ReceivedResultEvents[index: Integer]: TEvent read GetReceivedResultEvent write PutReceivedResultEvent;
+    property UniqueIDs[index: Integer]: TncCommandUniqueID read GetUniqueIDs; default;
+    property ReceivedResultEvents[index: Integer]: TEvent read GetReceivedResultEvents write PutReceivedResultEvents;
     property Results[index: Integer]: TncCommand read GetResults write PutResults;
   end;
 
@@ -155,21 +155,21 @@ begin
   Inc(FCount);
 end;
 
-function TPendingCommandsList.GetUniqueID(Index: Integer): TncCommandUniqueID;
+function TPendingCommandsList.GetUniqueIDs(Index: Integer): TncCommandUniqueID;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
   Result := FList[index].FUniqueID;
 end;
 
-function TPendingCommandsList.GetReceivedResultEvent(Index: Integer): TEvent;
+function TPendingCommandsList.GetReceivedResultEvents(Index: Integer): TEvent;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
   Result := FList[index].FReceivedResultEvent;
 end;
 
-procedure TPendingCommandsList.PutReceivedResultEvent(Index: Integer; aReceivedResultEvent: TEvent);
+procedure TPendingCommandsList.PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TEvent);
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));

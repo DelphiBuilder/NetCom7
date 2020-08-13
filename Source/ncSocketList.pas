@@ -30,9 +30,9 @@ type
     FList: TSocketItemList;
     FCount: Integer;
     FCapacity: Integer;
-    function GetSocketHandle(Index: Integer): TSocketHandle; register;
-    function GetLine(Index: Integer): TncLine; register;
-    procedure PutLine(Index: Integer; aLine: TncLine);
+    function GetSocketHandles(Index: Integer): TSocketHandle; register;
+    function GetLines(Index: Integer): TncLine; register;
+    procedure PutLines(Index: Integer; aLine: TncLine);
     procedure SetCapacity(aNewCapacity: Integer);
   protected
     procedure Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
@@ -47,8 +47,8 @@ type
     function IndexOf(const aSocketHandle: TSocketHandle): Integer; register;
 
     property Count: Integer read FCount;
-    property SocketHandles[index: Integer]: TSocketHandle read GetSocketHandle; default;
-    property Lines[index: Integer]: TncLine read GetLine write PutLine;
+    property SocketHandles[index: Integer]: TSocketHandle read GetSocketHandles; default;
+    property Lines[index: Integer]: TncLine read GetLines write PutLines;
   end;
 
 implementation
@@ -151,21 +151,21 @@ begin
   Inc(FCount);
 end;
 
-function TSocketList.GetSocketHandle(Index: Integer): TSocketHandle;
+function TSocketList.GetSocketHandles(Index: Integer): TSocketHandle;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
   Result := FList[index].FSocketHandle;
 end;
 
-function TSocketList.GetLine(Index: Integer): TncLine;
+function TSocketList.GetLines(Index: Integer): TncLine;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
   Result := FList[index].FLine;
 end;
 
-procedure TSocketList.PutLine(Index: Integer; aLine: TncLine);
+procedure TSocketList.PutLines(Index: Integer; aLine: TncLine);
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));

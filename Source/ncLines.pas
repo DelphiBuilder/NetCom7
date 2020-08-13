@@ -60,7 +60,7 @@ type
 {$ENDIF}
   TSocketHandleArray = array of TSocketHandle;
 
-  TncLineException = class(Exception);
+  EncLineException = class(Exception);
 
   TncLine = class; // Forward declaration
 
@@ -95,7 +95,7 @@ type
     // API functions
     procedure CreateClientHandle(const aHost: string; const aPort: Integer);
     procedure CreateServerHandle(const aPort: Integer);
-    procedure DestroyHandle; inline;
+    procedure DestroyHandle;
 
     function AcceptLine: TncLine; inline;
 
@@ -253,7 +253,7 @@ begin
 
   iRes := DllGetAddrInfo(NodeName, ServiceName, Hints, ppResult);
   if iRes <> 0 then
-    raise TncLineException.Create(SysErrorMessage(iRes));
+    raise EncLineException.Create(SysErrorMessage(iRes));
 end;
 
 procedure FreeAddressInfo(ai: PAddrInfoW);
@@ -305,7 +305,7 @@ procedure TncLine.Check(aCmdRes: Integer);
 begin
   if aCmdRes = SocketError then
 {$IFDEF MSWINDOWS}
-    raise TncLineException.Create(SysErrorMessage(WSAGetLastError));
+    raise EncLineException.Create(SysErrorMessage(WSAGetLastError));
 {$ELSE}
     raise TncLineException.Create(SysErrorMessage(GetLastError));
 {$ENDIF}

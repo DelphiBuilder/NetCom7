@@ -198,8 +198,8 @@ type
     // Property getters and setters
     function GetExecCommandTimeout: Cardinal;
     procedure SetExecCommandTimeout(const Value: Cardinal);
-    function GetCommandProcessorPriority: TncThreadPriority;
-    procedure SetCommandProcessorPriority(const Value: TncThreadPriority);
+    function GetCommandProcessorThreadPriority: TncThreadPriority;
+    procedure SetCommandProcessorThreadPriority(const Value: TncThreadPriority);
     function GetCommandProcessorThreads: Integer;
     procedure SetCommandProcessorThreads(const Value: Integer);
     function GetCommandProcessorThreadsPerCPU: Integer;
@@ -259,7 +259,7 @@ type
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
 
     // New properties for sources
-    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorPriority write SetCommandProcessorPriority default DefExecThreadPriority;
+    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority default DefExecThreadPriority;
     property CommandProcessorThreads: Integer read GetCommandProcessorThreads write SetCommandProcessorThreads default DefExecThreads;
     property CommandProcessorThreadsPerCPU: Integer read GetCommandProcessorThreadsPerCPU write SetCommandProcessorThreadsPerCPU default DefExecThreadsPerCPU;
     property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto
@@ -628,6 +628,68 @@ begin
   end;
 end;
 
+// This is run in the reader's thread context
+procedure TncSourceBase.HandleReceivedCommand(aLine: TncSourceLine; const aCommandBytes: TBytes);
+var
+  Command: TncCommand;
+  HandleCommandThread: THandleCommandThread;
+  PendingNdx: Integer;
+begin
+  Command.FromBytes(aCommandBytes);
+  case Command.CommandType of
+    ctInitiator:
+      begin
+        // Handle the command from the thread pool
+        HandleCommandThreadPool.Serialiser.Acquire;
+        try
+          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+          HandleCommandThread.WorkType := htwtOnHandleCommand;
+          HandleCommandThread.OnHandleCommand := OnHandleCommand;
+          HandleCommandThread.Source := Self;
+          HandleCommandThread.Line := aLine;
+          HandleCommandThread.Command := Command;
+          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        finally
+          HandleCommandThreadPool.Serialiser.Release;
+        end;
+      end;
+    ctResponse:
+      if Command.AsyncExecute then
+      begin
+        // Handle the command from the thread pool
+        HandleCommandThreadPool.Serialiser.Acquire;
+        try
+          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
+          HandleCommandThread.WorkType := htwtAsyncResponse;
+          HandleCommandThread.OnAsyncExecCommandResult := OnAsyncExecCommandResult;
+          HandleCommandThread.Source := Self;
+          HandleCommandThread.Line := aLine;
+          HandleCommandThread.Command := Command;
+          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
+        finally
+          HandleCommandThreadPool.Serialiser.Release;
+        end;
+      end
+      else
+      begin
+        PropertyLock.Acquire;
+        try
+          // Find the event to set from the PendingCommandsList
+          PendingNdx := PendingCommandsList.IndexOf(Command.UniqueID);
+          // We may not find a pending command as the ExecCommand may have
+          // timed out, so do nothing in that case
+          if PendingNdx <> -1 then
+          begin
+            PendingCommandsList.Results[PendingNdx] := Command;
+            PendingCommandsList.ReceivedResultEvents[PendingNdx].SetEvent;
+          end;
+        finally
+          PropertyLock.Release;
+        end;
+      end;
+  end;
+end;
+
 // Only from one thread called here, the reader thread, or the main vcl
 procedure TncSourceBase.SocketReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
 var
@@ -704,68 +766,6 @@ begin
   end; // while Ofs < aBufCount
 end;
 
-// This is run in the reader's thread context
-procedure TncSourceBase.HandleReceivedCommand(aLine: TncSourceLine; const aCommandBytes: TBytes);
-var
-  Command: TncCommand;
-  HandleCommandThread: THandleCommandThread;
-  PendingNdx: Integer;
-begin
-  Command.FromBytes(aCommandBytes);
-  case Command.CommandType of
-    ctInitiator:
-      begin
-        // Handle the command from the thread pool
-        HandleCommandThreadPool.Serialiser.Acquire;
-        try
-          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
-          HandleCommandThread.WorkType := htwtOnHandleCommand;
-          HandleCommandThread.OnHandleCommand := OnHandleCommand;
-          HandleCommandThread.Source := Self;
-          HandleCommandThread.Line := aLine;
-          HandleCommandThread.Command := Command;
-          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
-        finally
-          HandleCommandThreadPool.Serialiser.Release;
-        end;
-      end;
-    ctResponse:
-      if Command.AsyncExecute then
-      begin
-        // Handle the command from the thread pool
-        HandleCommandThreadPool.Serialiser.Acquire;
-        try
-          HandleCommandThread := THandleCommandThread(HandleCommandThreadPool.RequestReadyThread);
-          HandleCommandThread.WorkType := htwtAsyncResponse;
-          HandleCommandThread.OnAsyncExecCommandResult := OnAsyncExecCommandResult;
-          HandleCommandThread.Source := Self;
-          HandleCommandThread.Line := aLine;
-          HandleCommandThread.Command := Command;
-          HandleCommandThreadPool.RunRequestedThread(HandleCommandThread);
-        finally
-          HandleCommandThreadPool.Serialiser.Release;
-        end;
-      end
-      else
-      begin
-        PropertyLock.Acquire;
-        try
-          // Find the event to set from the PendingCommandsList
-          PendingNdx := PendingCommandsList.IndexOf(Command.UniqueID);
-          // We may not find a pending command as the ExecCommand may have
-          // timed out, so do nothing in that case
-          if PendingNdx <> -1 then
-          begin
-            PendingCommandsList.Results[PendingNdx] := Command;
-            PendingCommandsList.ReceivedResultEvents[PendingNdx].SetEvent;
-          end;
-        finally
-          PropertyLock.Release;
-        end;
-      end;
-  end;
-end;
-
 function TncSourceBase.GetActive: Boolean;
 begin
   Result := Socket.Active;
@@ -839,7 +839,7 @@ begin
   end;
 end;
 
-function TncSourceBase.GetCommandProcessorPriority: TncThreadPriority;
+function TncSourceBase.GetCommandProcessorThreadPriority: TncThreadPriority;
 begin
   PropertyLock.Acquire;
   try
@@ -849,7 +849,7 @@ begin
   end;
 end;
 
-procedure TncSourceBase.SetCommandProcessorPriority(const Value: TncThreadPriority);
+procedure TncSourceBase.SetCommandProcessorThreadPriority(const Value: TncThreadPriority);
 begin
   PropertyLock.Acquire;
   try

@@ -87,6 +87,116 @@ function ToNCThreadPriority(aThreadPriority: Integer): TncThreadPriority; inline
 implementation
 
 // *****************************************************************************
+// Helper functions
+// *****************************************************************************
+
+function GetNumberOfProcessors: Integer;
+{$IFDEF MSWINDOWS}
+var
+  lpSystemInfo: TSystemInfo;
+  i: Integer;
+begin
+  Result := 0;
+  try
+    GetSystemInfo(lpSystemInfo);
+    for i := 0 to lpSystemInfo.dwNumberOfProcessors - 1 do
+      if lpSystemInfo.dwActiveProcessorMask or (1 shl i) <> 0 then
+        Result := Result + 1;
+  finally
+    if Result < 1 then
+      Result := 1;
+  end;
+end;
+{$ELSE}
+
+begin
+  Result := TThread.ProcessorCount;
+end;
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): TThreadPriority;
+begin
+  case ancThreadPriority of
+    ntpIdle:
+      Result := tpIdle;
+    ntpLowest:
+      Result := tpLowest;
+    ntpLower:
+      Result := tpLower;
+    ntpHigher:
+      Result := tpHigher;
+    ntpHighest:
+      Result := tpHighest;
+    ntpTimeCritical:
+      Result := tpTimeCritical;
+  else
+    Result := tpNormal;
+  end;
+end;
+
+function ToNCThreadPriority(aThreadPriority: TThreadPriority): TncThreadPriority;
+begin
+  case aThreadPriority of
+    tpIdle:
+      Result := ntpIdle;
+    tpLowest:
+      Result := ntpLowest;
+    tpLower:
+      Result := ntpLower;
+    tpHigher:
+      Result := ntpHigher;
+    tpHighest:
+      Result := ntpHighest;
+    tpTimeCritical:
+      Result := ntpTimeCritical;
+  else
+    Result := ntpNormal;
+  end;
+end;
+{$ELSE}
+
+function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): Integer;
+begin
+  case ancThreadPriority of
+    ntpIdle:
+      Result := 19;
+    ntpLowest:
+      Result := 13;
+    ntpLower:
+      Result := 7;
+    ntpHigher:
+      Result := -7;
+    ntpHighest:
+      Result := -13;
+    ntpTimeCritical:
+      Result := -19;
+  else
+    Result := 0;
+  end;
+end;
+
+function ToNCThreadPriority(aThreadPriority: Integer): TncThreadPriority;
+begin
+  case aThreadPriority of
+    14 .. 19:
+      Result := ntpIdle;
+    8 .. 13:
+      Result := ntpLowest;
+    3 .. 7:
+      Result := ntpLower;
+    -7 .. -3:
+      Result := ntpHigher;
+    -13 .. -8:
+      Result := ntpHighest;
+    -19 .. -14:
+      Result := ntpTimeCritical;
+  else
+    Result := ntpNormal;
+  end;
+end;
+{$ENDIF}
+// *****************************************************************************
 { TncReadyThread }
 // *****************************************************************************
 
@@ -302,116 +412,5 @@ begin
     Serialiser.Release;
   end;
 end;
-
-// *****************************************************************************
-// Helper functions
-// *****************************************************************************
-
-function GetNumberOfProcessors: Integer;
-{$IFDEF MSWINDOWS}
-var
-  lpSystemInfo: TSystemInfo;
-  i: Integer;
-begin
-  Result := 0;
-  try
-    GetSystemInfo(lpSystemInfo);
-    for i := 0 to lpSystemInfo.dwNumberOfProcessors - 1 do
-      if lpSystemInfo.dwActiveProcessorMask or (1 shl i) <> 0 then
-        Result := Result + 1;
-  finally
-    if Result < 1 then
-      Result := 1;
-  end;
-end;
-{$ELSE}
-
-begin
-  Result := TThread.ProcessorCount;
-end;
-{$ENDIF}
-{$IFDEF MSWINDOWS}
-
-function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): TThreadPriority;
-begin
-  case ancThreadPriority of
-    ntpIdle:
-      Result := tpIdle;
-    ntpLowest:
-      Result := tpLowest;
-    ntpLower:
-      Result := tpLower;
-    ntpHigher:
-      Result := tpHigher;
-    ntpHighest:
-      Result := tpHighest;
-    ntpTimeCritical:
-      Result := tpTimeCritical;
-  else
-    Result := tpNormal;
-  end;
-end;
-
-function ToNCThreadPriority(aThreadPriority: TThreadPriority): TncThreadPriority;
-begin
-  case aThreadPriority of
-    tpIdle:
-      Result := ntpIdle;
-    tpLowest:
-      Result := ntpLowest;
-    tpLower:
-      Result := ntpLower;
-    tpHigher:
-      Result := ntpHigher;
-    tpHighest:
-      Result := ntpHighest;
-    tpTimeCritical:
-      Result := ntpTimeCritical;
-  else
-    Result := ntpNormal;
-  end;
-end;
-{$ELSE}
-
-function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): Integer;
-begin
-  case ancThreadPriority of
-    ntpIdle:
-      Result := 19;
-    ntpLowest:
-      Result := 13;
-    ntpLower:
-      Result := 7;
-    ntpHigher:
-      Result := -7;
-    ntpHighest:
-      Result := -13;
-    ntpTimeCritical:
-      Result := -19;
-  else
-    Result := 0;
-  end;
-end;
-
-function ToNCThreadPriority(aThreadPriority: Integer): TncThreadPriority;
-begin
-  case aThreadPriority of
-    14 .. 19:
-      Result := ntpIdle;
-    8 .. 13:
-      Result := ntpLowest;
-    3 .. 7:
-      Result := ntpLower;
-    -7 .. -3:
-      Result := ntpHigher;
-    -13 .. -8:
-      Result := ntpHighest;
-    -19 .. -14:
-      Result := ntpTimeCritical;
-  else
-    Result := ntpNormal;
-  end;
-end;
-{$ENDIF}
 
 end.

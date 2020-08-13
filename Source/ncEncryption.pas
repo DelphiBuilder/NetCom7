@@ -42,12 +42,12 @@ function Base64DecodeBytes(const aBytes: TBytes): TBytes;
 
 // Hashing
 function GetHash(const aBytes: TBytes; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
-function GetHashFromFile(aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
+function GetHashFromFile(const aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
 
 // Encryption
-function EncryptBytes(const aBytes: TBytes; aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
   aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
-function DecryptBytes(aBytes: TBytes; aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
   aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 
 implementation
@@ -165,7 +165,6 @@ var
   Digest: PByte;
 begin
   // Create unique hash
-  Hash := nil;
   case aHasherType of
     htSha1:
       Hash := TncEnc_sha1.Create(nil);
@@ -187,9 +186,13 @@ begin
       Hash := TncEnc_Md5.Create(nil);
     htTiger:
       Hash := TncEnc_Tiger.Create(nil);
+    else
+      Hash := nil;
   end;
 
-  if Hash <> nil then
+  if Hash = nil then
+    Result := aBytes
+  else
     try
       Hash.Init;
       Hash.Update(aBytes[0], Length(aBytes));
@@ -209,7 +212,7 @@ begin
     end;
 end;
 
-function GetHashFromFile(aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
+function GetHashFromFile(const aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
 var
   fs: TFileStream;
   FileBytes: TBytes;
@@ -225,12 +228,11 @@ begin
   Result := GetHash(FileBytes, aHasherType, aBase64Encode);
 end;
 
-function EncryptBytes(const aBytes: TBytes; aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
   aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
 var
   Encryptor: TncEnc_cipher;
 begin
-  Encryptor := nil;
   case aEncryptorType of
     etRc2:
       Encryptor := TncEnc_Rc2.Create(nil);
@@ -270,6 +272,8 @@ begin
       Encryptor := TncEnc_Tea.Create(nil);
     etSerpent:
       Encryptor := TncEnc_Serpent.Create(nil);
+    else
+      Encryptor := nil;
   end;
 
   if Encryptor = nil then
@@ -293,12 +297,11 @@ begin
     end;
 end;
 
-function DecryptBytes(aBytes: TBytes; aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
   aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 var
   Decryptor: TncEnc_cipher;
 begin
-  Decryptor := nil;
   case aDecryptorType of
     etRc2:
       Decryptor := TncEnc_Rc2.Create(nil);
@@ -338,6 +341,8 @@ begin
       Decryptor := TncEnc_Tea.Create(nil);
     etSerpent:
       Decryptor := TncEnc_Serpent.Create(nil);
+    else
+      Decryptor := nil;
   end;
 
   if Decryptor = nil then

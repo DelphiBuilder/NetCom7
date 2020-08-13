@@ -137,6 +137,7 @@ end;
 function TncDBDataset.GetOnConnected: TncOnSourceConnectDisconnect;
 begin
   // Does nothing
+  Result := nil;
 end;
 
 procedure TncDBDataset.SetOnConnected(const Value: TncOnSourceConnectDisconnect);
@@ -147,6 +148,7 @@ end;
 function TncDBDataset.GetOnDisconnected: TncOnSourceConnectDisconnect;
 begin
   // Does nothing
+  Result := nil;
 end;
 
 procedure TncDBDataset.SetOnDisconnected(const Value: TncOnSourceConnectDisconnect);
@@ -157,6 +159,7 @@ end;
 function TncDBDataset.GetOnHandleCommand: TncOnSourceHandleCommand;
 begin
   // Does nothing
+  Result := nil;
 end;
 
 procedure TncDBDataset.SetOnHandleCommand(const Value: TncOnSourceHandleCommand);
@@ -167,6 +170,7 @@ end;
 function TncDBDataset.GetOnAsyncExecCommandResult: TncOnAsyncExecCommandResult;
 begin
   // Does nothing
+  Result := nil;
 end;
 
 procedure TncDBDataset.SetOnAsyncExecCommandResult(const Value: TncOnAsyncExecCommandResult);
