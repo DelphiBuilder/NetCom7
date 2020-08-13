@@ -307,7 +307,7 @@ begin
 {$IFDEF MSWINDOWS}
     raise EncLineException.Create(SysErrorMessage(WSAGetLastError));
 {$ELSE}
-    raise TncLineException.Create(SysErrorMessage(GetLastError));
+    raise EncLineException.Create(SysErrorMessage(GetLastError));
 {$ENDIF}
 end;
 
@@ -432,6 +432,8 @@ begin
       SetDisconnected;
     except
     end;
+
+    FHandle := InvalidSocket;
   end;
 end;
 

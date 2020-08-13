@@ -35,6 +35,7 @@ type
     procedure PutLines(Index: Integer; aLine: TncLine);
     procedure SetCapacity(aNewCapacity: Integer);
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure Insert(aIndex: Integer; const aSocketHandle: TSocketHandle; aLine: TncLine);
     procedure Grow;
   public
@@ -63,6 +64,21 @@ begin
   inherited Destroy;
   FCount := 0;
   SetCapacity(0);
+end;
+
+procedure TSocketList.AssignTo(Dest: TPersistent);
+var
+  DestList: TSocketList;
+begin
+  if Dest is TSocketList then
+  begin
+    DestList := TSocketList(Dest);
+    DestList.FCapacity := FCapacity;
+    DestList.FCount := FCount;
+    DestList.FList := Copy(FList);
+  end
+  else
+    raise EConvertError.CreateResFmt(@SAssignError, [ClassName, Dest.ClassName]);
 end;
 
 function TSocketList.Add(const aSocketHandle: TSocketHandle; aLine: TncLine): Integer;
