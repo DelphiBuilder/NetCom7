@@ -28,7 +28,6 @@ type
     Splitter: TSplitter;
     btnMasterView: TButton;
     MultiView: TMultiView;
-    StyleBook: TStyleBook;
     lbUsers: TListBox;
     CameraComponent: TCameraComponent;
     procedure edtUsernameEnter(Sender: TObject);
