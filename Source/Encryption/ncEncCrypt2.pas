@@ -40,10 +40,8 @@ interface
 
       { Get the algorithm id }
       class function GetAlgorithm: string; virtual; abstract;
-      function GetAlgorithmProp: string;
       { Get the algorithm name }
       class function GetHashSize: integer; virtual; abstract;
-      function GetHashSizeProp: integer;
       { Get the size of the digest produced - in bits }
       class function SelfTest: boolean; virtual; abstract;
       function SelfTestProp: boolean;
@@ -67,8 +65,8 @@ interface
       destructor Destroy; override;
 
     published
-      property Algorithm: string read GetAlgorithmProp;
-      property HashSize: integer read GetHashSizeProp;
+      property Algorithm: string read GetAlgorithm;
+      property HashSize: integer read GetHashSize;
     end;
 
     TncEnc_hashclass = class of TncEnc_hash;
@@ -86,7 +84,6 @@ interface
 
       { Get the algorithm id }
       class function GetAlgorithm: string; virtual; abstract;
-      function GetAlgorithmProp: string;
       { Get the algorithm name }
       class function GetMaxKeySize: integer; virtual; abstract;
       function GetMaxKeySizeProp: integer;
@@ -116,8 +113,8 @@ interface
       destructor Destroy; override;
 
     published
-      property Algorithm: string read GetAlgorithmProp;
-      property MaxKeySize: integer read GetMaxKeySizeProp;
+      property Algorithm: string read GetAlgorithm;
+      property MaxKeySize: integer read GetMaxKeySize;
     end;
 
     TncEnc_cipherclass = class of TncEnc_cipher;
@@ -373,24 +370,9 @@ implementation
       Pbyte(longword(@InData1) + i - 1)^ := Pbyte(longword(@InData1) + i - 1)^ xor Pbyte(longword(@InData2) + i - 1)^;
   end;
 
-  function TncEnc_hash.GetAlgorithmProp: string;
-  begin
-    Result := GetAlgorithm;
-  end;
-
-  function TncEnc_hash.GetHashSizeProp: integer;
-  begin
-    Result := GetHashSize;
-  end;
-
   function TncEnc_hash.SelfTestProp: boolean;
   begin
     Result := SelfTest;
-  end;
-
-  function TncEnc_cipher.GetAlgorithmProp: string;
-  begin
-    Result := GetAlgorithm;
   end;
 
   function TncEnc_cipher.GetMaxKeySizeProp: integer;
