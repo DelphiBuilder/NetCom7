@@ -70,12 +70,12 @@ EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\
 [View1]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
-CursorX=45
-CursorY=196
-TopLine=191
+CursorX=1
+CursorY=74
+TopLine=67
 LeftCol=1
 Elisions=
-Bookmarks={1,82,1}
+Bookmarks={1,87,1}
 EditViewName=Borland.FormDesignerView
 
 [UndockedDesigner]
@@ -238,8 +238,8 @@ SplitPos=111
 
 [PropInspDesignerSelection]
 ArrangeBy=Name
-SelectedItem=Name,
-ExpandedItems=BorderIcons=0,Constraints=0,Anchors=0,"LiveBindings Designer=0",Caret=0
+SelectedItem=Name,OnPaint
+ExpandedItems=BorderIcons=0,Constraints=0,Anchors=0,"LiveBindings Designer=0",Caret=0,Fill=0,FormFactor=0,Padding=0,Border=0,SystemStatusBar=0,Touch=0
 
 [frmDesignPreview]
 PercentageSizes=1

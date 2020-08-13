@@ -41,9 +41,9 @@ type
       const aSenderComponent, aReceiverComponent: string): TArray<System.Byte>;
     procedure btnSendTextClick(Sender: TObject);
     procedure CameraComponentSampleBufferReady(Sender: TObject; const ATime: TMediaTime);
-    procedure FormShow(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormPaint(Sender: TObject; Canvas: TCanvas; const ARect: TRectF);
   private
     ConnectErrorMsg: string;
   public
@@ -66,8 +66,13 @@ begin
   Client.Active := False;
 end;
 
-procedure TfrmMain.FormShow(Sender: TObject);
+procedure TfrmMain.FormPaint(Sender: TObject; Canvas: TCanvas;
+  const ARect: TRectF);
 begin
+  // We set the camera on when the form has fully loaded, as in some phones,
+  // we may not get the permission to use the camera. In such a case, if we
+  // had enabled the camera at creation time, the application would terminate...
+  OnPaint := nil;
   CameraComponent.Active := True;
 end;
 
