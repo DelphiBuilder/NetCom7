@@ -76,7 +76,8 @@ This set of components can also deal with garbage data thrown at them, they have
 
 The effort a programmer has to make to use these components is minimal compared to other frameworks. Please refer to the demos for a better understanding on how to use these components.
 
-Written by Bill Anastasios Demos.
+Written by Bill Anastasios Demos. 
+Special thanks to Daniel Mauric, Tommi Prami, Roland Bengtsson for the extensive testing and suggestions. Thank you so much!
 
 VasDemos[at]yahoo[dot]co[dot]uk
 
