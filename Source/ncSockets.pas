@@ -166,13 +166,13 @@ type
     function GetReconnectInterval: Cardinal;
     procedure SetReconnectInterval(const Value: Cardinal);
   protected
-    ReadSocketHandles: TSocketHandleArray;
     WasConnected: Boolean;
     LastConnectAttempt: Int64;
     procedure DoActivate(aActivate: Boolean); override;
     procedure DataSocketConnected(aLine: TncLine);
     procedure DataSocketDisconnected(aLine: TncLine);
   public
+    ReadSocketHandles: TSocketHandleArray;
     Line: TncLine;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -209,6 +209,7 @@ type
   private
     FClientSocket: TncCustomTCPClient;
   public
+    ReadySocketsChanged: Boolean;
     constructor Create(aClientSocket: TncCustomTCPClient);
     procedure SocketWasReconnected;
     procedure SocketProcess; inline;
@@ -224,12 +225,12 @@ type
     function GetActive: Boolean; override;
   protected
     Listener: TncLine;
-    ReadSocketHandles: TSocketHandleArray;
     LinesToShutDown: array of TncLine;
     procedure DataSocketConnected(aLine: TncLine);
     procedure DataSocketDisconnected(aLine: TncLine);
     procedure DoActivate(aActivate: Boolean); override;
   public
+    ReadSocketHandles: TSocketHandleArray;
     Lines: TThreadLineList;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -259,9 +260,10 @@ type
   TncServerProcessor = class(TncReadyThread)
   private
     FServerSocket: TncCustomTCPServer;
-    ReadySockets: TSocketHandleArray;
     procedure CheckLinesToShutDown;
   public
+    ReadySockets: TSocketHandleArray;
+    ReadySocketsChanged: Boolean;
     constructor Create(aServerSocket: TncCustomTCPServer);
     procedure SocketProcess; inline;
     procedure ProcessEvent; override;
@@ -606,7 +608,13 @@ begin
     Exit;
 
   if aActivate then
-    TncLineInternal(Line).CreateClientHandle(FHost, FPort)
+  begin
+    TncLineInternal(Line).CreateClientHandle(FHost, FPort);
+    // if there were no exceptions, and line is still not active,
+    // that means the user has deactivated it in the OnConnect handler
+    if not Line.Active then
+      WasConnected := False;
+  end
   else
   begin
     WasConnected := False;
@@ -770,6 +778,7 @@ end;
 constructor TncClientProcessor.Create(aClientSocket: TncCustomTCPClient);
 begin
   FClientSocket := aClientSocket;
+  ReadySocketsChanged := False;
   inherited Create;
 end;
 
@@ -803,10 +812,17 @@ begin
       if FClientSocket.Line.Active then // Repeat reading socket until disconnected
       begin
         if ReadableAnySocket(FClientSocket.ReadSocketHandles, 250) then
+        begin
+          if ReadySocketsChanged then
+          begin
+            ReadySocketsChanged := False;
+            Continue;
+          end;
           if FClientSocket.EventsUseMainThread then
             Synchronize(SocketProcess) // for synchronize
           else
             SocketProcess;
+        end;
       end
       else
       // Is not Active, try reconnecting if was connected
@@ -912,27 +928,35 @@ begin
   else
   begin
     TncLineInternal(Listener).DestroyHandle;
-    DataSockets := Lines.LockList;
+    LineProcessor.WaitForReady;
+
+    DataSockets := Lines.LockListNoCopy;
     try
-{$HINTS OFF}
       for i := 0 to DataSockets.Count - 1 do
-      begin
+      try
         TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
         TncLineInternal(DataSockets.Lines[i]).Free;
+      except
       end;
       DataSockets.Clear;
     finally
-      Lines.UnlockList;
+      Lines.UnlockListNoCopy;
     end;
   end;
 end;
 
 procedure TncCustomTCPServer.ShutDownLine(aLine: TncLine);
+var
+  i: Integer;
 begin
   if UseReaderThread then
   begin
     ShutDownLock.Acquire;
     try
+      for i := 0 to High(LinesToShutDown) do
+        if LinesToShutDown[i] = aLine then
+          Exit;
+
       SetLength(LinesToShutDown, Length(LinesToShutDown) + 1);
       LinesToShutDown[High(LinesToShutDown)] := aLine;
     finally
@@ -1084,6 +1108,7 @@ end;
 constructor TncServerProcessor.Create(aServerSocket: TncCustomTCPServer);
 begin
   FServerSocket := aServerSocket;
+  ReadySocketsChanged := False;
   inherited Create;
 end;
 
@@ -1099,6 +1124,7 @@ begin
       try
         for i := 0 to High(FServerSocket.LinesToShutDown) do
           try
+            FServerSocket.Lines.Remove(FServerSocket.LinesToShutDown[i]);
             TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle;
             TncLineInternal(FServerSocket.LinesToShutDown[i]).Free;
           except
@@ -1129,6 +1155,11 @@ begin
       if ReadySockets[i] = FServerSocket.Listener.Handle then
       begin
         // New line is here, accept it and create a new TncLine object
+        if ReadySocketsChanged then
+        begin
+          ReadySocketsChanged := False;
+          Exit;
+        end;
         FServerSocket.Lines.Add(TncLineInternal(FServerSocket.Listener).AcceptLine);
 
         Delete(ReadySockets, i, 1);
@@ -1138,6 +1169,12 @@ begin
     except
     end;
     i := i + 1;
+  end;
+
+  if ReadySocketsChanged then
+  begin
+    ReadySocketsChanged := False;
+    Exit;
   end;
 
   // Check for new data
@@ -1160,6 +1197,11 @@ begin
       try
         if not Line.Active then
           Abort;
+        if ReadySocketsChanged then
+        begin
+          ReadySocketsChanged := False;
+          Exit;
+        end;
         BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
         if Assigned(FServerSocket.OnReadData) then
           FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
@@ -1167,6 +1209,12 @@ begin
         // Line has disconnected, destroy the line
         DataSockets.Delete(LineNdx);
         Line.Free;
+      end;
+
+      if ReadySocketsChanged then
+      begin
+        ReadySocketsChanged := False;
+        Exit;
       end;
     except
     end;

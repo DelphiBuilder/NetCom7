@@ -219,6 +219,7 @@ type
   private
     // To set the component active on loaded if was set at design time
     WasSetActive: Boolean;
+    WithinConnectionHandler: Boolean;
   protected
     PropertyLock: TCriticalSection;
     CommandHandlers: array of IncCommandHandler;
@@ -259,7 +260,8 @@ type
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
 
     // New properties for sources
-    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority default DefExecThreadPriority;
+    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority
+      default DefExecThreadPriority;
     property CommandProcessorThreads: Integer read GetCommandProcessorThreads write SetCommandProcessorThreads default DefExecThreads;
     property CommandProcessorThreadsPerCPU: Integer read GetCommandProcessorThreadsPerCPU write SetCommandProcessorThreadsPerCPU default DefExecThreadsPerCPU;
     property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto
@@ -371,6 +373,7 @@ begin
 
   Socket := nil;
   WasSetActive := False;
+  WithinConnectionHandler := False;
 
   // For encryption purposes this is not set to zero
   Randomize;
@@ -458,42 +461,60 @@ procedure TncSourceBase.SocketConnected(Sender: TObject; aLine: TncLine);
 var
   i: Integer;
 begin
-  if Assigned(OnConnected) then
-    try
-      OnConnected(Sender, aLine);
-    except
-    end;
+  WithinConnectionHandler := True;
+  try
+    if Assigned(OnConnected) then
+      try
+        OnConnected(Sender, aLine);
+      except
+      end;
 
-  for i := 0 to High(CommandHandlers) do
-    try
-      if Assigned(CommandHandlers[i].OnConnected) then
-        CommandHandlers[i].OnConnected(Sender, aLine);
-    except
-    end;
+    for i := 0 to High(CommandHandlers) do
+      try
+        if Assigned(CommandHandlers[i].OnConnected) then
+          CommandHandlers[i].OnConnected(Sender, aLine);
+      except
+      end;
+  finally
+    WithinConnectionHandler := False;
+  end;
 end;
 
 procedure TncSourceBase.SocketDisconnected(Sender: TObject; aLine: TncLine);
 var
   i: Integer;
 begin
-  if Assigned(FOnDisconnected) then
-    try
-      OnDisconnected(Sender, aLine);
-    except
-    end;
+  WithinConnectionHandler := True;
+  try
+    if Assigned(FOnDisconnected) then
+      try
+        OnDisconnected(Sender, aLine);
+      except
+      end;
 
-  for i := 0 to High(CommandHandlers) do
-    try
-      if Assigned(CommandHandlers[i].OnDisconnected) then
-        CommandHandlers[i].OnDisconnected(Sender, aLine);
-    except
-    end;
+    for i := 0 to High(CommandHandlers) do
+      try
+        if Assigned(CommandHandlers[i].OnDisconnected) then
+          CommandHandlers[i].OnDisconnected(Sender, aLine);
+      except
+      end;
+  finally
+    WithinConnectionHandler := False;
+  end;
 end;
 
 procedure TncSourceBase.SocketReconnected(Sender: TObject; aLine: TncLine);
 begin
-  if Assigned(TncClientSource(Self).OnReconnected) then
-    TncClientSource(Self).OnReconnected(Sender, aLine);
+  WithinConnectionHandler := True;
+  try
+    if Assigned(TncClientSource(Self).OnReconnected) then
+      try
+        TncClientSource(Self).OnReconnected(Sender, aLine);
+      except
+      end;
+  finally
+    WithinConnectionHandler := False;
+  end;
 end;
 
 procedure TncSourceBase.WriteMessage(aLine: TncSourceLine; const aBuf: TBytes);
@@ -538,7 +559,6 @@ var
   IDSent: TncCommandUniqueID;
   ReceivedResultEvent: TEvent;
   PendingNdx: Integer;
-
 begin
   PropertyLock.Acquire;
   try
@@ -588,10 +608,29 @@ begin
   try
     try
       aLine.LastReceived := TStopWatch.GetTimeStamp;
-      while ReceivedResultEvent.WaitFor(10) <> wrSignaled do
+      while ReceivedResultEvent.WaitFor(0) <> wrSignaled do
       begin
         if not aLine.Active then
           Abort;
+
+        // If we are withing an OnConnect/OnDisconnect/OnReconnect handler,
+        // the socket reading is paused, so we need to process it here
+        if WithinConnectionHandler then
+          if (Socket is TncTCPClient) then
+          begin
+            if ReadableAnySocket(TncTCPClient(Socket).ReadSocketHandles, ExecCommandTimeout) then
+            begin
+              TncClientProcessor(TncTCPClient(Socket).LineProcessor).SocketProcess;
+              TncClientProcessor(TncTCPClient(Socket).LineProcessor).ReadySocketsChanged := True;
+            end;
+          end
+          else
+          begin
+            TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets := Readable(TncTCPServer(Socket).ReadSocketHandles, ExecCommandTimeout);
+            if Length(TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets) > 0 then
+              TncServerProcessor(TncTCPServer(Socket).LineProcessor).SocketProcess;
+            TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySocketsChanged := True;
+          end;
 
         if TStopWatch.GetTimeStamp - aLine.LastReceived >= ExecCommandTimeout * TTimeSpan.TicksPerMillisecond then
           raise ENetComCommandExecutionTimeout.Create(ENetComCommandExecutionTimeoutMessage);
