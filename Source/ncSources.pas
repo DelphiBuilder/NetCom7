@@ -226,6 +226,7 @@ type
     UniqueSentID: TncCommandUniqueID;
     HandleCommandThreadPool: TncThreadPool;
     Socket: TncTCPBase;
+    ExecuteSerialiser: TCriticalSection;
 
     PendingCommandsList: TPendingCommandsList;
 
@@ -370,6 +371,7 @@ begin
   inherited Create(AOwner);
 
   PropertyLock := TCriticalSection.Create;
+  ExecuteSerialiser := TCriticalSection.Create;
 
   Socket := nil;
   WasSetActive := False;
@@ -402,9 +404,10 @@ end;
 
 destructor TncSourceBase.Destroy;
 begin
-  PropertyLock.Free;
-  PendingCommandsList.Free;
   HandleCommandThreadPool.Free;
+  PendingCommandsList.Free;
+  ExecuteSerialiser.Free;
+  PropertyLock.Free;
   inherited Destroy;
 end;
 
@@ -621,21 +624,28 @@ begin
         // If we are withing an OnConnect/OnDisconnect/OnReconnect handler,
         // the socket reading is paused, so we need to process it here
         if WithinConnectionHandler then
-          if (Socket is TncTCPClient) then
-          begin
-            if ReadableAnySocket(TncTCPClient(Socket).ReadSocketHandles, ExecCommandTimeout) then
+        begin
+          ExecuteSerialiser.Acquire;
+          try
+            if (Socket is TncTCPClient) then
             begin
-              TncClientProcessor(TncTCPClient(Socket).LineProcessor).SocketProcess;
-              TncClientProcessor(TncTCPClient(Socket).LineProcessor).ReadySocketsChanged := True;
+              if ReadableAnySocket(TncTCPClient(Socket).ReadSocketHandles, ExecCommandTimeout) then
+              begin
+                TncClientProcessor(TncTCPClient(Socket).LineProcessor).SocketProcess;
+                TncClientProcessor(TncTCPClient(Socket).LineProcessor).ReadySocketsChanged := True;
+              end;
+            end
+            else
+            begin
+              TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets := Readable(TncTCPServer(Socket).ReadSocketHandles, ExecCommandTimeout);
+              if Length(TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets) > 0 then
+                TncServerProcessor(TncTCPServer(Socket).LineProcessor).SocketProcess;
+              TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySocketsChanged := True;
             end;
-          end
-          else
-          begin
-            TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets := Readable(TncTCPServer(Socket).ReadSocketHandles, ExecCommandTimeout);
-            if Length(TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySockets) > 0 then
-              TncServerProcessor(TncTCPServer(Socket).LineProcessor).SocketProcess;
-            TncServerProcessor(TncTCPServer(Socket).LineProcessor).ReadySocketsChanged := True;
+          finally
+            ExecuteSerialiser.Release;
           end;
+        end;
 
         if TStopWatch.GetTimeStamp - aLine.LastReceived >= ExecCommandTimeout * TTimeSpan.TicksPerMillisecond then
           raise ENetComCommandExecutionTimeout.Create(ENetComCommandExecutionTimeoutMessage);
