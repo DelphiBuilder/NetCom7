@@ -25,6 +25,7 @@ object frmMain: TfrmMain
     Port = 17244
     CommandProcessorThreadsPerCPU = 2
     CommandProcessorThreadsGrowUpto = 20
+    ExecCommandTimeout = 2000
     EncryptionKey = 'SetEncryptionKey'
     OnConnected = ServerConnected
     OnDisconnected = ServerDisconnected

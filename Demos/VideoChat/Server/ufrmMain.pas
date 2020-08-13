@@ -5,8 +5,8 @@ interface
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
-  System.SyncObjs, ncSocketList, ncSources, CommonCommands,
-  FMX.Controls.Presentation, FMX.ScrollBox, FMX.Memo;
+  FMX.Controls.Presentation, FMX.ScrollBox, FMX.Memo,
+  System.SyncObjs, ncSocketList, ncSources, CommonCommands;
 
 type
   TConnectedUserData = class
@@ -102,9 +102,6 @@ begin
     ConnectedUsersLock.Release;
   end;
 
-  // WARNING: You cannot ExecCommand in this event and in OnConnected
-  // with aRequiresResult set to true while you have locked the lines list
-  // InformClientsOfLogins does not requre a result from ExecCommand
   InformClientsOfLogins(aLine);
 end;
 
@@ -116,13 +113,18 @@ var
   i: Integer;
 begin
   // Now inform all clients to update their user lists
-  SocketList := Server.Lines.LockList;
+  ConnectedUsersLock.Acquire;
   try
-    for i := 0 to SocketList.Count - 1 do
-      if SocketList.Lines[i] <> aDontSendToLine then
-        Server.ExecCommand(SocketList.Lines[i], cmdSrvUpdateLoggedInUsers, BytesOf(ConnectedUsers.CommaText), False);
+    SocketList := Server.Lines.LockList;
+    try
+      for i := 0 to SocketList.Count - 1 do
+        if SocketList.Lines[i] <> aDontSendToLine then
+          Server.ExecCommand(SocketList.Lines[i], cmdSrvUpdateLoggedInUsers, BytesOf(ConnectedUsers.CommaText), False);
+    finally
+      Server.Lines.UnlockList;
+    end;
   finally
-    Server.Lines.UnlockList;
+    ConnectedUsersLock.Release;
   end;
 end;
 
@@ -135,6 +137,8 @@ var
   DataToSend: TBytes;
   SocketList: TSocketList;
 begin
+  SetLength(Result, 0);
+
   case aCmd of
     cmdCntUserLogin:
       begin
@@ -155,12 +159,12 @@ begin
             UserData.Free;
             raise Exception.Create('Cannot login with this name, another user has already taken it');
           end;
-
-          // Inform all connected clients of the new data
-          InformClientsOfLogins;
         finally
           ConnectedUsersLock.Release;
         end;
+
+        // Inform all connected clients of the new data
+        InformClientsOfLogins;
       end;
     cmdCntCameraImage:
       begin
@@ -192,7 +196,6 @@ begin
               Break;
             end;
           end;
-
         finally
           ConnectedUsersLock.Release;
         end;
