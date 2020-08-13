@@ -141,9 +141,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileVersion=7.0.0.524;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileVersion=7.0.0.567;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <DCC_Description>NetCom7 Network Communications Suite</DCC_Description>
-        <VerInfo_Build>524</VerInfo_Build>
+        <VerInfo_Build>567</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_DebugInformation>0</DCC_DebugInformation>
@@ -208,6 +208,7 @@
         <DCCReference Include="Source\Encryption\ncEncTea.pas"/>
         <DCCReference Include="Source\Encryption\ncEncTiger.pas"/>
         <DCCReference Include="Source\Encryption\ncEncTwofish.pas"/>
+        <DCCReference Include="Source\ncPendingCommandsList.pas"/>
         <RcItem Include="PaletteIcons\TncIcon.bmp">
             <ResourceType>BITMAP</ResourceType>
             <ResourceId>TNCICON</ResourceId>

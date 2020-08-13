@@ -77,7 +77,8 @@ contains
   ncEncSha512 in 'Source\Encryption\ncEncSha512.pas',
   ncEncTea in 'Source\Encryption\ncEncTea.pas',
   ncEncTiger in 'Source\Encryption\ncEncTiger.pas',
-  ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas';
+  ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas',
+  ncPendingCommandsList in 'Source\ncPendingCommandsList.pas';
 
 end.
 
