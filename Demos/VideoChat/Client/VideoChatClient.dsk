@@ -1,36 +1,32 @@
 ﻿[Closed Files]
-File_0=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,1140,1,1158,0,0,,
-File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Temp\NetComTester\Client\ufrmMain.pas',0,1,1,57,7,0,0,,
-File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncThreads.pas',0,1,107,1,123,0,0,,
-File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Temp\NetComTester\Server\ufrmMain.pas',0,1,34,19,38,0,0,,
-File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas',0,1,104,25,106,0,0,,
-File_5=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\fmx\FMX.ScrollBox.pas',0,1,1479,17,1487,0,0,,
-File_6=TSourceModule,'C:\Users\Programmer\Documents\Development\Workspace\AnimationPrototype\ufrmMain.pas',0,1,79,6,87,0,0,,
-File_7=TSourceModule,'C:\Users\Programmer\Documents\Development\Projects\StarFieldSimulation\ufrmMain.pas',0,1,100,1,114,0,0,,{1
-File_8=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\common\System.UITypes.pas',0,1,88,15,109,0,0,,
+File_0=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\fmx\FMX.Graphics.pas',0,1,4137,1,4144,0,0,,
+File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas',0,1,1,3,10,0,0,,
+File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas',0,1,465,39,481,0,0,,
+File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',0,1,1155,3,1170,0,0,,
+File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,610,86,624,0,0,,
+File_5=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\fmx\FMX.Edit.pas',0,1,1362,1,1379,0,0,,
+File_6=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\SOURCE\RTL\SYS\System.SysUtils.pas',0,1,34069,1,34086,0,0,,
+File_7=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\win\Winapi.Winsock2.pas',0,1,3261,1,3276,0,0,,
+File_8=TSourceModule,'C:\Users\Programmer\Documents\Development\Temp\NetComTester\Client\ufrmMain.pas',0,1,1,57,7,0,0,,
+File_9=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncThreads.pas',0,1,107,1,123,0,0,,
 
 [Modules]
-Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
-Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dproj
-Module2=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas
-Count=3
+Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dproj
+Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
+Count=2
 EditWindowCount=1
-
-[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas]
-ModuleType=TSourceModule
 
 [C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dproj]
 ModuleType=TBaseProject
 
-[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas]
+[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas]
 ModuleType=TSourceModule
 
 [EditWindow0]
-ViewCount=3
-CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
+ViewCount=2
+CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dpr
 View0=0
 View1=1
-View2=2
 PercentageSizes=1
 Create=1
 Visible=1
@@ -49,13 +45,13 @@ BorlandEditorCodeExplorer=BorlandEditorCodeExplorer@EditWindow0
 TopPanelSize=0
 LeftPanelSize=1894
 LeftPanelClients=PropertyInspector,DockSite3
-LeftPanelData=000008000101000000008E120000000000000166070000000000000100000000530E000009000000446F636B53697465330100000000FC2000001100000050726F7065727479496E73706563746F72FFFFFFFF
+LeftPanelData=00000800010100000000CC0E0000000000000166070000000000000100000000530E000009000000446F636B536974653301000000004D1A00001100000050726F7065727479496E73706563746F72FFFFFFFF
 RightPanelSize=1525
 RightPanelClients=DockSite2,DockSite4
-RightPanelData=000008000101000000008E1200000000000001F50500000000000001000000004612000009000000446F636B53697465320100000000FC20000009000000446F636B5369746534FFFFFFFF
-BottomPanelSize=0
+RightPanelData=00000800010100000000CC0E00000000000001F50500000000000001000000004612000009000000446F636B536974653201000000004D1A000009000000446F636B5369746534FFFFFFFF
+BottomPanelSize=1622
 BottomPanelClients=DockSite1,MessageView
-BottomPanelData=0000080001020200000009000000446F636B53697465310F0000004D65737361676556696577466F726D1534000000000000022A06000000000000FFFFFFFF
+BottomPanelData=0000080001020100000009000000446F636B5369746531C0440000000000000256060000000000000100000000C04400000F0000004D65737361676556696577466F726DFFFFFFFF
 BottomMiddlePanelSize=0
 BottomMiddlePanelClients=DockSite0,GraphDrawingModel
 BottomMiddelPanelData=0000080001020200000009000000446F636B536974653010000000477261706844726177696E67566965779A1D00000000000002F206000000000000FFFFFFFF
@@ -63,8 +59,8 @@ BottomMiddelPanelData=0000080001020200000009000000446F636B5369746530100000004772
 [View0]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dpr
-CursorX=1
-CursorY=16
+CursorX=3
+CursorY=14
 TopLine=1
 LeftCol=1
 Elisions=
@@ -74,24 +70,13 @@ EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\
 [View1]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
-CursorX=15
-CursorY=114
-TopLine=171
+CursorX=1
+CursorY=206
+TopLine=193
 LeftCol=1
 Elisions=
-Bookmarks=
+Bookmarks={1,84,1}
 EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas
-
-[View2]
-CustomEditViewType=TEditView
-Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas
-CursorX=3
-CursorY=10
-TopLine=1
-LeftCol=1
-Elisions=
-Bookmarks=
-EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas
 
 [UndockedDesigner]
 Count=0
@@ -177,18 +162,18 @@ StayOnTop=0
 [MessageView]
 PercentageSizes=1
 Create=1
-Visible=0
+Visible=1
 Docked=1
 State=0
 Left=0
 Top=28
-Width=2769
-Height=1419
+Width=9900
+Height=1372
 MaxLeft=-1
 MaxTop=-1
-ClientWidth=2769
-ClientHeight=1419
-TBDockHeight=1419
+ClientWidth=9900
+ClientHeight=1372
+TBDockHeight=1372
 LRDockWidth=2769
 Dockable=1
 StayOnTop=0
@@ -202,11 +187,11 @@ State=0
 Left=0
 Top=0
 Width=1525
-Height=3616
+Height=1826
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1525
-ClientHeight=3616
+ClientHeight=1826
 TBDockHeight=7151
 LRDockWidth=2000
 Dockable=1
@@ -240,11 +225,11 @@ State=0
 Left=0
 Top=358
 Width=1894
-Height=4674
+Height=2884
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1894
-ClientHeight=4674
+ClientHeight=2884
 TBDockHeight=9012
 LRDockWidth=1894
 Dockable=1
@@ -276,7 +261,7 @@ Create=1
 Visible=0
 Docked=1
 State=0
-Left=-1335
+Left=-1348
 Top=185
 Width=275
 Height=360
@@ -763,11 +748,11 @@ State=0
 Left=0
 Top=449
 Width=1525
-Height=3616
+Height=1826
 MaxLeft=-1
 MaxTop=-1
 ClientWidth=1525
-ClientHeight=3616
+ClientHeight=1826
 TBDockHeight=9012
 LRDockWidth=1525
 Dockable=1

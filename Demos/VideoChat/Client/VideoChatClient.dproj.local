@@ -36,11 +36,11 @@
     <Transaction>2020/08/10 13:26:25.000.247,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/12 00:19:14.000.567,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/12 09:24:02.000.042,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/12 09:29:13.000.265,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/12 09:29:13.000.265,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.fmx=C:\Users\Programmer\Documents\Development\Projects\Unit3.fmx</Transaction>
-    <Transaction>2020/08/12 09:29:28.000.515,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dproj=C:\Users\Programmer\Documents\Development\Projects\Project1.dproj</Transaction>
+    <Transaction>2020/08/12 09:29:13.000.265,C:\Users\Programmer\Documents\Development\Projects\Unit3.fmx=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.fmx</Transaction>
+    <Transaction>2020/08/12 09:29:13.000.265,C:\Users\Programmer\Documents\Development\Projects\Unit3.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\ufrmMain.pas</Transaction>
+    <Transaction>2020/08/12 09:29:28.000.515,C:\Users\Programmer\Documents\Development\Projects\Project1.dproj=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\VideoChatClient.dproj</Transaction>
     <Transaction>2020/08/12 10:06:25.000.279,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\Unit1.pas</Transaction>
-    <Transaction>2020/08/12 10:06:52.000.317,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\Unit1.pas</Transaction>
+    <Transaction>2020/08/12 10:06:52.000.317,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Client\Unit1.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas</Transaction>
   </Transactions>
 	<ActiveMobileDevice>
 		<NoProfile iOSSimulator="iPhone5" Android64="Y5LFKVQGYTL7JRV4" Android="Y5LFKVQGYTL7JRV4"/>

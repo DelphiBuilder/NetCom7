@@ -43,10 +43,11 @@ type
     procedure btnSendTextClick(Sender: TObject);
     procedure CameraComponentSampleBufferReady(Sender: TObject; const ATime: TMediaTime);
     procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
-    { Private declarations }
+    ConnectErrorMsg: string;
   public
-    { Public declarations }
   end;
 
 var
@@ -55,6 +56,16 @@ var
 implementation
 
 {$R *.fmx}
+
+procedure TfrmMain.FormCreate(Sender: TObject);
+begin
+  //
+end;
+
+procedure TfrmMain.FormDestroy(Sender: TObject);
+begin
+  Client.Active := False;
+end;
 
 procedure TfrmMain.FormShow(Sender: TObject);
 begin
@@ -67,7 +78,23 @@ begin
     procedure
     begin
       btnConnect.Text := 'Disconnect';
+      if edtUsername.Text = '' then
+        edtUsername.Text := 'Anonymous'; // Although Eponymous
+      edtUsername.Enabled := False;
     end);
+
+  try
+    Client.ExecCommand(cmdCntUserLogin, BytesOf(edtUsername.Text), True);
+  except
+    on e: exception do
+    begin
+      // We do not want to show exceptions here, as this might be a reconnect
+      // attempt, we will show the exception only when the user presses the button
+      // in btnConnectClick
+      ConnectErrorMsg := e.Message;
+      Client.Active := False;
+    end;
+  end;
 end;
 
 procedure TfrmMain.ClientDisconnected(Sender: TObject; aLine: TncLine);
@@ -76,13 +103,30 @@ begin
     procedure
     begin
       btnConnect.Text := 'Connect';
+      edtUsername.Enabled := True;
       lbUsers.Clear;
     end);
+end;
+
+procedure TfrmMain.btnConnectClick(Sender: TObject);
+begin
+  if Client.Active then
+  begin
+    Client.Active := False;
+  end
+  else
+  begin
+    Client.Active := True;
+    if not Client.Active then
+      raise Exception.Create(ConnectErrorMsg);
+  end;
 end;
 
 function TfrmMain.ClientHandleCommand(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TArray<System.Byte>; aRequiresResult: Boolean;
 const aSenderComponent, aReceiverComponent: string): TArray<System.Byte>;
 begin
+  SetLength(Result, 0);
+
   TThread.Synchronize(nil,
 
     procedure
@@ -91,28 +135,28 @@ begin
       Username: string;
       BytesStream: TBytesStream;
       lbIndex: Integer;
-    PrevUser: string;
+      PrevUser: string;
     begin
       // This is called from the server to update information
       case aCmd of
         cmdSrvUpdateLoggedInUsers:
-        begin
-          // Save the user we are on
-          lbUsers.BeginUpdate;
-          try
-          if lbUsers.ItemIndex <> -1 then
-            PrevUser := lbUsers.Items.Strings[lbUsers.ItemIndex]
-          else
-            PrevUser := '';
+          begin
+            // Save the user we are on
+            lbUsers.BeginUpdate;
+            try
+              if lbUsers.ItemIndex <> -1 then
+                PrevUser := lbUsers.Items.Strings[lbUsers.ItemIndex]
+              else
+                PrevUser := '';
 
-          lbUsers.Items.CommaText := StringOf(aData);
+              lbUsers.Items.CommaText := StringOf(aData);
 
-          if PrevUser <> '' then
-            lbUsers.ItemIndex := lbUsers.Items.IndexOf(PrevUser);
-          finally
-            lbUsers.EndUpdate;
+              if PrevUser <> '' then
+                lbUsers.ItemIndex := lbUsers.Items.IndexOf(PrevUser);
+            finally
+              lbUsers.EndUpdate;
+            end;
           end;
-        end;
         cmdSrvUpdateImage:
           begin
             // Extract the #13#10 from the aData
@@ -137,37 +181,12 @@ begin
               end;
           end;
         cmdSrvGetText:
-        begin
-          memMessages.Lines.Add(StringOf(aData));
-          memMessages.ScrollBy(0, 100);
-        end;
+          begin
+            memMessages.Lines.Add(StringOf(aData));
+            memMessages.ScrollBy(0, 100);
+          end;
       end;
     end);
-end;
-
-procedure TfrmMain.btnConnectClick(Sender: TObject);
-begin
-  if Client.Active then
-  begin
-    Client.Active := False;
-    edtUsername.Enabled := True;
-  end
-  else
-  begin
-    if edtUsername.Text = '' then
-      edtUsername.Text := 'Anonymous'; // Although Eponymous
-
-    edtUsername.Enabled := False;
-    Client.Active := True;
-    try
-      Client.ExecCommand(cmdCntUserLogin, BytesOf(edtUsername.Text));
-    except
-      Client.Active := False;
-      edtUsername.Enabled := True;
-
-      raise; // reraise the exception so that user gets informed
-    end;
-  end;
 end;
 
 procedure TfrmMain.CameraComponentSampleBufferReady(Sender: TObject; const ATime: TMediaTime);
@@ -178,22 +197,28 @@ begin
   // Assign it first to our own imgUserVideo component
   CameraComponent.SampleBufferToBitmap(imgUserVideo.Bitmap, True);
 
-  // If we are logged in, send the picture to the server
-  if Client.Active then
-  begin
-    BytesStream := TBytesStream.Create;
-    try
-      imgUserVideo.Bitmap.SaveToStream(BytesStream);
-      Client.ExecCommand(cmdCntCameraImage, BytesStream.Bytes, False);
-    finally
-      BytesStream.Free;
+  // This try is because the CameraComponent OnSampleBufferReady cannot cope
+  // with thrown exceptions
+  try
+    if Client.Active then
+    begin
+      // If we are logged in, send the picture to the server
+      // (SaveToStream will save it as png format)
+      BytesStream := TBytesStream.Create;
+      try
+        imgUserVideo.Bitmap.SaveToStream(BytesStream);
+        Client.ExecCommand(cmdCntCameraImage, BytesStream.Bytes, False);
+      finally
+        BytesStream.Free;
+      end;
     end;
+  except
   end;
 end;
 
 procedure TfrmMain.btnSendTextClick(Sender: TObject);
 begin
-  Client.ExecCommand(cmdCntGetText, BytesOf(edtTextToSend.Text), False);
+  Client.ExecCommand(cmdCntGetText, BytesOf(edtUsername.Text + ': ' + edtTextToSend.Text), False);
   edtTextToSend.Text := '';
 end;
 
