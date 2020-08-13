@@ -924,12 +924,17 @@ begin
     Exit;
 
   if aActivate then
-    TncLineInternal(Listener).CreateServerHandle(FPort)
+  begin
+    TncLineInternal(Listener).CreateServerHandle(FPort);
+  end
   else
   begin
     TncLineInternal(Listener).DestroyHandle;
-    LineProcessor.WaitForReady;
 
+    // Delphi complains about the free that it does nothing except nil the variable
+    // That is under the mostly forgettable and thankgoodness "gotten rid off"
+    // ARC compilers...
+    {$HINTS OFF}
     DataSockets := Lines.LockListNoCopy;
     try
       for i := 0 to DataSockets.Count - 1 do
