@@ -559,6 +559,7 @@ var
   IDSent: TncCommandUniqueID;
   ReceivedResultEvent: TEvent;
   PendingNdx: Integer;
+  WaitForEventTimeout: Integer;
 begin
   PropertyLock.Acquire;
   try
@@ -608,7 +609,11 @@ begin
   try
     try
       aLine.LastReceived := TStopWatch.GetTimeStamp;
-      while ReceivedResultEvent.WaitFor(0) <> wrSignaled do
+      if WithinConnectionHandler then
+        WaitForEventTimeout := 0
+      else
+        WaitForEventTimeout := ExecCommandTimeout;
+      while ReceivedResultEvent.WaitFor(WaitForEventTimeout) <> wrSignaled do
       begin
         if not aLine.Active then
           Abort;
