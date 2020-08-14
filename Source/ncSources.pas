@@ -228,11 +228,16 @@ type
     Socket: TncTCPBase;
     ExecuteSerialiser: TCriticalSection;
 
+    LastConnectedLine, LastDisconnectedLine, LastReconnectedLine: TncLine;
+
     PendingCommandsList: TPendingCommandsList;
 
     procedure Loaded; override;
+    procedure CallConnectedEvents;
     procedure SocketConnected(Sender: TObject; aLine: TncLine);
+    procedure CallDisconnectedEvents;
     procedure SocketDisconnected(Sender: TObject; aLine: TncLine);
+    procedure CallReconnectedEvents;
     procedure SocketReconnected(Sender: TObject; aLine: TncLine);
     procedure SocketReadData(Sender: TObject; aLine: TncLine; const aBuf: TBytes; aBufCount: Integer);
     procedure WriteMessage(aLine: TncSourceLine; const aBuf: TBytes); virtual;
@@ -460,7 +465,7 @@ begin
     end
 end;
 
-procedure TncSourceBase.SocketConnected(Sender: TObject; aLine: TncLine);
+procedure TncSourceBase.CallConnectedEvents;
 var
   i: Integer;
 begin
@@ -468,14 +473,14 @@ begin
   try
     if Assigned(OnConnected) then
       try
-        OnConnected(Sender, aLine);
+        OnConnected(Self, LastConnectedLine);
       except
       end;
 
     for i := 0 to High(CommandHandlers) do
       try
         if Assigned(CommandHandlers[i].OnConnected) then
-          CommandHandlers[i].OnConnected(Sender, aLine);
+          CommandHandlers[i].OnConnected(Self, LastConnectedLine);
       except
       end;
   finally
@@ -483,7 +488,16 @@ begin
   end;
 end;
 
-procedure TncSourceBase.SocketDisconnected(Sender: TObject; aLine: TncLine);
+procedure TncSourceBase.SocketConnected(Sender: TObject; aLine: TncLine);
+begin
+  LastConnectedLine := aLine;
+  if EventsUseMainThread then
+    Self.Socket.LineProcessor.Synchronize(nil, CallConnectedEvents)
+  else
+    CallConnectedEvents;
+end;
+
+procedure TncSourceBase.CallDisconnectedEvents;
 var
   i: Integer;
 begin
@@ -491,14 +505,38 @@ begin
   try
     if Assigned(FOnDisconnected) then
       try
-        OnDisconnected(Sender, aLine);
+        OnDisconnected(Self, LastDisconnectedLine);
       except
       end;
 
     for i := 0 to High(CommandHandlers) do
       try
         if Assigned(CommandHandlers[i].OnDisconnected) then
-          CommandHandlers[i].OnDisconnected(Sender, aLine);
+          CommandHandlers[i].OnDisconnected(Self, LastDisconnectedLine);
+      except
+      end;
+  finally
+    WithinConnectionHandler := False;
+  end;
+
+end;
+
+procedure TncSourceBase.SocketDisconnected(Sender: TObject; aLine: TncLine);
+begin
+  LastDisconnectedLine := aLine;
+  if EventsUseMainThread then
+    Self.Socket.LineProcessor.Synchronize(nil, CallDisconnectedEvents)
+  else
+    CallDisconnectedEvents;
+end;
+
+procedure TncSourceBase.CallReconnectedEvents;
+begin
+  WithinConnectionHandler := True;
+  try
+    if Assigned(TncClientSource(Self).OnReconnected) then
+      try
+        TncClientSource(Self).OnReconnected(Self, LastReconnectedLine);
       except
       end;
   finally
@@ -508,16 +546,11 @@ end;
 
 procedure TncSourceBase.SocketReconnected(Sender: TObject; aLine: TncLine);
 begin
-  WithinConnectionHandler := True;
-  try
-    if Assigned(TncClientSource(Self).OnReconnected) then
-      try
-        TncClientSource(Self).OnReconnected(Sender, aLine);
-      except
-      end;
-  finally
-    WithinConnectionHandler := False;
-  end;
+  LastReconnectedLine := aLine;
+  if EventsUseMainThread then
+    Self.Socket.LineProcessor.Synchronize(nil, CallReconnectedEvents)
+  else
+    CallReconnectedEvents;
 end;
 
 procedure TncSourceBase.WriteMessage(aLine: TncSourceLine; const aBuf: TBytes);
