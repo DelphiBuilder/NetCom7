@@ -1003,7 +1003,6 @@ begin
   PropertyLock.Acquire;
   try
     FEventsUseMainThread := Value;
-    Socket.EventsUseMainThread := Value;
   finally
     PropertyLock.Release;
   end;
