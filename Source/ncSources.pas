@@ -492,7 +492,7 @@ procedure TncSourceBase.SocketConnected(Sender: TObject; aLine: TncLine);
 begin
   LastConnectedLine := aLine;
   if EventsUseMainThread then
-    Self.Socket.LineProcessor.Synchronize(nil, CallConnectedEvents)
+    Socket.LineProcessor.Synchronize(Socket.LineProcessor, CallConnectedEvents)
   else
     CallConnectedEvents;
 end;
@@ -525,7 +525,7 @@ procedure TncSourceBase.SocketDisconnected(Sender: TObject; aLine: TncLine);
 begin
   LastDisconnectedLine := aLine;
   if EventsUseMainThread then
-    Self.Socket.LineProcessor.Synchronize(nil, CallDisconnectedEvents)
+    Socket.LineProcessor.Synchronize(Socket.LineProcessor, CallDisconnectedEvents)
   else
     CallDisconnectedEvents;
 end;
@@ -548,7 +548,7 @@ procedure TncSourceBase.SocketReconnected(Sender: TObject; aLine: TncLine);
 begin
   LastReconnectedLine := aLine;
   if EventsUseMainThread then
-    Self.Socket.LineProcessor.Synchronize(nil, CallReconnectedEvents)
+    Socket.LineProcessor.Synchronize(Socket.LineProcessor, CallReconnectedEvents)
   else
     CallReconnectedEvents;
 end;
@@ -1271,6 +1271,7 @@ begin
   Socket := TncTCPClientSourceSocket.Create(nil);
   Socket.Port := DefPort;
   Socket.NoDelay := DefNoDelay;
+  Socket.EventsUseMainThread := False;
   Socket.OnConnected := SocketConnected;
   Socket.OnDisconnected := SocketDisconnected;
   Socket.OnReadData := SocketReadData;
@@ -1360,6 +1361,7 @@ begin
   Socket := TncTCPServerSourceSocket.Create(nil);
   Socket.NoDelay := DefNoDelay;
   Socket.Port := DefPort;
+  Socket.EventsUseMainThread := False;
   Socket.OnConnected := SocketConnected;
   Socket.OnDisconnected := SocketDisconnected;
   Socket.OnReadData := SocketReadData;
