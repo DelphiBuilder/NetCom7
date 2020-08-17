@@ -518,7 +518,6 @@ begin
   finally
     WithinConnectionHandler := False;
   end;
-
 end;
 
 procedure TncSourceBase.SocketDisconnected(Sender: TObject; aLine: TncLine);

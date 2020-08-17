@@ -934,15 +934,15 @@ begin
     // Delphi complains about the free that it does nothing except nil the variable
     // That is under the mostly forgettable and thankgoodness "gotten rid off"
     // ARC compilers...
-    {$HINTS OFF}
+{$HINTS OFF}
     DataSockets := Lines.LockListNoCopy;
     try
       for i := 0 to DataSockets.Count - 1 do
-      try
-        TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
-        TncLineInternal(DataSockets.Lines[i]).Free;
-      except
-      end;
+        try
+          TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
+          TncLineInternal(DataSockets.Lines[i]).Free;
+        except
+        end;
       DataSockets.Clear;
     finally
       Lines.UnlockListNoCopy;

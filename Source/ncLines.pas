@@ -32,7 +32,8 @@ uses
 {$IFDEF MSWINDOWS}
   Winapi.Windows, Winapi.Winsock2,
 {$ELSE}
-  Posix.SysTypes, Posix.SysSelect, Posix.SysSocket, Posix.NetDB, Posix.SysTime, Posix.Unistd, System.Net.Socket,
+  Posix.SysTypes, Posix.SysSelect, Posix.SysSocket, Posix.NetDB, Posix.SysTime,
+  Posix.Unistd, {Posix.ArpaInet,}
 {$ENDIF}
   System.SyncObjs,
   System.Math,
@@ -262,6 +263,7 @@ begin
 end;
 
 {$ENDIF}
+
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncLine }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
