@@ -1,6 +1,6 @@
 ﻿[Closed Files]
 File_0=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',0,1,889,1,891,0,0,,
-File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,1270,42,1296,0,0,,{1,239,1}
+File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,1270,42,1296,0,0,,{1
 File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas',0,1,104,64,117,0,0,,
 File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncCommandHandlers.pas',0,1,22,38,37,0,0,,
 File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncDBSrv.pas',0,1,121,71,132,0,0,,
@@ -11,20 +11,20 @@ File_8=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCo
 File_9=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\win\Winapi.Winsock2.pas',0,1,2670,10,2686,0,0,,
 
 [Modules]
-Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
-Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dproj
+Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dproj
+Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
 Count=2
 EditWindowCount=1
-
-[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas]
-ModuleType=TSourceModule
 
 [C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dproj]
 ModuleType=TBaseProject
 
+[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas]
+ModuleType=TSourceModule
+
 [EditWindow0]
 ViewCount=2
-CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
+CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dpr
 View0=0
 View1=1
 PercentageSizes=1
@@ -59,7 +59,7 @@ BottomMiddelPanelData=0000080001020200000009000000446F636B5369746530100000004772
 [View0]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dpr
-CursorX=39
+CursorX=3
 CursorY=12
 TopLine=1
 LeftCol=1
@@ -70,13 +70,13 @@ EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\
 [View1]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
-CursorX=1
-CursorY=134
-TopLine=121
+CursorX=9
+CursorY=45
+TopLine=29
 LeftCol=1
 Elisions=
 Bookmarks=
-EditViewName=Borland.FormDesignerView
+EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ufrmMain.pas
 
 [UndockedDesigner]
 Count=0
@@ -235,11 +235,6 @@ LRDockWidth=1894
 Dockable=1
 StayOnTop=0
 SplitPos=111
-
-[PropInspDesignerSelection]
-ArrangeBy=Name
-SelectedItem=Caption,
-ExpandedItems=Anchors=0,LiveBindings=0,"LiveBindings Designer=0",Margins=1,Padding=0,Size=0,StyledSettings=0,TextSettings=0,Border=0,BorderIcons=0,Fill=0,FormFactor=0
 
 [frmDesignPreview]
 PercentageSizes=1
@@ -490,8 +485,8 @@ Create=1
 Visible=0
 Docked=1
 State=0
-Left=-214
-Top=-259
+Left=-318
+Top=-363
 Width=1850
 Height=3140
 MaxLeft=-1

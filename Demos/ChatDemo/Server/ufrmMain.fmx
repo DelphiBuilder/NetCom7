@@ -7,7 +7,6 @@ object frmMain: TfrmMain
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
-  OnCreate = FormCreate
   OnDestroy = FormDestroy
   DesignerMasterStyle = 0
   object memLog: TMemo
@@ -25,12 +24,6 @@ object frmMain: TfrmMain
     TabOrder = 1
     Viewport.Width = 569.000000000000000000
     Viewport.Height = 285.000000000000000000
-  end
-  object tmrUpdateLog: TTimer
-    Interval = 1
-    OnTimer = tmrUpdateLogTimer
-    Left = 96
-    Top = 32
   end
   object ToolBar1: TToolBar
     Size.Width = 583.000000000000000000

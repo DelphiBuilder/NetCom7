@@ -12,13 +12,10 @@ type
   TfrmMain = class(TForm)
     Server: TncServerSource;
     memLog: TMemo;
-    tmrUpdateLog: TTimer;
     ToolBar1: TToolBar;
     btnActivateServer: TButton;
     btnShutDownClients: TButton;
-    procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure tmrUpdateLogTimer(Sender: TObject);
     function ServerHandleCommand(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TArray<System.Byte>; aRequiresResult: Boolean;
       const aSenderComponent, aReceiverComponent: string): TArray<System.Byte>;
     procedure ServerConnected(Sender: TObject; aLine: TncLine);
@@ -26,8 +23,6 @@ type
     procedure btnActivateServerClick(Sender: TObject);
     procedure btnShutDownClientsClick(Sender: TObject);
   private
-    LogLock: TCriticalSection;
-    LogLines, LogLinesCopy: TStringList;
   public
     procedure Log(aStr: string);
   end;
@@ -39,56 +34,20 @@ implementation
 
 {$R *.fmx}
 
-procedure TfrmMain.FormCreate(Sender: TObject);
-begin
-  LogLock := TCriticalSection.Create;
-  LogLines := TStringList.Create;
-  LogLinesCopy := TStringList.Create;
-end;
-
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   Server.Active := False;
-
-  LogLinesCopy.Free;
-  LogLines.Free;
-  LogLock.Free;
 end;
 
 procedure TfrmMain.Log(aStr: string);
 begin
   // This is thread safe
-  LogLock.Acquire;
-  try
-    LogLines.Add(aStr);
-  finally
-    LogLock.Release;
-  end;
-end;
-
-procedure TfrmMain.tmrUpdateLogTimer(Sender: TObject);
-var
-  i: Integer;
-begin
-  // Update the memLog from LogLines
-  LogLock.Acquire;
-  try
-    LogLinesCopy.Assign(LogLines);
-    LogLines.Clear;
-  finally
-    LogLock.Release;
-  end;
-
-  for i := 0 to LogLinesCopy.Count - 1 do
-  begin
-    memLog.Lines.Add(LogLinesCopy.Strings[i]);
-    memLog.SelStart := Length(memLog.Text);
-
-    // Clear the log if its too big
-    if memLog.Lines.Count > 10000 then
-      memLog.Lines.Clear;
-  end;
-  LogLinesCopy.Clear;
+  TThread.Queue(nil,
+    procedure
+    begin
+      memLog.Lines.Add(aStr);
+      memLog.ScrollBy(0, 100);
+    end);
 end;
 
 procedure TfrmMain.btnActivateServerClick(Sender: TObject);
@@ -120,7 +79,7 @@ begin
 end;
 
 function TfrmMain.ServerHandleCommand(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TArray<System.Byte>; aRequiresResult: Boolean;
-  const aSenderComponent, aReceiverComponent: string): TArray<System.Byte>;
+const aSenderComponent, aReceiverComponent: string): TArray<System.Byte>;
 var
   Clients: TSocketList;
   i: Integer;

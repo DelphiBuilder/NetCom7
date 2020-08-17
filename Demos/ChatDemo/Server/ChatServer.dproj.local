@@ -39,6 +39,6 @@
     <Transaction>2020/08/10 12:57:13.000.964,C:\Users\Programmer\Documents\Development\Projects\Project1.dproj=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Server\ChatServer.dproj</Transaction>
   </Transactions>
 	<ActiveMobileDevice>
-		<NoProfile iOSSimulator="iPhone5" Android="Y5LFKVQGYTL7JRV4" Android64="Y5LFKVQGYTL7JRV4"/>
+		<NoProfile iOSSimulator="iPhone5" Android="" Android64=""/>
 	</ActiveMobileDevice>
 </BorlandProject>
