@@ -1,29 +1,30 @@
 ﻿[Closed Files]
-File_0=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\fmx\FMX.ScrollBox.pas',0,1,1479,17,1487,0,0,,
-File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Workspace\AnimationPrototype\ufrmMain.pas',0,1,79,6,87,0,0,,
-File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Projects\StarFieldSimulation\ufrmMain.pas',0,1,100,1,114,0,0,,{1
-File_3=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\common\System.UITypes.pas',0,1,88,15,109,0,0,,
-File_4=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\ufrmMain.pas',0,1,145,1,1,0,0,,
-File_5=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\udmResources.pas',0,1,1,1,1,0,0,,
-File_6=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\udmMain.pas',0,1,46,1,1,0,0,,
-File_7=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\uComponents.pas',0,1,1,1,1,0,0,,
-File_8=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\u3DScene.pas',0,1,46,1,1,0,0,,
+File_0=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\common\System.Classes.pas',0,1,16018,1,16051,0,0,,
+File_1=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',0,1,629,1,644,0,0,,
+File_2=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSources.pas',0,1,475,35,489,0,0,,
+File_3=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncThreads.pas',0,1,17,29,33,0,0,,
+File_4=TSourceModule,'C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\Encryption\ncEncCast256.pas',0,1,401,1,417,0,0,,
+File_5=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\fmx\FMX.ScrollBox.pas',0,1,1479,17,1487,0,0,,
+File_6=TSourceModule,'C:\Users\Programmer\Documents\Development\Workspace\AnimationPrototype\ufrmMain.pas',0,1,79,6,87,0,0,,
+File_7=TSourceModule,'C:\Users\Programmer\Documents\Development\Projects\StarFieldSimulation\ufrmMain.pas',0,1,100,1,114,0,0,,{1
+File_8=TSourceModule,'c:\program files (x86)\embarcadero\studio\20.0\source\rtl\common\System.UITypes.pas',0,1,88,15,109,0,0,,
+File_9=TSourceModule,'E:\Users\Bill\Desktop\RAD Studio\Projects\Roulette\ufrmMain.pas',0,1,145,1,1,0,0,,
 
 [Modules]
-Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
-Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dproj
+Module0=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dproj
+Module1=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
 Count=2
 EditWindowCount=1
-
-[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas]
-ModuleType=TSourceModule
 
 [C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dproj]
 ModuleType=TBaseProject
 
+[C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas]
+ModuleType=TSourceModule
+
 [EditWindow0]
 ViewCount=2
-CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
+CurrentEditView=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dpr
 View0=0
 View1=1
 PercentageSizes=1
@@ -58,8 +59,8 @@ BottomMiddelPanelData=0000080001020200000009000000446F636B5369746530100000004772
 [View0]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ChatClient.dpr
-CursorX=11
-CursorY=13
+CursorX=3
+CursorY=12
 TopLine=1
 LeftCol=1
 Elisions=
@@ -69,13 +70,13 @@ EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\
 [View1]
 CustomEditViewType=TEditView
 Module=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
-CursorX=1
-CursorY=95
-TopLine=74
+CursorX=7
+CursorY=115
+TopLine=90
 LeftCol=1
 Elisions=
 Bookmarks=
-EditViewName=Borland.FormDesignerView
+EditViewName=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\ChatDemo\Client\ufrmMain.pas
 
 [UndockedDesigner]
 Count=0
@@ -105,7 +106,8 @@ Dockable=1
 StayOnTop=0
 
 [Breakpoints]
-Count=0
+Count=1
+Breakpoint0='C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSockets.pas',644,'',0,1,'',1,0,0,'',1,'','','',0,''
 
 [EmbarcaderoWin32Debugger_AddressBreakpoints]
 Count=0
@@ -234,11 +236,6 @@ LRDockWidth=1894
 Dockable=1
 StayOnTop=0
 SplitPos=111
-
-[PropInspDesignerSelection]
-ArrangeBy=Name
-SelectedItem=,
-ExpandedItems=Anchors=0,LiveBindings=0,"LiveBindings Designer=0",Margins=1,Padding=0,Size=0,StyledSettings=0,TextSettings=0
 
 [frmDesignPreview]
 PercentageSizes=1
@@ -489,8 +486,8 @@ Create=1
 Visible=0
 Docked=1
 State=0
-Left=-214
-Top=-259
+Left=-318
+Top=-363
 Width=1850
 Height=3140
 MaxLeft=-1
