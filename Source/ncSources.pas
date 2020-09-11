@@ -592,7 +592,7 @@ function TncSourceBase.ExecCommand(
 var
   Command: TncCommand;
   IDSent: TncCommandUniqueID;
-  ReceivedResultEvent: TEvent;
+  ReceivedResultEvent: TLightweightEvent;
   PendingNdx: Integer;
   WaitForEventTimeout: Integer;
 begin
@@ -618,7 +618,7 @@ begin
 
     if aRequiresResult and (not aAsyncExecute) then
     begin
-      ReceivedResultEvent := TEvent.Create;
+      ReceivedResultEvent := TLightweightEvent.Create;
       PendingNdx := PendingCommandsList.Add(IDSent, ReceivedResultEvent);
       try
         // Send command over to peer

@@ -17,7 +17,7 @@ uses System.Classes, System.SysUtils, System.RTLConsts, System.SyncObjs, ncComma
 type
   TPendingCommandItem = record
     FUniqueID: TncCommandUniqueID;
-    FReceivedResultEvent: TEvent;
+    FReceivedResultEvent: TLightweightEvent;
     FResult: TncCommand;
   end;
 
@@ -32,18 +32,18 @@ type
     FCount: Integer;
     FCapacity: Integer;
     function GetUniqueIDs(Index: Integer): TncCommandUniqueID; register;
-    function GetReceivedResultEvents(Index: Integer): TEvent; register;
-    procedure PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TEvent);
+    function GetReceivedResultEvents(Index: Integer): TLightweightEvent; register;
+    procedure PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TLightweightEvent);
     function GetResults(Index: Integer): TncCommand;
     procedure PutResults(Index: Integer; const aResult: TncCommand);
     procedure SetCapacity(aNewCapacity: Integer);
   protected
-    procedure Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent);
+    procedure Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TLightweightEvent);
     procedure Grow;
   public
     destructor Destroy; override;
 
-    function Add(const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent): Integer;
+    function Add(const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TLightweightEvent): Integer;
     procedure Clear;
     procedure Delete(aIndex: Integer); register;
     function Find(const aUniqueID: TncCommandUniqueID; var aIndex: Integer): Boolean; register;
@@ -51,7 +51,7 @@ type
 
     property Count: Integer read FCount;
     property UniqueIDs[index: Integer]: TncCommandUniqueID read GetUniqueIDs; default;
-    property ReceivedResultEvents[index: Integer]: TEvent read GetReceivedResultEvents write PutReceivedResultEvents;
+    property ReceivedResultEvents[index: Integer]: TLightweightEvent read GetReceivedResultEvents write PutReceivedResultEvents;
     property Results[index: Integer]: TncCommand read GetResults write PutResults;
   end;
 
@@ -69,7 +69,7 @@ begin
   SetCapacity(0);
 end;
 
-function TPendingCommandsList.Add(const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent): Integer;
+function TPendingCommandsList.Add(const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TLightweightEvent): Integer;
 begin
   if Find(aUniqueID, Result) then
     raise Exception.Create(SDuplicateUniqueID);
@@ -141,7 +141,7 @@ begin
     Result := -1;
 end;
 
-procedure TPendingCommandsList.Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TEvent);
+procedure TPendingCommandsList.Insert(aIndex: Integer; const aUniqueID: TncCommandUniqueID; aReceivedResultEvent: TLightweightEvent);
 begin
   if FCount = FCapacity then
     Grow;
@@ -162,14 +162,14 @@ begin
   Result := FList[index].FUniqueID;
 end;
 
-function TPendingCommandsList.GetReceivedResultEvents(Index: Integer): TEvent;
+function TPendingCommandsList.GetReceivedResultEvents(Index: Integer): TLightweightEvent;
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
   Result := FList[index].FReceivedResultEvent;
 end;
 
-procedure TPendingCommandsList.PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TEvent);
+procedure TPendingCommandsList.PutReceivedResultEvents(Index: Integer; aReceivedResultEvent: TLightweightEvent);
 begin
   if (index < 0) or (index >= FCount) then
     raise Exception.Create(Format(SListIndexError, [index]));
