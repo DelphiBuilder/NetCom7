@@ -78,10 +78,10 @@ type
 
       function ClientSide_ClientName(const AID: Integer): string;
   private // Common
-      function UnknownClientName: string;
+    function UnknownClientName: string;
 
-      function WrapDataMessage(const ABy: string; const AFor: string; const AIndex: Integer): AnsiString;
-      procedure UnwrapDataMessage(const ADataMessage: AnsiString; out AValid: Boolean; out ABy: string; out AFor: string; out AIndex: Integer);
+    function WrapDataMessage(const ABy: string; const AFor: string; const AIndex: Integer): AnsiString;
+    procedure UnwrapDataMessage(const ADataMessage: AnsiString; out AValid: Boolean; out ABy: string; out AFor: string; out AIndex: Integer);
   private // Log
     procedure Log(const AMessage: string);
 
