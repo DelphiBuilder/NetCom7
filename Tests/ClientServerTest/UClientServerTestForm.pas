@@ -353,6 +353,7 @@ begin
     FServer.OnReadData := HandleServerOnReadData;
     FServer.OnConnected := HandleServerOnConnected;
     FServer.OnDisconnected := HandleServerOnDisconnected;
+    FServer.EventsUseMainThread := True;
     FServer.Active := True;
 
     LogCreated(CServer);
@@ -379,6 +380,7 @@ begin
   begin
     var LClient: TClient := TClient.Create(nil);
     LClient.OnReadData := HandleClientOnReadData;
+    LClient.EventsUseMainThread := True;
     FClients.Add(LClient);
     LClient.Active := True;
 
