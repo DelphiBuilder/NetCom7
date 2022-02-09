@@ -179,14 +179,14 @@ begin
 
   if not LValid then
   begin
-    LMessage := LMessage + ' <<< CORRUPT >>> ';
+    LMessage := LMessage + ' <<< CORRUPT >>>';
   end else
   begin
     LValid := (LBy = ASource) and (LFor = ADestination);
 
     if not LValid then
     begin
-      LMessage := LMessage + ' <<< INVALID >>> ';
+      LMessage := LMessage + ' <<< INVALID >>>';
     end;
   end;
 
