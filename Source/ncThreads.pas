@@ -19,12 +19,24 @@ interface
 
 uses
 {$IFDEF MSWINDOWS}
-  WinApi.Windows, WinApi.ActiveX,
+  WinApi.Windows,
+  WinApi.ActiveX,
 {$ENDIF}
-  System.Classes, System.SyncObjs, System.SysUtils;
+  System.Classes,
+  System.SyncObjs,
+  System.SysUtils;
 
 type
-  TncThreadPriority = (ntpIdle, ntpLowest, ntpLower, ntpNormal, ntpHigher, ntpHighest, ntpTimeCritical);
+  TncThreadPriority =
+  (
+    ntpIdle,
+    ntpLowest,
+    ntpLower,
+    ntpNormal,
+    ntpHigher,
+    ntpHighest,
+    ntpTimeCritical
+  );
 
   // The thread waits for the wakeup event to start processing
   // after the its ready event is set.
@@ -32,14 +44,18 @@ type
   // again for the WakeUpEvent to be set.
   TncReadyThread = class(TThread)
   public
-    WakeupEvent, ReadyEvent: TEvent;
+    WakeupEvent: TEvent;
+    ReadyEvent: TEvent;
+
     constructor Create;
     destructor Destroy; override;
+
     procedure Execute; override;
     procedure ProcessEvent; virtual; abstract;
 
     function IsReady: Boolean;
     function WaitForReady(aTimeOut: Cardinal = Infinite): TWaitResult;
+
     procedure Run;
   end;
 
@@ -55,17 +71,21 @@ type
   TncThreadPool = class
   private
     FGrowUpto: Integer;
+
     function GetGrowUpto: Integer;
     procedure SetGrowUpto(const Value: Integer);
   private
     ThreadClass: TncReadyThreadClass;
-    procedure ShutDown;
+
+    procedure Shutdown;
   protected
     Threads: array of TncReadyThread;
   public
     Serialiser: TCriticalSection;
+
     constructor Create(aWorkerThreadClass: TncReadyThreadClass);
     destructor Destroy; override;
+
     function RequestReadyThread: TncReadyThread;
     procedure RunRequestedThread(aRequestedThread: TncReadyThread);
 
@@ -99,22 +119,28 @@ begin
   Result := 0;
   try
     GetSystemInfo(lpSystemInfo);
+
     for i := 0 to lpSystemInfo.dwNumberOfProcessors - 1 do
+    begin
       if lpSystemInfo.dwActiveProcessorMask or (1 shl i) <> 0 then
+      begin
         Result := Result + 1;
+      end;
+    end;
   finally
     if Result < 1 then
+    begin
       Result := 1;
+    end;
   end;
 end;
 {$ELSE}
-
 begin
   Result := TThread.ProcessorCount;
 end;
 {$ENDIF}
-{$IFDEF MSWINDOWS}
 
+{$IFDEF MSWINDOWS}
 function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): TThreadPriority;
 begin
   case ancThreadPriority of
@@ -155,7 +181,6 @@ begin
   end;
 end;
 {$ELSE}
-
 function FromNCThreadPriority(ancThreadPriority: TncThreadPriority): Integer;
 begin
   case ancThreadPriority of
@@ -196,6 +221,7 @@ begin
   end;
 end;
 {$ENDIF}
+
 // *****************************************************************************
 { TncReadyThread }
 // *****************************************************************************
@@ -204,13 +230,15 @@ constructor TncReadyThread.Create;
 begin
   WakeupEvent := TEvent.Create;
   ReadyEvent := TEvent.Create;
+
   inherited Create(False);
 end;
 
 destructor TncReadyThread.Destroy;
 begin
-  ReadyEvent.Free;
-  WakeupEvent.Free;
+  FreeAndNil(ReadyEvent);
+  FreeAndNil(WakeupEvent);
+
   inherited Destroy;
 end;
 
@@ -228,14 +256,22 @@ begin
       WakeupEvent.ResetEvent; // Next loop will wait again
 
       if Terminated then
-        Break; // Exit main loop
+      begin
+        Break; // ==> Exit main loop
+      end;
+      
       try
         ProcessEvent;
       except
+        // Ignore
       end;
+
       if Terminated then
-        Break; // Exit main loop
+      begin
+        Break; // ==> Exit main loop
+      end;
     end; // Exiting main loop terminates thread
+
     ReadyEvent.SetEvent;
   finally
 {$IFDEF MSWINDOWS}
@@ -266,6 +302,8 @@ end;
 
 constructor TncThreadPool.Create(aWorkerThreadClass: TncReadyThreadClass);
 begin
+  inherited Create;
+
   Serialiser := TCriticalSection.Create;
   ThreadClass := aWorkerThreadClass;
   FGrowUpto := 500; // can reach up to 500 threads by default
@@ -273,9 +311,10 @@ end;
 
 destructor TncThreadPool.Destroy;
 begin
-  ShutDown;
-  Serialiser.Free;
-  inherited;
+  Shutdown;
+  FreeAndNil(Serialiser);
+
+  inherited Destroy;
 end;
 
 function TncThreadPool.RequestReadyThread: TncReadyThread;
@@ -284,20 +323,23 @@ var
 begin
   // Keep repeating until a ready thread is found
   repeat
-    for i := 0 to High(Threads) do
+    for i := Low(Threads) to High(Threads) do
     begin
       if Threads[i].ReadyEvent.WaitFor(0) = wrSignaled then
       begin
         Threads[i].ReadyEvent.ResetEvent;
         Result := Threads[i];
-        Exit;
+
+        Exit; // ==>
       end;
     end;
+
     // We will get here if no threads were ready
-    if (Length(Threads) < FGrowUpto) then
+    if Length(Threads) < FGrowUpto then
     begin
       // Create a new thread to handle commands
       i := Length(Threads);
+
       SetLength(Threads, i + 1); // i now holds High(Threads)
       try
         Threads[i] := ThreadClass.Create;
@@ -306,18 +348,22 @@ begin
         // Set length back to what it was, and continue waiting until
         // any other thread is ready
         SetLength(Threads, i);
-        Continue;
+        Continue; // ==>
       end;
+      
       Threads[i].Priority := Threads[0].Priority;
+
       if Threads[i].ReadyEvent.WaitFor(1000) = wrSignaled then
       begin
         Threads[i].ReadyEvent.ResetEvent;
         Result := Threads[i];
-        Exit;
+
+        Exit; // ==>
       end;
-    end
-    else
-      TThread.Yield; // Was Sleep(1);
+    end else
+    begin
+      TThread.Yield;
+    end;
   until False;
 end;
 
@@ -336,61 +382,69 @@ begin
   if aThreadCount < Length(Threads) then
   begin
     for i := aThreadCount to High(Threads) do
-      try
-        Threads[i].Terminate;
-        Threads[i].WakeupEvent.SetEvent;
-      except
-      end;
-    for i := aThreadCount to high(Threads) do
-      try
-        Threads[i].WaitFor;
-        Threads[i].Free;
-      except
-      end;
+    try
+      Threads[i].Terminate;
+      Threads[i].WakeupEvent.SetEvent;
+    except
+      // Ignore
+    end;
+
+    for i := aThreadCount to High(Threads) do
+    try
+      Threads[i].WaitFor;
+      FreeAndNil(Threads[i]);
+    except
+      // Ignore
+    end;
   end;
 
   // Reallocate thread count
   SetLength(Threads, aThreadCount);
 
-  for i := 0 to high(Threads) do
+  for i := Low(Threads) to High(Threads) do
+  begin
     if Threads[i] = nil then
     begin
       Threads[i] := ThreadClass.Create;
       Threads[i].Priority := FromNCThreadPriority(aThreadPriority);
-    end
-    else
+    end else
+    begin
       Threads[i].Priority := FromNCThreadPriority(aThreadPriority);
+    end;
+  end;
 end;
 
 procedure TncThreadPool.SetThreadPriority(aPriority: TncThreadPriority);
 var
   i: Integer;
 begin
-  for i := 0 to high(Threads) do
-    try
-      Threads[i].Priority := FromNCThreadPriority(aPriority);
-    except
-      // Sone android devices do not like this
-    end;
+  for i := Low(Threads) to High(Threads) do
+  try
+    Threads[i].Priority := FromNCThreadPriority(aPriority);
+  except
+    // Sone android devices do not like this
+  end;
 end;
 
-procedure TncThreadPool.ShutDown;
+procedure TncThreadPool.Shutdown;
 var
   i: Integer;
 begin
-  for i := 0 to high(Threads) do
-    try
-      Threads[i].Terminate;
-      Threads[i].WakeupEvent.SetEvent;
-    except
-    end;
+  for i := Low(Threads) to High(Threads) do
+  try
+    Threads[i].Terminate;
+    Threads[i].WakeupEvent.SetEvent;
+  except
+    // Ignore
+  end;
 
-  for i := 0 to high(Threads) do
-    try
-      Threads[i].WaitFor;
-      Threads[i].Free;
-    except
-    end;
+  for i := Low(Threads) to High(Threads) do
+  try
+    Threads[i].WaitFor;
+    FreeAndNil(Threads[i]);
+  except
+    // Ignore
+  end;
 end;
 
 function TncThreadPool.GetGrowUpto: Integer;

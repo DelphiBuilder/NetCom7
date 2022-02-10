@@ -40,12 +40,21 @@ interface
 
 uses
 {$IFDEF MSWINDOWS}
-  Winapi.Windows, Winapi.Winsock2,
+  Winapi.Windows,
+  Winapi.Winsock2,
 {$ELSE}
-  Posix.SysSocket, Posix.Unistd,
+  Posix.SysSocket,
+  Posix.Unistd,
 {$ENDIF}
-  System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.Diagnostics, System.TimeSpan,
-  ncLines, ncSocketList, ncThreads;
+  System.Classes,
+  System.SysUtils,
+  System.SyncObjs,
+  System.Math,
+  System.Diagnostics,
+  System.TimeSpan,
+  ncLines,
+  ncSocketList,
+  ncThreads;
 
 const
   DefPort = 16233;
@@ -62,8 +71,7 @@ resourcestring
   ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set Port property whilst the connection is active';
   ECannotSetHostWhileConnectionIsActiveStr = 'Cannot set Host property whilst the connection is active';
   ECannotSetUseReaderThreadWhileActiveStr = 'Cannot set UseReaderThread property whilst the connection is active';
-  ECannotReceiveIfUseReaderThreadStr =
-    'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
+  ECannotReceiveIfUseReaderThreadStr = 'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
 
 type
   EPropertySetError = class(Exception);
@@ -84,11 +92,13 @@ type
     procedure Add(const Item: TncLine); inline;
     procedure Clear; inline;
     procedure Remove(Item: TncLine); inline;
+
     function LockListNoCopy: TSocketList;
     procedure UnlockListNoCopy;
   public
     constructor Create;
     destructor Destroy; override;
+
     function LockList: TSocketList;
     procedure UnlockList;
   end;
@@ -109,29 +119,39 @@ type
     FOnConnected: TncOnConnectDisconnect;
     FOnDisconnected: TncOnConnectDisconnect;
     FOnReadData: TncOnReadData;
+
     function GetActive: Boolean; virtual; abstract;
     procedure SetActive(const Value: Boolean);
+
     function GetPort: Integer;
     procedure SetPort(const Value: Integer);
+
     function GetReaderThreadPriority: TncThreadPriority;
     procedure SetReaderThreadPriority(const Value: TncThreadPriority);
+
     function GetEventsUseMainThread: Boolean;
     procedure SetEventsUseMainThread(const Value: Boolean);
+
     function GetNoDelay: Boolean;
     procedure SetNoDelay(const Value: Boolean);
+
     function GetKeepAlive: Boolean;
     procedure SetKeepAlive(const Value: Boolean);
   private
     FUseReaderThread: Boolean;
+
     procedure DoActivate(aActivate: Boolean); virtual; abstract;
     procedure SetUseReaderThread(const Value: Boolean);
   protected
-    PropertyLock, ShutDownLock: TCriticalSection;
+    PropertyLock: TCriticalSection;
+    ShutdownLock: TCriticalSection;
     ReadBuf: TBytes;
+
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
   public
     LineProcessor: TncReadyThread;
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
@@ -145,7 +165,6 @@ type
     property OnConnected: TncOnConnectDisconnect read FOnConnected write FOnConnected;
     property OnDisconnected: TncOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
     property OnReadData: TncOnReadData read FOnReadData write FOnReadData;
-  published
   end;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -158,30 +177,41 @@ type
     FReconnect: Boolean;
     FReconnectInterval: Cardinal;
     FOnReconnected: TncOnReconnected;
+
     function GetActive: Boolean; override;
+
     procedure SetHost(const Value: string);
     function GetHost: string;
+
     function GetReconnect: Boolean;
     procedure SetReconnect(const Value: Boolean);
+
     function GetReconnectInterval: Cardinal;
     procedure SetReconnectInterval(const Value: Cardinal);
   protected
     WasConnected: Boolean;
     LastConnectAttempt: Int64;
+
     procedure DoActivate(aActivate: Boolean); override;
+
     procedure DataSocketConnected(aLine: TncLine);
     procedure DataSocketDisconnected(aLine: TncLine);
   public
     ReadSocketHandles: TSocketHandleArray;
     Line: TncLine;
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    property Host: string read GetHost write SetHost;
+
     procedure Send(const aBuf; aBufSize: Integer); overload; inline;
     procedure Send(const aBytes: TBytes); overload; inline;
     procedure Send(const aStr: string); overload; inline;
+
     function Receive(aTimeout: Cardinal = 2000): TBytes; inline;
     function ReceiveRaw(var aBytes: TBytes): Integer; inline;
-    property Host: string read GetHost write SetHost;
+
     property Reconnect: Boolean read GetReconnect write SetReconnect default True;
     property ReconnectInterval: Cardinal read GetReconnectInterval write SetReconnectInterval default DefCntReconnectInterval;
     property OnReconnected: TncOnReconnected read FOnReconnected write FOnReconnected;
@@ -210,7 +240,9 @@ type
     FClientSocket: TncCustomTCPClient;
   public
     ReadySocketsChanged: Boolean;
+
     constructor Create(aClientSocket: TncCustomTCPClient);
+
     procedure SocketWasReconnected;
     procedure SocketProcess; inline;
     procedure ProcessEvent; override;
@@ -225,25 +257,29 @@ type
     function GetActive: Boolean; override;
   protected
     Listener: TncLine;
-    LinesToShutDown: array of TncLine;
+    LinesToShutdown: array of TncLine;
+
     procedure DataSocketConnected(aLine: TncLine);
     procedure DataSocketDisconnected(aLine: TncLine);
     procedure DoActivate(aActivate: Boolean); override;
   public
     ReadSocketHandles: TSocketHandleArray;
     Lines: TThreadLineList;
+
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure ShutDownLine(aLine: TncLine);
+
+    procedure ShutdownLine(aLine: TncLine);
+
     procedure Send(aLine: TncLine; const aBuf; aBufSize: Integer); overload; inline;
     procedure Send(aLine: TncLine; const aBytes: TBytes); overload; inline;
     procedure Send(aLine: TncLine; const aStr: string); overload; inline;
+
     function Receive(aLine: TncLine; aTimeout: Cardinal = 2000): TBytes; inline;
     function ReceiveRaw(aLine: TncLine; var aBytes: TBytes): Integer; inline;
   end;
 
   TncTCPServer = class(TncCustomTCPServer)
-  public
   published
     property Active;
     property Port;
@@ -260,11 +296,14 @@ type
   TncServerProcessor = class(TncReadyThread)
   private
     FServerSocket: TncCustomTCPServer;
-    procedure CheckLinesToShutDown;
+
+    procedure CheckLinesToShutdown;
   public
     ReadySockets: TSocketHandleArray;
     ReadySocketsChanged: Boolean;
+
     constructor Create(aServerSocket: TncCustomTCPServer);
+
     procedure SocketProcess; inline;
     procedure ProcessEvent; override;
   end;
@@ -287,6 +326,7 @@ implementation
 constructor TThreadLineList.Create;
 begin
   inherited Create;
+
   FLock := TCriticalSection.Create;
   FList := TSocketList.Create;
   FLockCount := 0;
@@ -294,13 +334,22 @@ end;
 
 destructor TThreadLineList.Destroy;
 begin
-  LockListNoCopy;
-  try
-    FList.Free;
+  if Assigned(FLock) then
+  begin
+    LockListNoCopy;
+    try
+      FreeAndNil(FList);
+
+      inherited Destroy;
+    finally
+      UnlockListNoCopy;
+      FreeAndNil(FLock);
+    end;
+  end else
+  begin
+    FreeAndNil(FList);
+
     inherited Destroy;
-  finally
-    UnlockListNoCopy;
-    FLock.Free;
   end;
 end;
 
@@ -356,8 +405,8 @@ begin
       FListCopy := TSocketList.Create;
       FListCopy.Assign(FList);
     end;
-    Result := FListCopy;
 
+    Result := FListCopy;
     FLockCount := FLockCount + 1;
   finally
     FLock.Release;
@@ -374,7 +423,9 @@ begin
     FLockCount := FLockCount - 1;
 
     if FLockCount = 0 then
-      FListCopy.Free;
+    begin
+      FreeAndNil(FListCopy);
+    end;
   finally
     FLock.Release;
   end;
@@ -389,7 +440,7 @@ begin
   inherited Create(AOwner);
 
   PropertyLock := TCriticalSection.Create;
-  ShutDownLock := TCriticalSection.Create;
+  ShutdownLock := TCriticalSection.Create;
 
   FInitActive := False;
   FPort := DefPort;
@@ -406,8 +457,9 @@ end;
 
 destructor TncTCPBase.Destroy;
 begin
-  ShutDownLock.Free;
-  PropertyLock.Free;
+  FreeAndNil(ShutdownLock);
+  FreeAndNil(PropertyLock);
+
   inherited Destroy;
 end;
 
@@ -416,7 +468,9 @@ begin
   inherited Loaded;
 
   if FInitActive then
+  begin
     DoActivate(True);
+  end;
 end;
 
 function TncTCPBase.CreateLineObject: TncLine;
@@ -428,8 +482,10 @@ procedure TncTCPBase.SetActive(const Value: Boolean);
 begin
   PropertyLock.Acquire;
   try
-    if not(csLoading in ComponentState) then
+    if not (csLoading in ComponentState) then
+    begin
       DoActivate(Value);
+    end;
 
     FInitActive := GetActive; // we only care here for the loaded event
   finally
@@ -449,9 +505,13 @@ end;
 
 procedure TncTCPBase.SetPort(const Value: Integer);
 begin
-  if not(csLoading in ComponentState) then
+  if not (csLoading in ComponentState) then
+  begin
     if Active then
+    begin
       raise EPropertySetError.Create(ECannotSetPortWhileConnectionIsActiveStr);
+    end;
+  end;
 
   PropertyLock.Acquire;
   try
@@ -507,9 +567,13 @@ end;
 
 procedure TncTCPBase.SetUseReaderThread(const Value: Boolean);
 begin
-  if not(csLoading in ComponentState) then
+  if not (csLoading in ComponentState) then
+  begin
     if Active then
+    begin
       raise EPropertySetError.Create(ECannotSetUseReaderThreadWhileActiveStr);
+    end;
+  end;
 
   PropertyLock.Acquire;
   try
@@ -590,14 +654,21 @@ end;
 
 destructor TncCustomTCPClient.Destroy;
 begin
-  Active := False;
+  if Assigned(PropertyLock) then
+  begin
+    Active := False; // Active protected by PropertyLock
+  end;
 
-  LineProcessor.Terminate;
-  LineProcessor.WakeupEvent.SetEvent;
-  LineProcessor.WaitFor;
-  LineProcessor.Free;
+  if Assigned(LineProcessor) then
+  begin
+    LineProcessor.Terminate;
+    LineProcessor.WakeupEvent.SetEvent;
+    LineProcessor.WaitFor;
 
-  Line.Free;
+    FreeAndNil(LineProcessor);
+  end;
+
+  FreeAndNil(Line);
 
   inherited Destroy;
 end;
@@ -605,17 +676,21 @@ end;
 procedure TncCustomTCPClient.DoActivate(aActivate: Boolean);
 begin
   if aActivate = GetActive then
-    Exit;
+  begin
+    Exit; // ==>
+  end;
 
   if aActivate then
   begin
     TncLineInternal(Line).CreateClientHandle(FHost, FPort);
     // if there were no exceptions, and line is still not active,
     // that means the user has deactivated it in the OnConnect handler
+
     if not Line.Active then
+    begin
       WasConnected := False;
-  end
-  else
+    end;
+  end else
   begin
     WasConnected := False;
     TncLineInternal(Line).DestroyHandle;
@@ -628,37 +703,43 @@ begin
   ReadSocketHandles[0] := Line.Handle;
 
   if NoDelay then
-    try
-      TncLineInternal(Line).EnableNoDelay;
-    except
-    end;
+  try
+    TncLineInternal(Line).EnableNoDelay;
+  except
+    // Ignore
+  end;
 
   if KeepAlive then
-    try
-      TncLineInternal(Line).EnableKeepAlive;
-    except
-    end;
+  try
+    TncLineInternal(Line).EnableKeepAlive;
+  except
+    // Ignore
+  end;
 
   if Assigned(OnConnected) then
-    try
-      OnConnected(Self, aLine);
-    except
-    end;
+  try
+    OnConnected(Self, aLine);
+  except
+    // Ignore
+  end;
 
   LastConnectAttempt := TStopWatch.GetTimeStamp;
   WasConnected := True;
 
   if UseReaderThread then
+  begin
     LineProcessor.Run; // Will just set events, this does not wait
+  end;
 end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
 begin
   if Assigned(OnDisconnected) then
-    try
-      OnDisconnected(Self, aLine);
-    except
-    end;
+  try
+    OnDisconnected(Self, aLine);
+  except
+    // Ignore
+  end;
 end;
 
 procedure TncCustomTCPClient.Send(const aBuf; aBufSize: Integer);
@@ -670,7 +751,9 @@ end;
 procedure TncCustomTCPClient.Send(const aBytes: TBytes);
 begin
   if Length(aBytes) > 0 then
+  begin
     Send(aBytes[0], Length(aBytes));
+  end;
 end;
 
 procedure TncCustomTCPClient.Send(const aStr: string);
@@ -683,14 +766,16 @@ var
   BufRead: Integer;
 begin
   if UseReaderThread then
+  begin
     raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
+  end;
 
   Active := True;
 
   if not ReadableAnySocket([Line.Handle], aTimeout) then
   begin
     SetLength(Result, 0);
-    Exit;
+    Exit; // ==>
   end;
 
   BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
@@ -719,9 +804,13 @@ end;
 
 procedure TncCustomTCPClient.SetHost(const Value: string);
 begin
-  if not(csLoading in ComponentState) then
+  if not (csLoading in ComponentState) then
+  begin
     if Active then
+    begin
       raise EPropertySetError.Create(ECannotSetHostWhileConnectionIsActiveStr);
+    end;
+  end;
 
   PropertyLock.Acquire;
   try
@@ -779,6 +868,7 @@ constructor TncClientProcessor.Create(aClientSocket: TncCustomTCPClient);
 begin
   FClientSocket := aClientSocket;
   ReadySocketsChanged := False;
+
   inherited Create;
 end;
 
@@ -787,19 +877,26 @@ var
   BufRead: Integer;
 begin
   BufRead := TncLineInternal(FClientSocket.Line).RecvBuffer(FClientSocket.ReadBuf[0], Length(FClientSocket.ReadBuf));
+
   if Assigned(FClientSocket.OnReadData) then
-    try
-      FClientSocket.OnReadData(FClientSocket, FClientSocket.Line, FClientSocket.ReadBuf, BufRead);
-    except
-    end;
+  try
+    FClientSocket.OnReadData(FClientSocket, FClientSocket.Line, FClientSocket.ReadBuf, BufRead);
+  except
+    // Ignore
+  end;
 end;
 
 procedure TncClientProcessor.SocketWasReconnected;
 begin
   if Assigned(FClientSocket.FOnReconnected) then
+  begin
     FClientSocket.FOnReconnected(FClientSocket, FClientSocket.Line);
+  end;
+
   if Assigned(FClientSocket.FOnConnected) then
+  begin
     FClientSocket.FOnConnected(FClientSocket, FClientSocket.Line);
+  end;
 end;
 
 procedure TncClientProcessor.ProcessEvent;
@@ -807,7 +904,7 @@ var
   PrevOnConnect: TncOnConnectDisconnect;
   WasReconnected: Boolean;
 begin
-  while (not Terminated) do // Repeat handling until terminated
+  while not Terminated do // Repeat handling until terminated
     try
       if FClientSocket.Line.Active then // Repeat reading socket until disconnected
       begin
@@ -816,57 +913,69 @@ begin
           if ReadySocketsChanged then
           begin
             ReadySocketsChanged := False;
-            Continue;
+            Continue; // ==>
           end;
-          if FClientSocket.EventsUseMainThread then
-            Synchronize(SocketProcess) // for synchronize
-          else
-            SocketProcess;
-        end;
-      end
-      else
-      // Is not Active, try reconnecting if was connected
-      begin
-        // Logic for reconnect mode
-        if FClientSocket.Reconnect and FClientSocket.WasConnected then
-        begin
-          // A minimal sleep time of 30 msec is required in Android before
-          // reattempting to connect on a recently deactivated network connection.
-          // We have put it to 60 for safety
-          Sleep(60);
-          if Terminated then
-            Break;
-          if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval * TTimeSpan.TicksPerMillisecond then
-          begin
-            FClientSocket.LastConnectAttempt := TStopWatch.GetTimeStamp;
 
-            WasReconnected := False;
-            FClientSocket.PropertyLock.Acquire;
-            try
-              if not FClientSocket.Active then
-              begin
-                PrevOnConnect := FClientSocket.OnConnected;
-                try
-                  // Disable firing the event in the wrong thread in case it gets connected
-                  FClientSocket.OnConnected := nil;
-                  FClientSocket.Active := True;
-                  WasReconnected := True;
-                finally
-                  FClientSocket.OnConnected := PrevOnConnect;
-                end;
-              end;
-            finally
-              FClientSocket.PropertyLock.Release;
-            end;
-            if WasReconnected then
-              if FClientSocket.EventsUseMainThread then
-                Synchronize(SocketWasReconnected)
-              else
-                SocketWasReconnected;
+          if FClientSocket.EventsUseMainThread then
+          begin
+            Synchronize(SocketProcess);
+          end else
+          begin
+            SocketProcess;
           end;
-        end
-        else
-          Exit;
+        end;
+      end else // Not Active, try reconnecting if was connected
+      begin
+        if not (FClientSocket.Reconnect and FClientSocket.WasConnected) then
+        begin
+          Exit; // ==>
+        end;
+
+        // A minimal sleep time of 30 msec is required in Android before
+        // reattempting to connect on a recently deactivated network connection.
+        // We have put it to 60 for safety
+        Sleep(60);
+
+        if Terminated then
+        begin
+          Break; // ==>
+        end;
+
+        if TStopWatch.GetTimeStamp - FClientSocket.LastConnectAttempt > FClientSocket.ReconnectInterval * TTimeSpan.TicksPerMillisecond then
+        begin
+          FClientSocket.LastConnectAttempt := TStopWatch.GetTimeStamp;
+
+          WasReconnected := False;
+          FClientSocket.PropertyLock.Acquire;
+
+          try
+            if not FClientSocket.Active then
+            begin
+              PrevOnConnect := FClientSocket.OnConnected;
+              try
+                // Disable firing the event in the wrong thread in case it gets connected
+                FClientSocket.OnConnected := nil;
+                FClientSocket.Active := True;
+                WasReconnected := True;
+              finally
+                FClientSocket.OnConnected := PrevOnConnect;
+              end;
+            end;
+          finally
+            FClientSocket.PropertyLock.Release;
+          end;
+
+          if WasReconnected then
+          begin
+            if FClientSocket.EventsUseMainThread then
+            begin
+              Synchronize(SocketWasReconnected);
+            end else
+            begin
+              SocketWasReconnected;
+            end;
+          end;
+        end;
       end;
     except
       // Something was disconnected, continue processing
@@ -886,6 +995,7 @@ begin
   TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
 
   Lines := TThreadLineList.Create;
+
   LineProcessor := TncServerProcessor.Create(Self);
   try
     LineProcessor.Priority := FromNcThreadPriority(DefReaderThreadPriority);
@@ -896,16 +1006,23 @@ end;
 
 destructor TncCustomTCPServer.Destroy;
 begin
-  // Will get Sockets.Lines disposed off
-  Active := False;
+  if Assigned(PropertyLock) then
+  begin
+    // Disposed of Sockets.Lines
+    Active := False; // Protected by PropertyLock
+  end;
 
-  LineProcessor.Terminate;
-  LineProcessor.WakeupEvent.SetEvent;
-  LineProcessor.WaitFor;
-  LineProcessor.Free;
+  if Assigned(LineProcessor) then
+  begin
+    LineProcessor.Terminate;
+    LineProcessor.WakeupEvent.SetEvent;
+    LineProcessor.WaitFor;
 
-  Lines.Free;
-  Listener.Free;
+    FreeAndNil(LineProcessor);
+  end;
+
+  FreeAndNil(Lines);
+  FreeAndNil(Listener);
 
   inherited Destroy;
 end;
@@ -921,13 +1038,14 @@ var
   i: Integer;
 begin
   if aActivate = GetActive then
-    Exit;
+  begin
+    Exit; // ==>
+  end;
 
   if aActivate then
   begin
     TncLineInternal(Listener).CreateServerHandle(FPort);
-  end
-  else
+  end else
   begin
     TncLineInternal(Listener).DestroyHandle;
 
@@ -938,11 +1056,13 @@ begin
     DataSockets := Lines.LockListNoCopy;
     try
       for i := 0 to DataSockets.Count - 1 do
-        try
-          TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
-          TncLineInternal(DataSockets.Lines[i]).Free;
-        except
-        end;
+      try
+        TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
+        FreeAndNil(DataSockets.Lines[i]);
+      except
+        // Ignore
+      end;
+
       DataSockets.Clear;
     finally
       Lines.UnlockListNoCopy;
@@ -950,28 +1070,31 @@ begin
   end;
 end;
 
-procedure TncCustomTCPServer.ShutDownLine(aLine: TncLine);
+procedure TncCustomTCPServer.ShutdownLine(aLine: TncLine);
 var
   i: Integer;
 begin
   if UseReaderThread then
   begin
-    ShutDownLock.Acquire;
+    ShutdownLock.Acquire;
     try
-      for i := 0 to High(LinesToShutDown) do
-        if LinesToShutDown[i] = aLine then
-          Exit;
+      for i := Low(LinesToShutdown) to High(LinesToShutdown) do
+      begin
+        if LinesToShutdown[i] = aLine then
+        begin
+          Exit; // ==>
+        end;
+      end;
 
-      SetLength(LinesToShutDown, Length(LinesToShutDown) + 1);
-      LinesToShutDown[High(LinesToShutDown)] := aLine;
+      SetLength(LinesToShutdown, Length(LinesToShutdown) + 1);
+      LinesToShutdown[High(LinesToShutdown)] := aLine;
     finally
-      ShutDownLock.Release;
+      ShutdownLock.Release;
     end;
-  end
-  else
+  end else
   begin
     Lines.Remove(aLine);
-    aLine.Free;
+    FreeAndNil(aLine);
   end;
 end;
 
@@ -981,34 +1104,37 @@ begin
   begin
     SetLength(ReadSocketHandles, 1);
     ReadSocketHandles[0] := Listener.Handle;
+
     if UseReaderThread then
     begin
       LineProcessor.WaitForReady;
       LineProcessor.Run;
     end;
-  end
-  else
+  end else
   begin
     SetLength(ReadSocketHandles, Length(ReadSocketHandles) + 1);
     ReadSocketHandles[High(ReadSocketHandles)] := aLine.Handle;
 
     if NoDelay then
-      try
-        TncLineInternal(aLine).EnableNoDelay;
-      except
-      end;
+    try
+      TncLineInternal(aLine).EnableNoDelay;
+    except
+      // Ignore
+    end;
 
     if KeepAlive then
-      try
-        TncLineInternal(aLine).EnableKeepAlive;
-      except
-      end;
+    try
+      TncLineInternal(aLine).EnableKeepAlive;
+    except
+      // Ignore
+    end;
 
     if Assigned(OnConnected) then
-      try
-        OnConnected(Self, aLine);
-      except
-      end;
+    try
+      OnConnected(Self, aLine);
+    except
+      // Ignore
+    end;
   end;
 end;
 
@@ -1017,22 +1143,27 @@ var
   i: Integer;
 begin
   if aLine = Listener then
-    SetLength(ReadSocketHandles, 0)
-  else
+  begin
+    SetLength(ReadSocketHandles, 0);
+  end else
   begin
     if Assigned(OnDisconnected) then
-      try
-        OnDisconnected(Self, aLine);
-      except
-      end;
+    try
+      OnDisconnected(Self, aLine);
+    except
+      // ==>
+    end;
 
-    for i := 0 to High(ReadSocketHandles) do
+    for i := Low(ReadSocketHandles) to High(ReadSocketHandles) do
+    begin
       if ReadSocketHandles[i] = aLine.Handle then
       begin
         ReadSocketHandles[i] := ReadSocketHandles[High(ReadSocketHandles)];
         SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
-        Break;
+
+        Break; // ==>
       end;
+    end;
   end;
 end;
 
@@ -1044,7 +1175,9 @@ end;
 procedure TncCustomTCPServer.Send(aLine: TncLine; const aBytes: TBytes);
 begin
   if Length(aBytes) > 0 then
+  begin
     Send(aLine, aBytes[0], Length(aBytes));
+  end;
 end;
 
 procedure TncCustomTCPServer.Send(aLine: TncLine; const aStr: string);
@@ -1054,47 +1187,62 @@ end;
 
 function TncCustomTCPServer.Receive(aLine: TncLine; aTimeout: Cardinal): TBytes;
 var
-  i, BufRead, LineNdx: Integer;
+  i: Integer;
+  BufRead: Integer;
+  LineNdx: Integer;
   DataSockets: TSocketList;
   Line: TncLine;
   ReadySockets: TSocketHandleArray;
 begin
   if UseReaderThread then
+  begin
     raise ECannotReceiveIfUseReaderThread.Create(ECannotReceiveIfUseReaderThreadStr);
+  end;
 
   SetLength(Result, 0);
   ReadySockets := Readable(ReadSocketHandles, aTimeout);
 
-  for i := 0 to High(ReadySockets) do
-    try
-      if ReadySockets[i] = Listener.Handle then
-        // New line is here, accept it and create a new TncLine object
-        Lines.Add(TncLineInternal(Listener).AcceptLine);
-    except
+  for i := Low(ReadySockets) to High(ReadySockets) do
+  try
+    if ReadySockets[i] = Listener.Handle then
+    begin
+      // New line is here, accept it and create a new TncLine object
+      Lines.Add(TncLineInternal(Listener).AcceptLine);
     end;
+  except
+    // ==>
+  end;
 
   DataSockets := Lines.LockListNoCopy;
   try
-    for i := 0 to High(ReadySockets) do
+    for i := Low(ReadySockets) to High(ReadySockets) do
       try
         if aLine.Handle = ReadySockets[i] then
         begin
           LineNdx := DataSockets.IndexOf(ReadySockets[i]);
+
           if LineNdx = -1 then
-            Continue;
+          begin
+            Continue; // ==>
+          end;
+
           Line := DataSockets.Lines[LineNdx];
           try
             if not Line.Active then
-              Abort;
+            begin
+              Abort; // ==>
+            end;
+
             BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
             Result := Copy(ReadBuf, 0, BufRead);
           except
             // Line has disconnected, destroy the line
             DataSockets.Delete(LineNdx);
-            Line.Free;
+            FreeAndNil(Line);
           end;
         end;
       except
+        // ==>
       end;
   finally
     Lines.UnlockListNoCopy;
@@ -1114,38 +1262,44 @@ constructor TncServerProcessor.Create(aServerSocket: TncCustomTCPServer);
 begin
   FServerSocket := aServerSocket;
   ReadySocketsChanged := False;
+
   inherited Create;
 end;
 
-procedure TncServerProcessor.CheckLinesToShutDown;
+procedure TncServerProcessor.CheckLinesToShutdown;
 var
   i: Integer;
 begin
   // The list may be locked from custom code executed in the OnReadData handler
   // So we will not delete anything, or lock the list, until this lock is freed
   if FServerSocket.Lines.FLock.TryEnter then
+  try
+    FServerSocket.ShutdownLock.Acquire;
     try
-      FServerSocket.ShutDownLock.Acquire;
+      for i := Low(FServerSocket.LinesToShutdown) to High(FServerSocket.LinesToShutdown) do
       try
-        for i := 0 to High(FServerSocket.LinesToShutDown) do
-          try
-            FServerSocket.Lines.Remove(FServerSocket.LinesToShutDown[i]);
-            TncLineInternal(FServerSocket.LinesToShutDown[i]).DestroyHandle;
-            TncLineInternal(FServerSocket.LinesToShutDown[i]).Free;
-          except
-          end;
-        SetLength(FServerSocket.LinesToShutDown, 0);
-      finally
-        FServerSocket.ShutDownLock.Release;
+        FServerSocket.Lines.Remove(FServerSocket.LinesToShutdown[i]);
+        TncLineInternal(FServerSocket.LinesToShutdown[i]).DestroyHandle;
+        FreeAndNil(FServerSocket.LinesToShutdown[i]);
+      except
+        // ==>
       end;
+
+      SetLength(FServerSocket.LinesToShutdown, 0);
     finally
-      FServerSocket.Lines.FLock.Leave;
+      FServerSocket.ShutdownLock.Release;
     end;
+  finally
+    FServerSocket.Lines.FLock.Leave;
+  end;
 end;
 
 procedure TncServerProcessor.SocketProcess;
 var
-  i, LineNdx, BufRead, ReadySocketsHigh: Integer;
+  i: Integer;
+  LineNdx: Integer;
+  BufRead: Integer;
+  ReadySocketsHigh: Integer;
   DataSockets: TSocketList;
   Line: TncLine;
   j: Integer;
@@ -1154,6 +1308,7 @@ begin
 
   // First accept new lines
   i := 0;
+
   while i <= ReadySocketsHigh do
   begin
     try
@@ -1163,8 +1318,9 @@ begin
         if ReadySocketsChanged then
         begin
           ReadySocketsChanged := False;
-          Exit;
+          Exit; // ==>
         end;
+
         FServerSocket.Lines.Add(TncLineInternal(FServerSocket.Listener).AcceptLine);
 
         Delete(ReadySockets, i, 1);
@@ -1172,77 +1328,99 @@ begin
         i := i - 1;
       end;
     except
+      // ==>
     end;
+
     i := i + 1;
   end;
 
   if ReadySocketsChanged then
   begin
     ReadySocketsChanged := False;
-    Exit;
+    Exit; // ==>
   end;
 
   // Check for new data
   DataSockets := FServerSocket.Lines.FList;
+
   for i := 0 to ReadySocketsHigh do
-    try
-      LineNdx := DataSockets.IndexOf(ReadySockets[i]);
-      if LineNdx = -1 then
+  try
+    LineNdx := DataSockets.IndexOf(ReadySockets[i]);
+
+    if LineNdx = -1 then
+    begin
+      for j := Low(FServerSocket.ReadSocketHandles) to High(FServerSocket.ReadSocketHandles) do
       begin
-        for j := 0 to High(FServerSocket.ReadSocketHandles) do
-          if FServerSocket.ReadSocketHandles[j] = ReadySockets[i] then
-          begin
-            FServerSocket.ReadSocketHandles[j] := FServerSocket.ReadSocketHandles[High(FServerSocket.ReadSocketHandles)];
-            SetLength(FServerSocket.ReadSocketHandles, Length(FServerSocket.ReadSocketHandles) - 1);
-            Break;
-          end;
-        Continue;
-      end;
-      Line := DataSockets.Lines[LineNdx];
-      try
-        if not Line.Active then
-          Abort;
-        if ReadySocketsChanged then
+        if FServerSocket.ReadSocketHandles[j] = ReadySockets[i] then
         begin
-          ReadySocketsChanged := False;
-          Exit;
+          FServerSocket.ReadSocketHandles[j] := FServerSocket.ReadSocketHandles[High(FServerSocket.ReadSocketHandles)];
+          SetLength(FServerSocket.ReadSocketHandles, Length(FServerSocket.ReadSocketHandles) - 1);
+
+          Break; // ==>
         end;
-        BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
-        if Assigned(FServerSocket.OnReadData) then
-          FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
-      except
-        // Line has disconnected, destroy the line
-        DataSockets.Delete(LineNdx);
-        Line.Free;
+      end;
+
+      Continue; // ==>
+    end;
+
+    Line := DataSockets.Lines[LineNdx];
+    try
+      if not Line.Active then
+      begin
+        Abort; // ==>
       end;
 
       if ReadySocketsChanged then
       begin
         ReadySocketsChanged := False;
-        Exit;
+        Exit; // ==>
+      end;
+
+      BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
+
+      if Assigned(FServerSocket.OnReadData) then
+      begin
+        FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
       end;
     except
+      // Line has disconnected, destroy the line
+      DataSockets.Delete(LineNdx);
+      FreeAndNil(Line);
     end;
+
+    if ReadySocketsChanged then
+    begin
+      ReadySocketsChanged := False;
+      Exit; // ==>
+    end;
+  except
+    // Ignore
+  end;
 end;
 
 procedure TncServerProcessor.ProcessEvent;
 begin
   if FServerSocket.EventsUseMainThread then
+  begin
     while FServerSocket.Listener.Active and (not Terminated) do
-      try
-        ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
-        Synchronize(SocketProcess);
-        CheckLinesToShutDown;
-      except
-      end
-  else
+    try
+      ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
+      Synchronize(SocketProcess);
+      CheckLinesToShutdown;
+    except
+      // Ignore
+    end;
+  end else
+  begin
     while FServerSocket.Listener.Active and (not Terminated) do
-      try
-        ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
-        SocketProcess;
-        CheckLinesToShutDown;
-      except
-      end;
+    try
+      ReadySockets := Readable(FServerSocket.ReadSocketHandles, 500);
+      SocketProcess;
+      CheckLinesToShutdown;
+    except
+      // Ignore
+    end;
+  end;
 end;
 
 end.
