@@ -2,8 +2,8 @@ object ClientServerTestForm: TClientServerTestForm
   Left = 0
   Top = 0
   Caption = 'Client/Server Test'
-  ClientHeight = 350
-  ClientWidth = 757
+  ClientHeight = 352
+  ClientWidth = 855
   Color = clBtnFace
   Constraints.MinHeight = 389
   Constraints.MinWidth = 773
@@ -15,111 +15,134 @@ object ClientServerTestForm: TClientServerTestForm
   OldCreateOrder = False
   Position = poScreenCenter
   DesignSize = (
-    757
-    350)
+    855
+    352)
   PixelsPerInch = 96
   TextHeight = 13
-  object pnlDivider0: TBevel
-    Left = 94
+  object pnlDivider1: TBevel
+    Left = 193
     Top = 8
     Width = 1
     Height = 25
     Shape = bsLeftLine
   end
-  object pnlDivider1: TBevel
-    Left = 438
+  object pnlDivider2: TBevel
+    Left = 537
     Top = 8
     Width = 4
     Height = 25
     Shape = bsLeftLine
   end
-  object pnlDivider2: TBevel
-    Left = 663
+  object pnlDivider3: TBevel
+    Left = 762
     Top = 8
     Width = 4
+    Height = 25
+    Shape = bsLeftLine
+  end
+  object pnlDivider0: TBevel
+    Left = 100
+    Top = 8
+    Width = 1
     Height = 25
     Shape = bsLeftLine
   end
   object edtLog: TMemo
     Left = 8
     Top = 39
-    Width = 741
-    Height = 303
+    Width = 839
+    Height = 305
     Anchors = [akLeft, akTop, akRight, akBottom]
     ScrollBars = ssBoth
-    TabOrder = 8
+    TabOrder = 10
   end
   object btnToggleServer: TButton
-    Left = 8
+    Left = 107
     Top = 8
     Width = 80
     Height = 25
     Caption = 'Toggle server'
-    TabOrder = 0
+    TabOrder = 2
     OnClick = btnToggleServerClick
   end
   object btnAddClients: TButton
-    Left = 161
+    Left = 260
     Top = 8
     Width = 80
     Height = 25
     Caption = 'Add clients'
-    TabOrder = 2
+    TabOrder = 4
     OnClick = btnAddClientsClick
   end
   object btnDeleteClients: TButton
-    Left = 245
+    Left = 344
     Top = 8
     Width = 80
     Height = 25
     Caption = 'Delete clients'
-    TabOrder = 3
+    TabOrder = 5
     OnClick = btnDeleteClientsClick
   end
   object bntSendToClients: TButton
-    Left = 444
+    Left = 543
     Top = 8
     Width = 104
     Height = 25
     Caption = 'Send to clients'
-    TabOrder = 5
+    TabOrder = 7
     OnClick = bntSendToClientsClick
   end
   object btnSendFromClients: TButton
-    Left = 553
+    Left = 652
     Top = 8
     Width = 104
     Height = 25
     Caption = 'Send from clients'
-    TabOrder = 6
+    TabOrder = 8
     OnClick = btnSendFromClientsClick
   end
   object edtClientCount: TSpinEdit
-    Left = 102
+    Left = 201
     Top = 9
     Width = 54
-    Height = 23
+    Height = 22
     MaxValue = 4096
     MinValue = 1
-    TabOrder = 1
+    TabOrder = 3
     Value = 1
   end
   object btnDeleteAllClients: TButton
-    Left = 329
+    Left = 428
     Top = 8
     Width = 104
     Height = 25
     Caption = 'Delete all clients'
-    TabOrder = 4
+    TabOrder = 6
     OnClick = btnDeleteClientsClick
   end
   object btnReset: TButton
-    Left = 669
+    Left = 768
     Top = 8
     Width = 80
     Height = 25
     Caption = 'Reset'
-    TabOrder = 7
+    TabOrder = 9
     OnClick = btnResetClick
+  end
+  object edtSocketTypeTCP: TRadioButton
+    Left = 8
+    Top = 11
+    Width = 40
+    Height = 17
+    Caption = 'TCP'
+    TabOrder = 0
+  end
+  object edtSocketTypeUDP: TRadioButton
+    Left = 54
+    Top = 11
+    Width = 40
+    Height = 17
+    Caption = 'UDP'
+    TabOrder = 1
   end
 end
