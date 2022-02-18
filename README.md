@@ -1,13 +1,12 @@
 # NetCom7
 The fastest communications possible.
 
-This is version 7.2 of the NetCom package. In this version, the NetCom package is now multi-platform! 
+This is version 7.3, an unoffical version by Andreas Toth (andreas.toth[at]xtra[dot]co[dot]nz), of the NetCom package with added UDP and IPv6 support. In this version, the NetCom package is now multi-platform! 
 You can compile your apps under all platforms in FireMonkey!
 
-This set of components is the fastest possible implementation of socket communications, in any language; this is an extremely optimised code on TCP/IP sockets. Forget using a thread per connection: With this suite you can have as many concurrent connections to your server as you like. Threads are used per request and not per connection, and are maintained in a very fast thread pool class.
+This set of components is the fastest possible implementation of socket communications, in any language; this is an extremely optimised code on TCP/IP and now UDP sockets. Forget using a thread per connection: With this suite you can have as many concurrent connections to your server as you like. Threads are used per request and not per connection, and are maintained in a very fast thread pool class.
 
-The implementation begins with TncTCPServer and TncTCPClient which implements the basic socket communications.
-You can use TncTCPClient and TncTCPServer if all you want is to implement standard (but very fast) socket comms.
+The implementation begins with TncTCPServer or TncUDPServer and TncTCPClient or TncUDPClient which implements the basic socket communications. You can use TncTCPClient/TncUDPClient and TncTCPServer/TncUDPServer if all you want is to implement standard (but very fast) socket comms.
 
 On top of the TCP/IP sockets, a lightweight protocol is implemented to be able to pack and unpack buffers (simple TCP/IP is streaming and has no notion of a well defined buffer). The set of components implementing this functionality is TncServerSource and TncClientSource. Both of these components implement an ExecCommand (aCmd, aData) which triggers an OnHandleCommand event on the other side (a client can ExecCommand to a server, or a server can ExecCommand to any client). ExecCommand can be blocking or non-blocking (async) depending on how you set its aRequiresResult parameter. If you use the blocking behaviour, the component still handles incoming requests from its peer(s). For example, a ClientSource could be waiting on an ExecCommand to the server, but while waiting it can serve ExecCommand requests from the server!
 
@@ -76,8 +75,14 @@ This set of components can also deal with garbage data thrown at them, they have
 
 The effort a programmer has to make to use these components is minimal compared to other frameworks. Please refer to the demos for a better understanding on how to use these components.
 
-Written by Bill Anastasios Demos. 
+Written by Bill Anastasios Demos.
+UDP and IPv6 support added Feb 14, 2022 by Andreas Toth (andreas.toth[at]xtra[dot]co[dot]nz).
 Special thanks to Daniel Mauric, Tommi Prami, Roland Bengtsson for the extensive testing and suggestions. Thank you so much!
+
+WARNINGS
+ - Only tested under Windows 10
+ - UDP broadcast not tested
+ - IPv6 support not tested
 
 VasDemos[at]yahoo[dot]co[dot]uk
 

@@ -25,6 +25,9 @@ unit ncSources;
 // These components have built in encryption and compression, set by the
 // corresponding properties.
 //
+// 14 Feb 2022 by Andreas Toth - andreas.toth@xtra.co.nz
+// - Added UDP and IPv6 support
+//
 // 12/8/2020
 // - Complete re-engineering of the base component
 //
@@ -46,16 +49,36 @@ interface
 
 uses
 {$IFDEF MSWINDOWS}
-  Winapi.Windows, Winapi.Winsock2,
+  Winapi.Windows,
+  Winapi.Winsock2,
 {$ELSE}
-  Posix.SysSocket, Posix.Unistd,
+  Posix.SysSocket,
+  Posix.Unistd,
 {$ENDIF}
-  System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.ZLib,
-  System.Diagnostics, System.TimeSpan, System.RTLConsts, System.Types,
-  ncCommandPacking, ncLines, ncSocketList, ncThreads, ncSockets, ncPendingCommandsList, ncCompression, ncEncryption;
+  System.Classes,
+  System.SysUtils,
+  System.SyncObjs,
+  System.Math,
+  System.ZLib,
+  System.Diagnostics,
+  System.TimeSpan,
+  System.RTLConsts,
+  System.Types,
+  ncCommandPacking,
+  ncLines,
+  ncSocketList,
+  ncThreads,
+  ncSockets,
+  ncPendingCommandsList,
+  ncCompression,
+  ncEncryption;
 
 type
-  TncCommandDirection = (cdIncoming, cdOutgoing);
+  TncCommandDirection =
+  (
+    cdIncoming,
+    cdOutgoing
+  );
 
   ENetComInvalidCommandHandler = class(Exception);
   ENetComCommandExecutionTimeout = class(Exception);
@@ -107,29 +130,10 @@ type
     constructor Create; overload; override;
   end;
 
-  TncOnSourceConnectDisconnect = procedure(
-
-    Sender: TObject; aLine: TncLine) of object;
-
-  TncOnSourceReconnected = procedure(
-
-    Sender: TObject; aLine: TncLine) of object;
-
-  TncOnSourceHandleCommand = function(
-
-    Sender: TObject; aLine: TncLine;
-
-    aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean;
-
-    const aSenderComponent, aReceiverComponent: string): TBytes of object;
-
-  TncOnAsyncExecCommandResult = procedure(
-
-    Sender: TObject;
-
-    aLine: TncLine; aCmd: Integer; const aResult: TBytes; aResultIsError: Boolean;
-
-    const aSenderComponent, aReceiverComponent: string) of object;
+  TncOnSourceConnectDisconnect = procedure(Sender: TObject; aLine: TncLine) of object;
+  TncOnSourceReconnected = procedure(Sender: TObject; aLine: TncLine) of object;
+  TncOnSourceHandleCommand = function(Sender: TObject; aLine: TncLine; aCmd: Integer; const aData: TBytes; aRequiresResult: Boolean; const aSenderComponent, aReceiverComponent: string): TBytes of object;
+  TncOnAsyncExecCommandResult = procedure(Sender: TObject; aLine: TncLine; aCmd: Integer; const aResult: TBytes; aResultIsError: Boolean; const aSenderComponent, aReceiverComponent: string) of object;
 
   IncCommandHandler = interface
     ['{22337701-9561-489A-8593-82EAA3B1B431}']
@@ -225,10 +229,12 @@ type
     CommandHandlers: array of IncCommandHandler;
     UniqueSentID: TncCommandUniqueID;
     HandleCommandThreadPool: TncThreadPool;
-    Socket: TncTCPBase;
+    Socket: TncCustomSocket;
     ExecuteSerialiser: TCriticalSection;
 
-    LastConnectedLine, LastDisconnectedLine, LastReconnectedLine: TncLine;
+    LastConnectedLine: TncLine;
+    LastDisconnectedLine: TncLine;
+    LastReconnectedLine: TncLine;
 
     PendingCommandsList: TPendingCommandsList;
 
@@ -247,13 +253,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ExecCommand(
-
-      aLine: TncLine; const aCmd: Integer; const aData: TBytes = nil;
-
-      const aRequiresResult: Boolean = True; const aAsyncExecute: Boolean = False;
-
-      const aPeerComponentHandler: string = ''; const aSourceComponentHandler: string = ''): TBytes; overload; virtual;
+    function ExecCommand(aLine: TncLine; const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; const aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''; const aSourceComponentHandler: string = ''): TBytes; overload; virtual;
 
     procedure AddCommandHandler(aHandler: TComponent);
     procedure RemoveCommandHandler(aHandler: TComponent);
@@ -266,12 +266,10 @@ type
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
 
     // New properties for sources
-    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority
-      default DefExecThreadPriority;
+    property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority default DefExecThreadPriority;
     property CommandProcessorThreads: Integer read GetCommandProcessorThreads write SetCommandProcessorThreads default DefExecThreads;
     property CommandProcessorThreadsPerCPU: Integer read GetCommandProcessorThreadsPerCPU write SetCommandProcessorThreadsPerCPU default DefExecThreadsPerCPU;
-    property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto
-      default DefExecThreadsGrowUpto;
+    property CommandProcessorThreadsGrowUpto: Integer read GetCommandProcessorThreadsGrowUpto write SetCommandProcessorThreadsGrowUpto default DefExecThreadsGrowUpto;
     property ExecCommandTimeout: Cardinal read GetExecCommandTimeout write SetExecCommandTimeout default DefExecCommandTimeout;
     property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
     property Compression: TncCompressionLevel read GetCompression write SetCompression default DefCompression;
@@ -296,6 +294,7 @@ type
     Line: TncSourceLine;
     Command: TncCommand;
     CommandHandler: IncCommandHandler;
+
     procedure CallOnAsyncEvents;
     procedure CallOnHandleEvents;
     procedure ProcessEvent; override;
@@ -320,13 +319,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function ExecCommand(
-
-      const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True;
-
-      const aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = '';
-
-      const aSourceComponentHandler: string = ''): TBytes; overload; virtual;
+    function ExecCommand(const aCmd: Integer; const aData: TBytes = nil; const aRequiresResult: Boolean = True; const aAsyncExecute: Boolean = False; const aPeerComponentHandler: string = ''; const aSourceComponentHandler: string = ''): TBytes; overload; virtual;
 
     property Line: TncLine read GetLine;
   published
