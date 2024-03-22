@@ -17,11 +17,11 @@ uses
 type
   TncEnc_customice = class(TncEnc_blockcipher64)
   protected
-    rounds: dword;
-    ik_keysched: array [0 .. 31, 0 .. 2] of dword;
-    function f(p, sk: dword): dword;
-    procedure key_sched_build(kb: pwordarray; n: dword; keyrot: pdwordarray);
-    procedure InitIce(const Key; Size: longword; n: dword);
+    rounds: UInt32;
+    ik_keysched: array [0 .. 31, 0 .. 2] of UInt32;
+    function f(const p, sk: UInt32): UInt32;
+    procedure key_sched_build(kb: pwordarray; n: UInt32; keyrot: PUInt32Array);
+    procedure InitIce(const Key; Size: longword; n: UInt32);
   public
     procedure Burn; override;
     procedure EncryptECB(const InData; var OutData); override;
@@ -63,43 +63,39 @@ implementation
 uses ncEncryption;
 
 var
-  ice_sbox: array [0 .. 3, 0 .. 1023] of dword;
+  ice_sbox: array [0 .. 3, 0 .. 1023] of UInt32;
   ice_sboxdone: boolean;
 
 const
-  ice_smod: array [0 .. 3, 0 .. 3] of dword = ((333, 313, 505, 369), (379, 375, 319, 391), (361, 445, 451, 397), (397, 425, 395, 505));
-  ice_sxor: array [0 .. 3, 0 .. 3] of dword = (($83, $85, $9B, $CD), ($CC, $A7, $AD, $41), ($4B, $2E, $D4, $33), ($EA, $CB, $2E, $04));
-  ice_keyrot: array [0 .. 15] of dword = (0, 1, 2, 3, 2, 1, 3, 0, 1, 3, 2, 0, 3, 1, 0, 2);
-  ice_pbox: array [0 .. 31] of dword = ($00000001, $00000080, $00000400, $00002000, $00080000, $00200000, $01000000, $40000000, $00000008, $00000020, $00000100,
-    $00004000, $00010000, $00800000, $04000000, $20000000, $00000004, $00000010, $00000200, $00008000, $00020000, $00400000, $08000000, $10000000, $00000002,
+  ice_smod: array [0 .. 3, 0 .. 3] of UInt32 = ((333, 313, 505, 369), (379, 375, 319, 391), (361, 445, 451, 397), (397, 425, 395, 505));
+  ice_sxor: array [0 .. 3, 0 .. 3] of UInt32 = (($83, $85, $9B, $CD), ($CC, $A7, $AD, $41), ($4B, $2E, $D4, $33), ($EA, $CB, $2E, $04));
+  ice_keyrot: array [0 .. 15] of UInt32 = (0, 1, 2, 3, 2, 1, 3, 0, 1, 3, 2, 0, 3, 1, 0, 2);
+  ice_pbox: array [0 .. 31] of UInt32 = ($00000001, $00000080, $00000400, $00002000, $00080000, $00200000, $01000000, $40000000, $00000008, $00000020, $00000100, $00004000, $00010000, $00800000, $04000000, $20000000, $00000004, $00000010, $00000200, $00008000, $00020000, $00400000, $08000000, $10000000, $00000002,
     $00000040, $00000800, $00001000, $00040000, $00100000, $02000000, $80000000);
 
-function SwapDword(a: dword): dword;
+function SwapUInt32(const a: UInt32): UInt32; inline;
 begin
   Result := ((a and $FF) shl 24) or ((a and $FF00) shl 8) or ((a and $FF0000) shr 8) or ((a and $FF000000) shr 24);
 end;
 
 { ****************************************************************************** }
-function gf_mult(a, b, m: dword): dword;
-var
-  res: dword;
+function gf_mult(a, b, m: UInt32): UInt32; inline;
 begin
-  res := 0;
+  Result := 0;
   while b <> 0 do
   begin
     if (b and 1) <> 0 then
-      res := res xor a;
+      Result := Result xor a;
     a := a shl 1;
     b := b shr 1;
     if a >= 256 then
       a := a xor m;
   end;
-  Result := res;
 end;
 
-function gf_exp7(b, m: dword): dword;
+function gf_exp7(const b, m: UInt32): UInt32; inline;
 var
-  x: dword;
+  x: UInt32;
 begin
   if b = 0 then
     Result := 0
@@ -112,10 +108,10 @@ begin
   end;
 end;
 
-function ice_perm32(x: dword): dword;
+function ice_perm32(x: UInt32): UInt32; inline;
 var
-  res: dword;
-  pbox: pdword;
+  res: UInt32;
+  pbox: PUInt32;
 begin
   res := 0;
   pbox := @ice_pbox;
@@ -131,8 +127,8 @@ end;
 
 procedure ice_sboxes_init;
 var
-  i, col, row: dword;
-  x: dword;
+  i, col, row: UInt32;
+  x: UInt32;
 begin
   for i := 0 to 1023 do
   begin
@@ -149,9 +145,9 @@ begin
   end;
 end;
 
-function TncEnc_customice.f(p, sk: dword): dword;
+function TncEnc_customice.f(const p, sk: UInt32): UInt32;
 var
-  tl, tr, al, ar: dword;
+  tl, tr, al, ar: UInt32;
 begin
   tl := ((p shr 16) and $3FF) or (((p shr 14) or (p shl 18)) and $FFC00);
   tr := (p and $3FF) or ((p shl 2) and $FFC00);
@@ -163,13 +159,13 @@ begin
   Result := ice_sbox[0, al shr 10] or ice_sbox[1, al and $3FF] or ice_sbox[2, ar shr 10] or ice_sbox[3, ar and $3FF];
 end;
 
-procedure TncEnc_customice.key_sched_build(kb: pwordarray; n: dword; keyrot: pdwordarray);
+procedure TncEnc_customice.key_sched_build(kb: pwordarray; n: UInt32; keyrot: PUInt32Array);
 var
-  i, j, k, kr: dword;
-  keys: pdwordarray;
-  currentsk: pdword;
-  currentkb: pword;
-  bit: dword;
+  i, j, k, kr: UInt32;
+  keys: PUInt32Array;
+  currentsk: PUInt32;
+  currentkb: PUInt32;
+  bit: UInt32;
 begin
   for i := 0 to 7 do
   begin
@@ -191,9 +187,9 @@ begin
   end;
 end;
 
-procedure TncEnc_customice.InitIce(const Key; Size: longword; n: dword);
+procedure TncEnc_customice.InitIce(const Key; Size: longword; n: UInt32);
 var
-  i, j: dword;
+  i, j: UInt32;
   kb: array [0 .. 3] of word;
   keyb: array [0 .. 15] of byte;
 begin
@@ -231,12 +227,13 @@ end;
 
 procedure TncEnc_customice.EncryptECB(const InData; var OutData);
 var
-  i, l, r: dword;
+  i, l, r: UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  l := SwapDword(pdword(@InData)^);
-  r := SwapDword(pdword(longword(@InData) + 4)^);
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+
+  l := SwapUInt32(PUInt32(@InData)^);
+  r := SwapUInt32(PUInt32(NativeUInt(@InData) + 4)^);
   i := 0;
   while i < rounds do
   begin
@@ -244,19 +241,19 @@ begin
     r := r xor f(l, i + 1);
     Inc(i, 2);
   end;
-  pdword(@OutData)^ := SwapDword(r);
-  pdword(longword(@OutData) + 4)^ := SwapDword(l);
+  PUInt32(@OutData)^ := SwapUInt32(r);
+  PUInt32(NativeUInt(@OutData) + 4)^ := SwapUInt32(l);
 end;
 
 procedure TncEnc_customice.DecryptECB(const InData; var OutData);
 var
-  l, r: dword;
+  l, r: UInt32;
   i: integer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  l := SwapDword(pdword(@InData)^);
-  r := SwapDword(pdword(longword(@InData) + 4)^);
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  l := SwapUInt32(PUInt32(@InData)^);
+  r := SwapUInt32(PUInt32(NativeUInt(@InData) + 4)^);
   i := rounds - 1;
   while i > 0 do
   begin
@@ -264,8 +261,8 @@ begin
     r := r xor f(l, i - 1);
     Dec(i, 2);
   end;
-  pdword(@OutData)^ := SwapDword(r);
-  pdword(longword(@OutData) + 4)^ := SwapDword(l);
+  PUInt32(@OutData)^ := SwapUInt32(r);
+  PUInt32(NativeUInt(@OutData) + 4)^ := SwapUInt32(l);
 end;
 
 constructor TncEnc_customice.Create(AOwner: TComponent);

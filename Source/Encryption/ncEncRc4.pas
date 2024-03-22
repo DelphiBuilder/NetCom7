@@ -15,18 +15,18 @@ uses
   System.Classes, System.Sysutils, ncEnccrypt2;
 
 type
-  TncEnc_rc4 = class(TncEnc_cipher)
+  TncEnc_rc4 = class(TncEncCipher)
   protected
-    KeyData, KeyOrg: array [0 .. 255] of byte;
+    KeyData, KeyOrg: array [0 .. 255] of Byte;
   public
     class function GetAlgorithm: string; override;
-    class function GetMaxKeySize: integer; override;
-    class function SelfTest: boolean; override;
-    procedure Init(const Key; Size: longword; InitVector: pointer); override;
+    class function GetMaxKeySize: Integer; override;
+    class function SelfTest: Boolean; override;
+    procedure Init(const Key; Size: NativeUInt; InitVector: Pointer); override;
     procedure Reset; override;
     procedure Burn; override;
-    procedure Encrypt(const InData; var OutData; Size: longword); override;
-    procedure Decrypt(const InData; var OutData; Size: longword); override;
+    procedure Encrypt(const InData; var OutData; Size: NativeUInt); override;
+    procedure Decrypt(const InData; var OutData; Size: NativeUInt); override;
   end;
 
   { ****************************************************************************** }
@@ -40,37 +40,37 @@ begin
   Result := 'RC4';
 end;
 
-class function TncEnc_rc4.GetMaxKeySize: integer;
+class function TncEnc_rc4.GetMaxKeySize: Integer;
 begin
   Result := 2048;
 end;
 
-class function TncEnc_rc4.SelfTest: boolean;
+class function TncEnc_rc4.SelfTest: Boolean;
 const
-  Key1: array [0 .. 4] of byte = ($61, $8A, $63, $D2, $FB);
-  InData1: array [0 .. 4] of byte = ($DC, $EE, $4C, $F9, $2C);
-  OutData1: array [0 .. 4] of byte = ($F1, $38, $29, $C9, $DE);
+  Key1: array [0 .. 4] of Byte = ($61, $8A, $63, $D2, $FB);
+  InData1: array [0 .. 4] of Byte = ($DC, $EE, $4C, $F9, $2C);
+  OutData1: array [0 .. 4] of Byte = ($F1, $38, $29, $C9, $DE);
 var
   Cipher: TncEnc_rc4;
-  Data: array [0 .. 4] of byte;
+  Data: array [0 .. 4] of Byte;
 begin
   Cipher := TncEnc_rc4.Create(nil);
   Cipher.Init(Key1, Sizeof(Key1) * 8, nil);
   Cipher.Encrypt(InData1, Data, Sizeof(Data));
-  Result := boolean(CompareMem(@Data, @OutData1, Sizeof(Data)));
+  Result := Boolean(CompareMem(@Data, @OutData1, Sizeof(Data)));
   Cipher.Reset;
   Cipher.Decrypt(Data, Data, Sizeof(Data));
-  Result := boolean(CompareMem(@Data, @InData1, Sizeof(Data))) and Result;
+  Result := Boolean(CompareMem(@Data, @InData1, Sizeof(Data))) and Result;
   Cipher.Burn;
   Cipher.Free;
 end;
 
-procedure TncEnc_rc4.Init(const Key; Size: longword; InitVector: pointer);
+procedure TncEnc_rc4.Init(const Key; Size: NativeUInt; InitVector: Pointer);
 var
-  i, j, t: longword;
-  xKey: array [0 .. 255] of byte;
+  i, j, t: NativeUInt;
+  xKey: array [0 .. 255] of Byte;
 begin
-  if fInitialized then
+  if FInitialized then
     Burn;
   inherited Init(Key, Size, nil);
   Size := Size div 8;
@@ -78,21 +78,21 @@ begin
   while i < 255 do
   begin
     KeyData[i] := i;
-    xKey[i] := PByte(longword(@Key) + (i mod Size))^;
+    xKey[i] := PByte(NativeUInt(@Key) + (i mod Size))^;
     KeyData[i + 1] := i + 1;
-    xKey[i + 1] := PByte(longword(@Key) + ((i + 1) mod Size))^;
+    xKey[i + 1] := PByte(NativeUInt(@Key) + ((i + 1) mod Size))^;
     KeyData[i + 2] := i + 2;
-    xKey[i + 2] := PByte(longword(@Key) + ((i + 2) mod Size))^;
+    xKey[i + 2] := PByte(NativeUInt(@Key) + ((i + 2) mod Size))^;
     KeyData[i + 3] := i + 3;
-    xKey[i + 3] := PByte(longword(@Key) + ((i + 3) mod Size))^;
+    xKey[i + 3] := PByte(NativeUInt(@Key) + ((i + 3) mod Size))^;
     KeyData[i + 4] := i + 4;
-    xKey[i + 4] := PByte(longword(@Key) + ((i + 4) mod Size))^;
+    xKey[i + 4] := PByte(NativeUInt(@Key) + ((i + 4) mod Size))^;
     KeyData[i + 5] := i + 5;
-    xKey[i + 5] := PByte(longword(@Key) + ((i + 5) mod Size))^;
+    xKey[i + 5] := PByte(NativeUInt(@Key) + ((i + 5) mod Size))^;
     KeyData[i + 6] := i + 6;
-    xKey[i + 6] := PByte(longword(@Key) + ((i + 6) mod Size))^;
+    xKey[i + 6] := PByte(NativeUInt(@Key) + ((i + 6) mod Size))^;
     KeyData[i + 7] := i + 7;
-    xKey[i + 7] := PByte(longword(@Key) + ((i + 7) mod Size))^;
+    xKey[i + 7] := PByte(NativeUInt(@Key) + ((i + 7) mod Size))^;
     Inc(i, 8);
   end;
   j := 0;
@@ -148,12 +148,12 @@ begin
   inherited Burn;
 end;
 
-procedure TncEnc_rc4.Encrypt(const InData; var OutData; Size: longword);
+procedure TncEnc_rc4.Encrypt(const InData; var OutData; Size: NativeUInt);
 var
   i, j, t, k: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_cipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   i := 0;
   j := 0;
   for k := 0 to Size - 1 do
@@ -168,12 +168,12 @@ begin
   end;
 end;
 
-procedure TncEnc_rc4.Decrypt(const InData; var OutData; Size: longword);
+procedure TncEnc_rc4.Decrypt(const InData; var OutData; Size: NativeUInt);
 var
   i, j, t, k: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_cipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   i := 0;
   j := 0;
   for k := 0 to Size - 1 do

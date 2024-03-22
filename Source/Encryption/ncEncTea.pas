@@ -17,12 +17,12 @@ uses
 type
   TncEnc_tea = class(TncEnc_blockcipher64)
   protected
-    KeyData: array [0 .. 3] of dword;
+    KeyData: array [0 .. 3] of UInt32;
     procedure InitKey(const Key; Size: longword); override;
   public
     class function GetAlgorithm: string; override;
-    class function GetMaxKeySize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetMaxKeySize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Burn; override;
     procedure EncryptECB(const InData; var OutData); override;
     procedure DecryptECB(const InData; var OutData); override;
@@ -38,7 +38,7 @@ const
   Delta = $9E3779B9;
   Rounds = 32;
 
-function SwapDword(a: dword): dword;
+function SwapDword(const a: UInt32): UInt32; inline;
 begin
   Result := ((a and $FF) shl 24) or ((a and $FF00) shl 8) or ((a and $FF0000) shr 8) or ((a and $FF000000) shr 24);
 end;
@@ -48,17 +48,17 @@ begin
   Result := 'Tea';
 end;
 
-class function TncEnc_tea.GetMaxKeySize: integer;
+class function TncEnc_tea.GetMaxKeySize: Integer;
 begin
   Result := 128;
 end;
 
-class function TncEnc_tea.SelfTest: boolean;
+class function TncEnc_tea.SelfTest: Boolean;
 const
-  Key: array [0 .. 3] of dword = ($12345678, $9ABCDEF0, $0FEDCBA9, $87654321);
-  PT: array [0 .. 1] of dword = ($12345678, $9ABCDEF0);
+  Key: array [0 .. 3] of UInt32 = ($12345678, $9ABCDEF0, $0FEDCBA9, $87654321);
+  PT: array [0 .. 1] of UInt32 = ($12345678, $9ABCDEF0);
 var
-  Data: array [0 .. 1] of dword;
+  Data: array [0 .. 1] of UInt32;
   Cipher: TncEnc_tea;
 begin
   Cipher := TncEnc_tea.Create(nil);
@@ -89,13 +89,13 @@ end;
 
 procedure TncEnc_tea.EncryptECB(const InData; var OutData);
 var
-  a, b, c, d, x, y, n, sum: dword;
+  a, b, c, d, x, y, n, sum: UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
 
-  x := SwapDword(pdword(@InData)^);
-  y := SwapDword(pdword(longword(@InData) + 4)^);
+  x := SwapDword(PUInt32(@InData)^);
+  y := SwapDword(PUInt32(NativeUInt(@InData) + 4)^);
   sum := 0;
   a := KeyData[0];
   b := KeyData[1];
@@ -107,19 +107,19 @@ begin
     Inc(x, (y shl 4) + (a xor y) + (sum xor (y shr 5)) + b);
     Inc(y, (x shl 4) + (c xor x) + (sum xor (x shr 5)) + d);
   end;
-  pdword(@OutData)^ := SwapDword(x);
-  pdword(longword(@OutData) + 4)^ := SwapDword(y);
+  PUInt32(@OutData)^ := SwapDword(x);
+  PUInt32(NativeUInt(@OutData) + 4)^ := SwapDword(y);
 end;
 
 procedure TncEnc_tea.DecryptECB(const InData; var OutData);
 var
-  a, b, c, d, x, y, n, sum: dword;
+  a, b, c, d, x, y, n, sum: UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
 
-  x := SwapDword(pdword(@InData)^);
-  y := SwapDword(pdword(longword(@InData) + 4)^);
+  x := SwapDword(PUInt32(@InData)^);
+  y := SwapDword(PUInt32(NativeUInt(@InData) + 4)^);
   sum := Delta shl 5;
   a := KeyData[0];
   b := KeyData[1];
@@ -131,8 +131,8 @@ begin
     Dec(x, (y shl 4) + (a xor y) + (sum xor (y shr 5)) + b);
     Dec(sum, Delta);
   end;
-  pdword(@OutData)^ := SwapDword(x);
-  pdword(longword(@OutData) + 4)^ := SwapDword(y);
+  PUInt32(@OutData)^ := SwapDword(x);
+  PUInt32(NativeUInt(@OutData) + 4)^ := SwapDword(y);
 end;
 
 end.

@@ -15,21 +15,21 @@ uses
   System.Classes, System.Sysutils, ncEnccrypt2;
 
 type
-  TncEnc_md4 = class(TncEnc_hash)
+  TncEnc_md4 = class(TncEncHash)
   protected
-    LenHi, LenLo: longword;
-    Index: DWord;
-    CurrentHash: array [0 .. 3] of DWord;
-    HashBuffer: array [0 .. 63] of byte;
+    LenHi, LenLo: UInt32;
+    Index: UInt32;
+    CurrentHash: array [0 .. 3] of UInt32;
+    HashBuffer: array [0 .. 63] of Byte;
     procedure Compress;
   public
     class function GetAlgorithm: string; override;
-    class function GetHashSize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetHashSize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Init; override;
-    procedure Burn; override;
-    procedure Update(const Buffer; Size: longword); override;
+    procedure Update(const Buffer; Size: NativeUInt); override;
     procedure Final(var Digest); override;
+    procedure Burn; override;
   end;
 
   { ****************************************************************************** }
@@ -38,15 +38,15 @@ implementation
 
 uses ncEncryption;
 
-function LRot32(a, b: longword): longword;
+function LRot32(const AVal: UInt32; AShift: Byte): UInt32; inline;
 begin
-  Result := (a shl b) or (a shr (32 - b));
+  Result := (AVal shl AShift) or (AVal shr (32 - AShift));
 end;
 
 procedure TncEnc_md4.Compress;
 var
-  Data: array [0 .. 15] of DWord;
-  a, b, C, D: DWord;
+  Data: array [0 .. 15] of UInt32;
+  a, b, C, D: UInt32;
 begin
   Move(HashBuffer, Data, Sizeof(Data));
   a := CurrentHash[0];
@@ -113,7 +113,7 @@ begin
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
 end;
 
-class function TncEnc_md4.GetHashSize: integer;
+class function TncEnc_md4.GetHashSize: Integer;
 begin
   Result := 128;
 end;
@@ -123,13 +123,13 @@ begin
   Result := 'MD4';
 end;
 
-class function TncEnc_md4.SelfTest: boolean;
+class function TncEnc_md4.SelfTest: Boolean;
 const
-  Test1Out: array [0 .. 15] of byte = ($A4, $48, $01, $7A, $AF, $21, $D8, $52, $5F, $C1, $0A, $E8, $7A, $A6, $72, $9D);
-  Test2Out: array [0 .. 15] of byte = ($D7, $9E, $1C, $30, $8A, $A5, $BB, $CD, $EE, $A8, $ED, $63, $DF, $41, $2D, $A9);
+  Test1Out: array [0 .. 15] of Byte = ($A4, $48, $01, $7A, $AF, $21, $D8, $52, $5F, $C1, $0A, $E8, $7A, $A6, $72, $9D);
+  Test2Out: array [0 .. 15] of Byte = ($D7, $9E, $1C, $30, $8A, $A5, $BB, $CD, $EE, $A8, $ED, $63, $DF, $41, $2D, $A9);
 var
   TestHash: TncEnc_md4;
-  TestOut: array [0 .. 19] of byte;
+  TestOut: array [0 .. 19] of Byte;
 begin
   TestHash := TncEnc_md4.Create(nil);
   TestHash.Init;
@@ -150,7 +150,7 @@ begin
   CurrentHash[1] := $EFCDAB89;
   CurrentHash[2] := $98BADCFE;
   CurrentHash[3] := $10325476;
-  fInitialized := true;
+  FInitialized := true;
 end;
 
 procedure TncEnc_md4.Burn;
@@ -160,15 +160,15 @@ begin
   Index := 0;
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
   FillChar(CurrentHash, Sizeof(CurrentHash), 0);
-  fInitialized := false;
+  FInitialized := false;
 end;
 
-procedure TncEnc_md4.Update(const Buffer; Size: longword);
+procedure TncEnc_md4.Update(const Buffer; Size: NativeUInt);
 var
-  PBuf: ^byte;
+  PBuf: ^Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
 
   Inc(LenHi, Size shr 29);
   Inc(LenLo, Size * 8);
@@ -178,7 +178,7 @@ begin
   PBuf := @Buffer;
   while Size > 0 do
   begin
-    if (Sizeof(HashBuffer) - Index) <= DWord(Size) then
+    if (Sizeof(HashBuffer) - Index) <= Size then
     begin
       Move(PBuf^, HashBuffer[Index], Sizeof(HashBuffer) - Index);
       Dec(Size, Sizeof(HashBuffer) - Index);
@@ -196,13 +196,14 @@ end;
 
 procedure TncEnc_md4.Final(var Digest);
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
+
   HashBuffer[Index] := $80;
   if Index >= 56 then
     Compress;
-  PDWord(@HashBuffer[56])^ := LenLo;
-  PDWord(@HashBuffer[60])^ := LenHi;
+  PUInt32(@HashBuffer[56])^ := LenLo;
+  PUInt32(@HashBuffer[60])^ := LenHi;
   Compress;
   Move(CurrentHash, Digest, Sizeof(CurrentHash));
   Burn;

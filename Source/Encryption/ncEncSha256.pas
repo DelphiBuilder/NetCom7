@@ -15,21 +15,21 @@ uses
   System.Classes, System.Sysutils, ncEnccrypt2;
 
 type
-  TncEnc_sha256 = class(TncEnc_hash)
+  TncEnc_sha256 = class(TncEncHash)
   protected
-    LenHi, LenLo: longword;
-    Index: DWord;
-    CurrentHash: array [0 .. 7] of DWord;
-    HashBuffer: array [0 .. 63] of byte;
+    LenHi, LenLo: UInt32;
+    Index: UInt32;
+    CurrentHash: array [0 .. 7] of UInt32;
+    HashBuffer: array [0 .. 63] of Byte;
     procedure Compress;
   public
     class function GetAlgorithm: string; override;
-    class function GetHashSize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetHashSize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Init; override;
+    procedure Update(const aBuffer; aSize: NativeUInt); override;
     procedure Final(var Digest); override;
     procedure Burn; override;
-    procedure Update(const Buffer; Size: longword); override;
   end;
 
   { ****************************************************************************** }
@@ -38,16 +38,16 @@ implementation
 
 uses ncEncryption;
 
-function SwapDWord(a: DWord): DWord;
+function SwapUInt32(const a: UInt32): UInt32; inline;
 begin
   Result := ((a and $FF) shl 24) or ((a and $FF00) shl 8) or ((a and $FF0000) shr 8) or ((a and $FF000000) shr 24);
 end;
 
 procedure TncEnc_sha256.Compress;
 var
-  a, b, c, d, e, f, g, h, t1, t2: DWord;
-  W: array [0 .. 63] of DWord;
-  i: longword;
+  a, b, c, d, e, f, g, h, t1, t2: UInt32;
+  W: array [0 .. 63] of UInt32;
+  i: Integer;
 begin
   Index := 0;
   a := CurrentHash[0];
@@ -60,10 +60,9 @@ begin
   h := CurrentHash[7];
   Move(HashBuffer, W, Sizeof(HashBuffer));
   for i := 0 to 15 do
-    W[i] := SwapDWord(W[i]);
+    W[i] := SwapUInt32(W[i]);
   for i := 16 to 63 do
-    W[i] := (((W[i - 2] shr 17) or (W[i - 2] shl 15)) xor ((W[i - 2] shr 19) or (W[i - 2] shl 13)) xor (W[i - 2] shr 10)) + W[i - 7] +
-      (((W[i - 15] shr 7) or (W[i - 15] shl 25)) xor ((W[i - 15] shr 18) or (W[i - 15] shl 14)) xor (W[i - 15] shr 3)) + W[i - 16];
+    W[i] := (((W[i - 2] shr 17) or (W[i - 2] shl 15)) xor ((W[i - 2] shr 19) or (W[i - 2] shl 13)) xor (W[i - 2] shr 10)) + W[i - 7] + (((W[i - 15] shr 7) or (W[i - 15] shl 25)) xor ((W[i - 15] shr 18) or (W[i - 15] shl 14)) xor (W[i - 15] shr 3)) + W[i - 16];
   {
     Non-optimised version
     for i:= 0 to 63 do
@@ -350,30 +349,28 @@ begin
   Result := 'SHA256';
 end;
 
-class function TncEnc_sha256.GetHashSize: integer;
+class function TncEnc_sha256.GetHashSize: Integer;
 begin
   Result := 256;
 end;
 
-class function TncEnc_sha256.SelfTest: boolean;
+class function TncEnc_sha256.SelfTest: Boolean;
 const
-  Test1Out: array [0 .. 31] of byte = ($BA, $78, $16, $BF, $8F, $01, $CF, $EA, $41, $41, $40, $DE, $5D, $AE, $22, $23, $B0, $03, $61, $A3, $96, $17, $7A, $9C,
-    $B4, $10, $FF, $61, $F2, $00, $15, $AD);
-  Test2Out: array [0 .. 31] of byte = ($24, $8D, $6A, $61, $D2, $06, $38, $B8, $E5, $C0, $26, $93, $0C, $3E, $60, $39, $A3, $3C, $E4, $59, $64, $FF, $21, $67,
-    $F6, $EC, $ED, $D4, $19, $DB, $06, $C1);
+  Test1Out: array [0 .. 31] of Byte = ($BA, $78, $16, $BF, $8F, $01, $CF, $EA, $41, $41, $40, $DE, $5D, $AE, $22, $23, $B0, $03, $61, $A3, $96, $17, $7A, $9C, $B4, $10, $FF, $61, $F2, $00, $15, $AD);
+  Test2Out: array [0 .. 31] of Byte = ($24, $8D, $6A, $61, $D2, $06, $38, $B8, $E5, $C0, $26, $93, $0C, $3E, $60, $39, $A3, $3C, $E4, $59, $64, $FF, $21, $67, $F6, $EC, $ED, $D4, $19, $DB, $06, $C1);
 var
   TestHash: TncEnc_sha256;
-  TestOut: array [0 .. 31] of byte;
+  TestOut: array [0 .. 31] of Byte;
 begin
   TestHash := TncEnc_sha256.Create(nil);
   TestHash.Init;
   TestHash.UpdateStr('abc');
   TestHash.Final(TestOut);
-  Result := boolean(CompareMem(@TestOut, @Test1Out, Sizeof(Test1Out)));
+  Result := Boolean(CompareMem(@TestOut, @Test1Out, Sizeof(Test1Out)));
   TestHash.Init;
   TestHash.UpdateStr('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq');
   TestHash.Final(TestOut);
-  Result := boolean(CompareMem(@TestOut, @Test2Out, Sizeof(Test2Out))) and Result;
+  Result := Boolean(CompareMem(@TestOut, @Test2Out, Sizeof(Test2Out))) and Result;
   TestHash.Free;
 end;
 
@@ -388,7 +385,7 @@ begin
   CurrentHash[5] := $9B05688C;
   CurrentHash[6] := $1F83D9AB;
   CurrentHash[7] := $5BE0CD19;
-  fInitialized := true;
+  FInitialized := True;
 end;
 
 procedure TncEnc_sha256.Burn;
@@ -398,58 +395,59 @@ begin
   Index := 0;
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
   FillChar(CurrentHash, Sizeof(CurrentHash), 0);
-  fInitialized := false;
+  FInitialized := False;
 end;
 
-procedure TncEnc_sha256.Update(const Buffer; Size: longword);
+procedure TncEnc_sha256.Update(const aBuffer; aSize: NativeUInt);
 var
-  PBuf: ^byte;
+  PBuf: ^Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
 
-  Inc(LenHi, Size shr 29);
-  Inc(LenLo, Size * 8);
-  if LenLo < (Size * 8) then
+  Inc(LenHi, aSize shr 29);
+  Inc(LenLo, aSize * 8);
+  if LenLo < (aSize * 8) then
     Inc(LenHi);
 
-  PBuf := @Buffer;
-  while Size > 0 do
+  PBuf := @aBuffer;
+  while aSize > 0 do
   begin
-    if (Sizeof(HashBuffer) - Index) <= DWord(Size) then
+    if (Sizeof(HashBuffer) - Index) <= aSize then
     begin
       Move(PBuf^, HashBuffer[Index], Sizeof(HashBuffer) - Index);
-      Dec(Size, Sizeof(HashBuffer) - Index);
+      Dec(aSize, Sizeof(HashBuffer) - Index);
       Inc(PBuf, Sizeof(HashBuffer) - Index);
       Compress;
     end
     else
     begin
-      Move(PBuf^, HashBuffer[Index], Size);
-      Inc(Index, Size);
-      Size := 0;
+      Move(PBuf^, HashBuffer[Index], aSize);
+      Inc(Index, aSize);
+      aSize := 0;
     end;
   end;
 end;
 
 procedure TncEnc_sha256.Final(var Digest);
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
+
   HashBuffer[Index] := $80;
   if Index >= 56 then
     Compress;
-  PDWord(@HashBuffer[56])^ := SwapDWord(LenHi);
-  PDWord(@HashBuffer[60])^ := SwapDWord(LenLo);
+  PUInt32(@HashBuffer[56])^ := SwapUInt32(LenHi);
+  PUInt32(@HashBuffer[60])^ := SwapUInt32(LenLo);
   Compress;
-  CurrentHash[0] := SwapDWord(CurrentHash[0]);
-  CurrentHash[1] := SwapDWord(CurrentHash[1]);
-  CurrentHash[2] := SwapDWord(CurrentHash[2]);
-  CurrentHash[3] := SwapDWord(CurrentHash[3]);
-  CurrentHash[4] := SwapDWord(CurrentHash[4]);
-  CurrentHash[5] := SwapDWord(CurrentHash[5]);
-  CurrentHash[6] := SwapDWord(CurrentHash[6]);
-  CurrentHash[7] := SwapDWord(CurrentHash[7]);
+  CurrentHash[0] := SwapUInt32(CurrentHash[0]);
+  CurrentHash[1] := SwapUInt32(CurrentHash[1]);
+  CurrentHash[2] := SwapUInt32(CurrentHash[2]);
+  CurrentHash[3] := SwapUInt32(CurrentHash[3]);
+  CurrentHash[4] := SwapUInt32(CurrentHash[4]);
+  CurrentHash[5] := SwapUInt32(CurrentHash[5]);
+  CurrentHash[6] := SwapUInt32(CurrentHash[6]);
+  CurrentHash[7] := SwapUInt32(CurrentHash[7]);
   Move(CurrentHash, Digest, Sizeof(CurrentHash));
   Burn;
 end;

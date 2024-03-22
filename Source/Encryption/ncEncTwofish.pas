@@ -29,8 +29,8 @@ const
 type
   TncEnc_twofish = class(TncEnc_blockcipher128)
   protected
-    SubKeys: array [0 .. TOTALSUBKEYS - 1] of DWord;
-    sbox: array [0 .. 3, 0 .. 255] of DWord;
+    SubKeys: array [0 .. TOTALSUBKEYS - 1] of UInt32;
+    sbox: array [0 .. 3, 0 .. 255] of UInt32;
     procedure InitKey(const Key; Size: longword); override;
   public
     class function GetAlgorithm: string; override;
@@ -49,26 +49,18 @@ implementation
 uses ncEncryption;
 
 const
-  p8x8: array [0 .. 1, 0 .. 255] of byte = (($A9, $67, $B3, $E8, $04, $FD, $A3, $76, $9A, $92, $80, $78, $E4, $DD, $D1, $38, $0D, $C6, $35, $98, $18, $F7, $EC,
-    $6C, $43, $75, $37, $26, $FA, $13, $94, $48, $F2, $D0, $8B, $30, $84, $54, $DF, $23, $19, $5B, $3D, $59, $F3, $AE, $A2, $82, $63, $01, $83, $2E, $D9, $51,
-    $9B, $7C, $A6, $EB, $A5, $BE, $16, $0C, $E3, $61, $C0, $8C, $3A, $F5, $73, $2C, $25, $0B, $BB, $4E, $89, $6B, $53, $6A, $B4, $F1, $E1, $E6, $BD, $45, $E2,
-    $F4, $B6, $66, $CC, $95, $03, $56, $D4, $1C, $1E, $D7, $FB, $C3, $8E, $B5, $E9, $CF, $BF, $BA, $EA, $77, $39, $AF, $33, $C9, $62, $71, $81, $79, $09, $AD,
-    $24, $CD, $F9, $D8, $E5, $C5, $B9, $4D, $44, $08, $86, $E7, $A1, $1D, $AA, $ED, $06, $70, $B2, $D2, $41, $7B, $A0, $11, $31, $C2, $27, $90, $20, $F6, $60,
-    $FF, $96, $5C, $B1, $AB, $9E, $9C, $52, $1B, $5F, $93, $0A, $EF, $91, $85, $49, $EE, $2D, $4F, $8F, $3B, $47, $87, $6D, $46, $D6, $3E, $69, $64, $2A, $CE,
-    $CB, $2F, $FC, $97, $05, $7A, $AC, $7F, $D5, $1A, $4B, $0E, $A7, $5A, $28, $14, $3F, $29, $88, $3C, $4C, $02, $B8, $DA, $B0, $17, $55, $1F, $8A, $7D, $57,
-    $C7, $8D, $74, $B7, $C4, $9F, $72, $7E, $15, $22, $12, $58, $07, $99, $34, $6E, $50, $DE, $68, $65, $BC, $DB, $F8, $C8, $A8, $2B, $40, $DC, $FE, $32, $A4,
-    $CA, $10, $21, $F0, $D3, $5D, $0F, $00, $6F, $9D, $36, $42, $4A, $5E, $C1, $E0), ($75, $F3, $C6, $F4, $DB, $7B, $FB, $C8, $4A, $D3, $E6, $6B, $45, $7D, $E8,
-    $4B, $D6, $32, $D8, $FD, $37, $71, $F1, $E1, $30, $0F, $F8, $1B, $87, $FA, $06, $3F, $5E, $BA, $AE, $5B, $8A, $00, $BC, $9D, $6D, $C1, $B1, $0E, $80, $5D,
-    $D2, $D5, $A0, $84, $07, $14, $B5, $90, $2C, $A3, $B2, $73, $4C, $54, $92, $74, $36, $51, $38, $B0, $BD, $5A, $FC, $60, $62, $96, $6C, $42, $F7, $10, $7C,
-    $28, $27, $8C, $13, $95, $9C, $C7, $24, $46, $3B, $70, $CA, $E3, $85, $CB, $11, $D0, $93, $B8, $A6, $83, $20, $FF, $9F, $77, $C3, $CC, $03, $6F, $08, $BF,
-    $40, $E7, $2B, $E2, $79, $0C, $AA, $82, $41, $3A, $EA, $B9, $E4, $9A, $A4, $97, $7E, $DA, $7A, $17, $66, $94, $A1, $1D, $3D, $F0, $DE, $B3, $0B, $72, $A7,
-    $1C, $EF, $D1, $53, $3E, $8F, $33, $26, $5F, $EC, $76, $2A, $49, $81, $88, $EE, $21, $C4, $1A, $EB, $D9, $C5, $39, $99, $CD, $AD, $31, $8B, $01, $18, $23,
-    $DD, $1F, $4E, $2D, $F9, $48, $4F, $F2, $65, $8E, $78, $5C, $58, $19, $8D, $E5, $98, $57, $67, $7F, $05, $64, $AF, $63, $B6, $FE, $F5, $B7, $3C, $A5, $CE,
-    $E9, $68, $44, $E0, $4D, $43, $69, $29, $2E, $AC, $15, $59, $A8, $0A, $9E, $6E, $47, $DF, $34, $35, $6A, $CF, $DC, $22, $C9, $C0, $9B, $89, $D4, $ED, $AB,
-    $12, $A2, $0D, $52, $BB, $02, $2F, $A9, $D7, $61, $1E, $B4, $50, $04, $F6, $C2, $16, $25, $86, $56, $55, $09, $BE, $91));
+  p8x8: array [0 .. 1, 0 .. 255] of byte = (($A9, $67, $B3, $E8, $04, $FD, $A3, $76, $9A, $92, $80, $78, $E4, $DD, $D1, $38, $0D, $C6, $35, $98, $18, $F7, $EC, $6C, $43, $75, $37, $26, $FA, $13, $94, $48, $F2, $D0, $8B, $30, $84, $54, $DF, $23, $19, $5B, $3D, $59, $F3, $AE, $A2, $82, $63, $01, $83, $2E, $D9, $51, $9B,
+    $7C, $A6, $EB, $A5, $BE, $16, $0C, $E3, $61, $C0, $8C, $3A, $F5, $73, $2C, $25, $0B, $BB, $4E, $89, $6B, $53, $6A, $B4, $F1, $E1, $E6, $BD, $45, $E2, $F4, $B6, $66, $CC, $95, $03, $56, $D4, $1C, $1E, $D7, $FB, $C3, $8E, $B5, $E9, $CF, $BF, $BA, $EA, $77, $39, $AF, $33, $C9, $62, $71, $81, $79, $09, $AD, $24, $CD,
+    $F9, $D8, $E5, $C5, $B9, $4D, $44, $08, $86, $E7, $A1, $1D, $AA, $ED, $06, $70, $B2, $D2, $41, $7B, $A0, $11, $31, $C2, $27, $90, $20, $F6, $60, $FF, $96, $5C, $B1, $AB, $9E, $9C, $52, $1B, $5F, $93, $0A, $EF, $91, $85, $49, $EE, $2D, $4F, $8F, $3B, $47, $87, $6D, $46, $D6, $3E, $69, $64, $2A, $CE, $CB, $2F, $FC,
+    $97, $05, $7A, $AC, $7F, $D5, $1A, $4B, $0E, $A7, $5A, $28, $14, $3F, $29, $88, $3C, $4C, $02, $B8, $DA, $B0, $17, $55, $1F, $8A, $7D, $57, $C7, $8D, $74, $B7, $C4, $9F, $72, $7E, $15, $22, $12, $58, $07, $99, $34, $6E, $50, $DE, $68, $65, $BC, $DB, $F8, $C8, $A8, $2B, $40, $DC, $FE, $32, $A4, $CA, $10, $21, $F0,
+    $D3, $5D, $0F, $00, $6F, $9D, $36, $42, $4A, $5E, $C1, $E0), ($75, $F3, $C6, $F4, $DB, $7B, $FB, $C8, $4A, $D3, $E6, $6B, $45, $7D, $E8, $4B, $D6, $32, $D8, $FD, $37, $71, $F1, $E1, $30, $0F, $F8, $1B, $87, $FA, $06, $3F, $5E, $BA, $AE, $5B, $8A, $00, $BC, $9D, $6D, $C1, $B1, $0E, $80, $5D, $D2, $D5, $A0, $84, $07,
+    $14, $B5, $90, $2C, $A3, $B2, $73, $4C, $54, $92, $74, $36, $51, $38, $B0, $BD, $5A, $FC, $60, $62, $96, $6C, $42, $F7, $10, $7C, $28, $27, $8C, $13, $95, $9C, $C7, $24, $46, $3B, $70, $CA, $E3, $85, $CB, $11, $D0, $93, $B8, $A6, $83, $20, $FF, $9F, $77, $C3, $CC, $03, $6F, $08, $BF, $40, $E7, $2B, $E2, $79, $0C,
+    $AA, $82, $41, $3A, $EA, $B9, $E4, $9A, $A4, $97, $7E, $DA, $7A, $17, $66, $94, $A1, $1D, $3D, $F0, $DE, $B3, $0B, $72, $A7, $1C, $EF, $D1, $53, $3E, $8F, $33, $26, $5F, $EC, $76, $2A, $49, $81, $88, $EE, $21, $C4, $1A, $EB, $D9, $C5, $39, $99, $CD, $AD, $31, $8B, $01, $18, $23, $DD, $1F, $4E, $2D, $F9, $48, $4F,
+    $F2, $65, $8E, $78, $5C, $58, $19, $8D, $E5, $98, $57, $67, $7F, $05, $64, $AF, $63, $B6, $FE, $F5, $B7, $3C, $A5, $CE, $E9, $68, $44, $E0, $4D, $43, $69, $29, $2E, $AC, $15, $59, $A8, $0A, $9E, $6E, $47, $DF, $34, $35, $6A, $CF, $DC, $22, $C9, $C0, $9B, $89, $D4, $ED, $AB, $12, $A2, $0D, $52, $BB, $02, $2F, $A9,
+    $D7, $61, $1E, $B4, $50, $04, $F6, $C2, $16, $25, $86, $56, $55, $09, $BE, $91));
 
 var
-  MDS: array [0 .. 3, 0 .. 255] of DWord;
+  MDS: array [0 .. 3, 0 .. 255] of UInt32;
   MDSDone: boolean;
 
 class function TncEnc_twofish.GetAlgorithm: string;
@@ -129,7 +121,7 @@ begin
   Cipher.Free;
 end;
 
-function LFSR1(x: DWord): DWord;
+function LFSR1(x: UInt32): UInt32; inline;
 begin
   if (x and 1) <> 0 then
     Result := (x shr 1) xor (MDS_GF_FDBK div 2)
@@ -137,7 +129,7 @@ begin
     Result := (x shr 1);
 end;
 
-function LFSR2(x: DWord): DWord;
+function LFSR2(x: UInt32): UInt32; inline;
 begin
   if (x and 2) <> 0 then
     if (x and 1) <> 0 then
@@ -150,19 +142,19 @@ begin
     Result := (x shr 2);
 end;
 
-function Mul_X(x: DWord): DWord;
+function Mul_X(x: UInt32): UInt32; inline;
 begin
   Result := x xor LFSR2(x);
 end;
 
-function Mul_Y(x: DWord): DWord;
+function Mul_Y(x: UInt32): UInt32; inline;
 begin
   Result := x xor LFSR1(x) xor LFSR2(x);
 end;
 
-function RS_MDS_Encode(lK0, lK1: DWord): DWord;
+function RS_MDS_Encode(lK0, lK1: UInt32): UInt32;
 var
-  lR, nJ, lG2, lG3: DWord;
+  lR, nJ, lG2, lG3: UInt32;
   bB: byte;
 begin
   lR := lK1;
@@ -196,9 +188,9 @@ begin
   Result := lR;
 end;
 
-function f32(x: DWord; K32: PDWordArray; Len: DWord): DWord;
+function f32(x: UInt32; K32: PUInt32Array; Len: UInt32): UInt32;
 var
-  t0, t1, t2, t3: DWord;
+  t0, t1, t2, t3: UInt32;
 begin
   t0 := x and $FF;
   t1 := (x shr 8) and $FF;
@@ -218,15 +210,13 @@ begin
     t2 := p8x8[0, t2] xor ((K32^[2] shr 16) and $FF);
     t3 := p8x8[0, t3] xor ((K32^[2] shr 24));
   end;
-  Result := MDS[0, p8x8[0, p8x8[0, t0] xor ((K32^[1]) and $FF)] xor ((K32^[0]) and $FF)
-    ] xor MDS[1, p8x8[0, p8x8[1, t1] xor ((K32^[1] shr 8) and $FF)] xor ((K32^[0] shr 8) and $FF)
-    ] xor MDS[2, p8x8[1, p8x8[0, t2] xor ((K32^[1] shr 16) and $FF)] xor ((K32^[0] shr 16) and $FF)
+  Result := MDS[0, p8x8[0, p8x8[0, t0] xor ((K32^[1]) and $FF)] xor ((K32^[0]) and $FF)] xor MDS[1, p8x8[0, p8x8[1, t1] xor ((K32^[1] shr 8) and $FF)] xor ((K32^[0] shr 8) and $FF)] xor MDS[2, p8x8[1, p8x8[0, t2] xor ((K32^[1] shr 16) and $FF)] xor ((K32^[0] shr 16) and $FF)
     ] xor MDS[3, p8x8[1, p8x8[1, t3] xor ((K32^[1] shr 24))] xor ((K32^[0] shr 24))];
 end;
 
-procedure Xor256(Dst, Src: PDWordArray; v: byte);
+procedure Xor256(Dst, Src: PUInt32Array; v: byte);
 var
-  i, j: DWord;
+  i, j: UInt32;
 begin
   i := 0;
   j := v * $01010101;
@@ -244,9 +234,9 @@ procedure TncEnc_twofish.InitKey(const Key; Size: longword);
 const
   subkeyCnt = ROUNDSUBKEYS + 2 * NUMROUNDS;
 var
-  key32: array [0 .. 7] of DWord;
-  k32e, k32o, sboxkeys: array [0 .. 3] of DWord;
-  k64Cnt, i, j, A, B, q: DWord;
+  key32: array [0 .. 7] of UInt32;
+  k32e, k32o, sboxkeys: array [0 .. 3] of UInt32;
+  k64Cnt, i, j, A, B, q: UInt32;
   L0, L1: array [0 .. 255] of byte;
 begin
   FillChar(key32, Sizeof(key32), 0);
@@ -449,84 +439,78 @@ end;
 procedure TncEnc_twofish.EncryptECB(const InData; var OutData);
 var
   i: longword;
-  t0, t1: DWord;
-  x: array [0 .. 3] of DWord;
+  t0, t1: UInt32;
+  x: array [0 .. 3] of UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  x[0] := PDWord(@InData)^ xor SubKeys[INPUTWHITEN];
-  x[1] := PDWord(longword(@InData) + 4)^ xor SubKeys[INPUTWHITEN + 1];
-  x[2] := PDWord(longword(@InData) + 8)^ xor SubKeys[INPUTWHITEN + 2];
-  x[3] := PDWord(longword(@InData) + 12)^ xor SubKeys[INPUTWHITEN + 3];
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  x[0] := PUInt32(@InData)^ xor SubKeys[INPUTWHITEN];
+  x[1] := PUInt32(NativeUInt(@InData) + 4)^ xor SubKeys[INPUTWHITEN + 1];
+  x[2] := PUInt32(NativeUInt(@InData) + 8)^ xor SubKeys[INPUTWHITEN + 2];
+  x[3] := PUInt32(NativeUInt(@InData) + 12)^ xor SubKeys[INPUTWHITEN + 3];
   i := 0;
   while i <= NUMROUNDS - 2 do
   begin
     t0 := sbox[0, (x[0] shl 1) and $1FE] xor sbox[0, ((x[0] shr 7) and $1FE) + 1] xor sbox[2, (x[0] shr 15) and $1FE] xor sbox[2, ((x[0] shr 23) and $1FE) + 1];
-    t1 := sbox[0, ((x[1] shr 23) and $1FE)] xor sbox[0, ((x[1] shl 1) and $1FE) + 1] xor sbox[2, ((x[1] shr 7) and $1FE)
-      ] xor sbox[2, ((x[1] shr 15) and $1FE) + 1];
+    t1 := sbox[0, ((x[1] shr 23) and $1FE)] xor sbox[0, ((x[1] shl 1) and $1FE) + 1] xor sbox[2, ((x[1] shr 7) and $1FE)] xor sbox[2, ((x[1] shr 15) and $1FE) + 1];
     x[3] := (x[3] shl 1) or (x[3] shr 31);
     x[2] := x[2] xor (t0 + t1 + SubKeys[ROUNDSUBKEYS + 2 * i]);
     x[3] := x[3] xor (t0 + 2 * t1 + SubKeys[ROUNDSUBKEYS + 2 * i + 1]);
     x[2] := (x[2] shr 1) or (x[2] shl 31);
 
-    t0 := sbox[0, (x[2] shl 1) and $1FE] xor sbox[0, ((x[2] shr 7) and $1FE) + 1] xor sbox[2, ((x[2] shr 15) and $1FE)
-      ] xor sbox[2, ((x[2] shr 23) and $1FE) + 1];
-    t1 := sbox[0, ((x[3] shr 23) and $1FE)] xor sbox[0, ((x[3] shl 1) and $1FE) + 1] xor sbox[2, ((x[3] shr 7) and $1FE)
-      ] xor sbox[2, ((x[3] shr 15) and $1FE) + 1];
+    t0 := sbox[0, (x[2] shl 1) and $1FE] xor sbox[0, ((x[2] shr 7) and $1FE) + 1] xor sbox[2, ((x[2] shr 15) and $1FE)] xor sbox[2, ((x[2] shr 23) and $1FE) + 1];
+    t1 := sbox[0, ((x[3] shr 23) and $1FE)] xor sbox[0, ((x[3] shl 1) and $1FE) + 1] xor sbox[2, ((x[3] shr 7) and $1FE)] xor sbox[2, ((x[3] shr 15) and $1FE) + 1];
     x[1] := (x[1] shl 1) or (x[1] shr 31);
     x[0] := x[0] xor (t0 + t1 + SubKeys[ROUNDSUBKEYS + 2 * (i + 1)]);
     x[1] := x[1] xor (t0 + 2 * t1 + SubKeys[ROUNDSUBKEYS + 2 * (i + 1) + 1]);
     x[0] := (x[0] shr 1) or (x[0] shl 31);
     Inc(i, 2);
   end;
-  PDWord(longword(@OutData) + 0)^ := x[2] xor SubKeys[OUTPUTWHITEN];
-  PDWord(longword(@OutData) + 4)^ := x[3] xor SubKeys[OUTPUTWHITEN + 1];
-  PDWord(longword(@OutData) + 8)^ := x[0] xor SubKeys[OUTPUTWHITEN + 2];
-  PDWord(longword(@OutData) + 12)^ := x[1] xor SubKeys[OUTPUTWHITEN + 3];
+  PUInt32(NativeUInt(@OutData) + 0)^ := x[2] xor SubKeys[OUTPUTWHITEN];
+  PUInt32(NativeUInt(@OutData) + 4)^ := x[3] xor SubKeys[OUTPUTWHITEN + 1];
+  PUInt32(NativeUInt(@OutData) + 8)^ := x[0] xor SubKeys[OUTPUTWHITEN + 2];
+  PUInt32(NativeUInt(@OutData) + 12)^ := x[1] xor SubKeys[OUTPUTWHITEN + 3];
 end;
 
 procedure TncEnc_twofish.DecryptECB(const InData; var OutData);
 var
   i: integer;
-  t0, t1: DWord;
-  x: array [0 .. 3] of DWord;
+  t0, t1: UInt32;
+  x: array [0 .. 3] of UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  x[2] := PDWord(@InData)^ xor SubKeys[OUTPUTWHITEN];
-  x[3] := PDWord(longword(@InData) + 4)^ xor SubKeys[OUTPUTWHITEN + 1];
-  x[0] := PDWord(longword(@InData) + 8)^ xor SubKeys[OUTPUTWHITEN + 2];
-  x[1] := PDWord(longword(@InData) + 12)^ xor SubKeys[OUTPUTWHITEN + 3];
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  x[2] := PUInt32(@InData)^ xor SubKeys[OUTPUTWHITEN];
+  x[3] := PUInt32(NativeUInt(@InData) + 4)^ xor SubKeys[OUTPUTWHITEN + 1];
+  x[0] := PUInt32(NativeUInt(@InData) + 8)^ xor SubKeys[OUTPUTWHITEN + 2];
+  x[1] := PUInt32(NativeUInt(@InData) + 12)^ xor SubKeys[OUTPUTWHITEN + 3];
   i := NUMROUNDS - 2;
   while i >= 0 do
   begin
-    t0 := sbox[0, (x[2] shl 1) and $1FE] xor sbox[0, ((x[2] shr 7) and $1FE) + 1] xor sbox[2, ((x[2] shr 15) and $1FE)
-      ] xor sbox[2, ((x[2] shr 23) and $1FE) + 1];
-    t1 := sbox[0, ((x[3] shr 23) and $1FE)] xor sbox[0, ((x[3] shl 1) and $1FE) + 1] xor sbox[2, ((x[3] shr 7) and $1FE)
-      ] xor sbox[2, ((x[3] shr 15) and $1FE) + 1];
+    t0 := sbox[0, (x[2] shl 1) and $1FE] xor sbox[0, ((x[2] shr 7) and $1FE) + 1] xor sbox[2, ((x[2] shr 15) and $1FE)] xor sbox[2, ((x[2] shr 23) and $1FE) + 1];
+    t1 := sbox[0, ((x[3] shr 23) and $1FE)] xor sbox[0, ((x[3] shl 1) and $1FE) + 1] xor sbox[2, ((x[3] shr 7) and $1FE)] xor sbox[2, ((x[3] shr 15) and $1FE) + 1];
     x[0] := (x[0] shl 1) or (x[0] shr 31);
     x[0] := x[0] xor (t0 + t1 + SubKeys[ROUNDSUBKEYS + 2 * (i + 1)]);
     x[1] := x[1] xor (t0 + 2 * t1 + SubKeys[ROUNDSUBKEYS + 2 * (i + 1) + 1]);
     x[1] := (x[1] shr 1) or (x[1] shl 31);
 
     t0 := sbox[0, (x[0] shl 1) and $1FE] xor sbox[0, ((x[0] shr 7) and $1FE) + 1] xor sbox[2, (x[0] shr 15) and $1FE] xor sbox[2, ((x[0] shr 23) and $1FE) + 1];
-    t1 := sbox[0, ((x[1] shr 23) and $1FE)] xor sbox[0, ((x[1] shl 1) and $1FE) + 1] xor sbox[2, ((x[1] shr 7) and $1FE)
-      ] xor sbox[2, ((x[1] shr 15) and $1FE) + 1];
+    t1 := sbox[0, ((x[1] shr 23) and $1FE)] xor sbox[0, ((x[1] shl 1) and $1FE) + 1] xor sbox[2, ((x[1] shr 7) and $1FE)] xor sbox[2, ((x[1] shr 15) and $1FE) + 1];
     x[2] := (x[2] shl 1) or (x[2] shr 31);
     x[2] := x[2] xor (t0 + t1 + SubKeys[ROUNDSUBKEYS + 2 * i]);
     x[3] := x[3] xor (t0 + 2 * t1 + SubKeys[ROUNDSUBKEYS + 2 * i + 1]);
     x[3] := (x[3] shr 1) or (x[3] shl 31);
     Dec(i, 2);
   end;
-  PDWord(longword(@OutData) + 0)^ := x[0] xor SubKeys[INPUTWHITEN];
-  PDWord(longword(@OutData) + 4)^ := x[1] xor SubKeys[INPUTWHITEN + 1];
-  PDWord(longword(@OutData) + 8)^ := x[2] xor SubKeys[INPUTWHITEN + 2];
-  PDWord(longword(@OutData) + 12)^ := x[3] xor SubKeys[INPUTWHITEN + 3];
+  PUInt32(NativeUInt(@OutData) + 0)^ := x[0] xor SubKeys[INPUTWHITEN];
+  PUInt32(NativeUInt(@OutData) + 4)^ := x[1] xor SubKeys[INPUTWHITEN + 1];
+  PUInt32(NativeUInt(@OutData) + 8)^ := x[2] xor SubKeys[INPUTWHITEN + 2];
+  PUInt32(NativeUInt(@OutData) + 12)^ := x[3] xor SubKeys[INPUTWHITEN + 3];
 end;
 
 procedure PreCompMDS;
 var
-  m1, mx, my: array [0 .. 1] of DWord;
+  m1, mx, my: array [0 .. 1] of UInt32;
   nI: longword;
 begin
   for nI := 0 to 255 do

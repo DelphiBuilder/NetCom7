@@ -15,13 +15,12 @@ uses
 { ****************************************************************************** }
 { Base type definition for 64 bit block ciphers }
 type
-  TncEnc_blockcipher64 = class(TncEnc_blockcipher)
+  TncEnc_blockcipher64 = class(TncEncBlockCipher)
   private
-    IV, CV: array [0 .. 7] of byte;
-
+    IV, CV: array [0 .. 7] of Byte;
     procedure IncCounter;
   public
-    class function GetBlockSize: integer; override;
+    class function GetBlockSize: Integer; override;
     { Get the block size of the cipher (in bits) }
 
     procedure Reset; override;
@@ -32,41 +31,41 @@ type
     { Sets the IV to Value and performs a reset }
     procedure GetIV(var Value); override;
     { Returns the current chaining information, not the actual IV }
-    procedure Init(const Key; Size: longword; InitVector: pointer); override;
+    procedure Init(const Key; Size: NativeUInt; InitVector: Pointer); override;
     { Do key setup based on the data in Key, size is in bits }
 
-    procedure EncryptCBC(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCBC(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CBC method of encryption }
-    procedure DecryptCBC(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCBC(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CBC method of decryption }
-    procedure EncryptCFB8bit(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCFB8bit(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CFB (8 bit) method of encryption }
-    procedure DecryptCFB8bit(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCFB8bit(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CFB (8 bit) method of decryption }
-    procedure EncryptCFBblock(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCFBblock(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CFB (block) method of encryption }
-    procedure DecryptCFBblock(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCFBblock(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CFB (block) method of decryption }
-    procedure EncryptOFB(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptOFB(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the OFB method of encryption }
-    procedure DecryptOFB(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptOFB(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the OFB method of decryption }
-    procedure EncryptCTR(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCTR(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CTR method of encryption }
-    procedure DecryptCTR(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCTR(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CTR method of decryption }
   end;
 
   { ****************************************************************************** }
   { Base type definition for 128 bit block ciphers }
 type
-  TncEnc_blockcipher128 = class(TncEnc_blockcipher)
+  TncEnc_blockcipher128 = class(TncEncBlockCipher)
   private
-    IV, CV: array [0 .. 15] of byte;
+    IV, CV: array [0 .. 15] of Byte;
 
     procedure IncCounter;
   public
-    class function GetBlockSize: integer; override;
+    class function GetBlockSize: Integer; override;
     { Get the block size of the cipher (in bits) }
 
     procedure Reset; override;
@@ -77,28 +76,28 @@ type
     { Sets the IV to Value and performs a reset }
     procedure GetIV(var Value); override;
     { Returns the current chaining information, not the actual IV }
-    procedure Init(const Key; Size: longword; InitVector: pointer); override;
+    procedure Init(const Key; Size: NativeUInt; InitVector: Pointer); override;
     { Do key setup based on the data in Key, size is in bits }
 
-    procedure EncryptCBC(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCBC(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CBC method of encryption }
-    procedure DecryptCBC(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCBC(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CBC method of decryption }
-    procedure EncryptCFB8bit(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCFB8bit(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CFB (8 bit) method of encryption }
-    procedure DecryptCFB8bit(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCFB8bit(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CFB (8 bit) method of decryption }
-    procedure EncryptCFBblock(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCFBblock(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CFB (block) method of encryption }
-    procedure DecryptCFBblock(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCFBblock(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CFB (block) method of decryption }
-    procedure EncryptOFB(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptOFB(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the OFB method of encryption }
-    procedure DecryptOFB(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptOFB(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the OFB method of decryption }
-    procedure EncryptCTR(const Indata; var Outdata; Size: longword); override;
+    procedure EncryptCTR(const Indata; var Outdata; Size: NativeUInt); override;
     { Encrypt size bytes of data using the CTR method of encryption }
-    procedure DecryptCTR(const Indata; var Outdata; Size: longword); override;
+    procedure DecryptCTR(const Indata; var Outdata; Size: NativeUInt); override;
     { Decrypt size bytes of data using the CTR method of decryption }
   end;
 
@@ -108,7 +107,7 @@ implementation
 
 procedure TncEnc_blockcipher64.IncCounter;
 var
-  i: integer;
+  i: Integer;
 begin
   Inc(CV[7]);
   i := 7;
@@ -119,12 +118,12 @@ begin
   end;
 end;
 
-class function TncEnc_blockcipher64.GetBlockSize: integer;
+class function TncEnc_blockcipher64.GetBlockSize: Integer;
 begin
   Result := 64;
 end;
 
-procedure TncEnc_blockcipher64.Init(const Key; Size: longword; InitVector: pointer);
+procedure TncEnc_blockcipher64.Init(const Key; Size: NativeUInt; InitVector: Pointer);
 begin
   inherited Init(Key, Size, InitVector);
   InitKey(Key, Size);
@@ -143,23 +142,23 @@ end;
 
 procedure TncEnc_blockcipher64.SetIV(const Value);
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   Move(Value, IV, 8);
   Reset;
 end;
 
 procedure TncEnc_blockcipher64.GetIV(var Value);
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   Move(CV, Value, 8);
 end;
 
 procedure TncEnc_blockcipher64.Reset;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized')
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised)
   else
     Move(IV, CV, 8);
 end;
@@ -171,13 +170,13 @@ begin
   inherited Burn;
 end;
 
-procedure TncEnc_blockcipher64.EncryptCBC(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.EncryptCBC(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -186,8 +185,8 @@ begin
     XorBlock(p2^, CV, 8);
     EncryptECB(p2^, p2^);
     Move(p2^, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -197,14 +196,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.DecryptCBC(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.DecryptCBC(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
-  Temp: array [0 .. 7] of byte;
+  p1, p2: Pointer;
+  Temp: array [0 .. 7] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -214,8 +213,8 @@ begin
     DecryptECB(p2^, p2^);
     XorBlock(p2^, CV, 8);
     Move(Temp, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -225,14 +224,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.EncryptCFB8bit(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.EncryptCFB8bit(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  Temp: array [0 .. 7] of byte;
+  Temp: array [0 .. 7] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to Size do
@@ -246,15 +245,15 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.DecryptCFB8bit(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.DecryptCFB8bit(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  TempByte: byte;
-  Temp: array [0 .. 7] of byte;
+  TempByte: Byte;
+  Temp: array [0 .. 7] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to Size do
@@ -269,13 +268,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.EncryptCFBblock(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.EncryptCFBblock(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -284,8 +283,8 @@ begin
     Move(p1^, p2^, 8);
     XorBlock(p2^, CV, 8);
     Move(p2^, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -295,14 +294,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.DecryptCFBblock(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.DecryptCFBblock(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  Temp: array [0 .. 7] of byte;
+  Temp: array [0 .. 7] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -312,8 +311,8 @@ begin
     Move(p1^, p2^, 8);
     XorBlock(p2^, CV, 8);
     Move(Temp, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -323,13 +322,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.EncryptOFB(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.EncryptOFB(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -337,8 +336,8 @@ begin
     EncryptECB(CV, CV);
     Move(p1^, p2^, 8);
     XorBlock(p2^, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -348,13 +347,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.DecryptOFB(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.DecryptOFB(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -362,8 +361,8 @@ begin
     EncryptECB(CV, CV);
     Move(p1^, p2^, 8);
     XorBlock(p2^, CV, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -373,14 +372,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.EncryptCTR(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.EncryptCTR(const Indata; var Outdata; Size: NativeUInt);
 var
-  Temp: array [0 .. 7] of byte;
+  Temp: array [0 .. 7] of Byte;
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -389,8 +388,8 @@ begin
     IncCounter;
     Move(p1^, p2^, 8);
     XorBlock(p2^, Temp, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -401,14 +400,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher64.DecryptCTR(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher64.DecryptCTR(const Indata; var Outdata; Size: NativeUInt);
 var
-  Temp: array [0 .. 7] of byte;
+  Temp: array [0 .. 7] of Byte;
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 8) do
@@ -417,8 +416,8 @@ begin
     IncCounter;
     Move(p1^, p2^, 8);
     XorBlock(p2^, Temp, 8);
-    p1 := pointer(longword(p1) + 8);
-    p2 := pointer(longword(p2) + 8);
+    p1 := Pointer(NativeUInt(p1) + 8);
+    p2 := Pointer(NativeUInt(p2) + 8);
   end;
   if (Size mod 8) <> 0 then
   begin
@@ -433,7 +432,7 @@ end;
 
 procedure TncEnc_blockcipher128.IncCounter;
 var
-  i: integer;
+  i: Integer;
 begin
   Inc(CV[15]);
   i := 15;
@@ -444,12 +443,12 @@ begin
   end;
 end;
 
-class function TncEnc_blockcipher128.GetBlockSize: integer;
+class function TncEnc_blockcipher128.GetBlockSize: Integer;
 begin
   Result := 128;
 end;
 
-procedure TncEnc_blockcipher128.Init(const Key; Size: longword; InitVector: pointer);
+procedure TncEnc_blockcipher128.Init(const Key; Size: NativeUInt; InitVector: Pointer);
 begin
   inherited Init(Key, Size, InitVector);
   InitKey(Key, Size);
@@ -468,23 +467,23 @@ end;
 
 procedure TncEnc_blockcipher128.SetIV(const Value);
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   Move(Value, IV, 16);
   Reset;
 end;
 
 procedure TncEnc_blockcipher128.GetIV(var Value);
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   Move(CV, Value, 16);
 end;
 
 procedure TncEnc_blockcipher128.Reset;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized')
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised)
   else
     Move(IV, CV, 16);
 end;
@@ -496,13 +495,13 @@ begin
   inherited Burn;
 end;
 
-procedure TncEnc_blockcipher128.EncryptCBC(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.EncryptCBC(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -511,8 +510,8 @@ begin
     XorBlock(p2^, CV, 16);
     EncryptECB(p2^, p2^);
     Move(p2^, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -522,14 +521,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.DecryptCBC(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.DecryptCBC(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
-  Temp: array [0 .. 15] of byte;
+  p1, p2: Pointer;
+  Temp: array [0 .. 15] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -539,8 +538,8 @@ begin
     DecryptECB(p2^, p2^);
     XorBlock(p2^, CV, 16);
     Move(Temp, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -550,14 +549,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.EncryptCFB8bit(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.EncryptCFB8bit(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  Temp: array [0 .. 15] of byte;
+  Temp: array [0 .. 15] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to Size do
@@ -571,15 +570,15 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.DecryptCFB8bit(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.DecryptCFB8bit(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  TempByte: byte;
-  Temp: array [0 .. 15] of byte;
+  TempByte: Byte;
+  Temp: array [0 .. 15] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to Size do
@@ -594,13 +593,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.EncryptCFBblock(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.EncryptCFBblock(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -609,8 +608,8 @@ begin
     Move(p1^, p2^, 16);
     XorBlock(p2^, CV, 16);
     Move(p2^, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -620,14 +619,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.DecryptCFBblock(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.DecryptCFBblock(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
   p1, p2: Pbyte;
-  Temp: array [0 .. 15] of byte;
+  Temp: array [0 .. 15] of Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -637,8 +636,8 @@ begin
     Move(p1^, p2^, 16);
     XorBlock(p2^, CV, 16);
     Move(Temp, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -648,13 +647,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.EncryptOFB(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.EncryptOFB(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -662,8 +661,8 @@ begin
     EncryptECB(CV, CV);
     Move(p1^, p2^, 16);
     XorBlock(p2^, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -673,13 +672,13 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.DecryptOFB(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.DecryptOFB(const Indata; var Outdata; Size: NativeUInt);
 var
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -687,8 +686,8 @@ begin
     EncryptECB(CV, CV);
     Move(p1^, p2^, 16);
     XorBlock(p2^, CV, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -698,14 +697,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.EncryptCTR(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.EncryptCTR(const Indata; var Outdata; Size: NativeUInt);
 var
-  Temp: array [0 .. 15] of byte;
+  Temp: array [0 .. 15] of Byte;
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -714,8 +713,8 @@ begin
     IncCounter;
     Move(p1^, p2^, 16);
     XorBlock(p2^, Temp, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin
@@ -726,14 +725,14 @@ begin
   end;
 end;
 
-procedure TncEnc_blockcipher128.DecryptCTR(const Indata; var Outdata; Size: longword);
+procedure TncEnc_blockcipher128.DecryptCTR(const Indata; var Outdata; Size: NativeUInt);
 var
-  Temp: array [0 .. 15] of byte;
+  Temp: array [0 .. 15] of Byte;
   i: longword;
-  p1, p2: pointer;
+  p1, p2: Pointer;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
   p1 := @Indata;
   p2 := @Outdata;
   for i := 1 to (Size div 16) do
@@ -742,8 +741,8 @@ begin
     IncCounter;
     Move(p1^, p2^, 16);
     XorBlock(p2^, Temp, 16);
-    p1 := pointer(longword(p1) + 16);
-    p2 := pointer(longword(p2) + 16);
+    p1 := Pointer(NativeUInt(p1) + 16);
+    p2 := Pointer(NativeUInt(p2) + 16);
   end;
   if (Size mod 16) <> 0 then
   begin

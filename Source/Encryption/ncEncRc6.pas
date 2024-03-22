@@ -20,7 +20,7 @@ const
 type
   TncEnc_rc6 = class(TncEnc_blockcipher128)
   protected
-    KeyData: array [0 .. ((NUMROUNDS * 2) + 3)] of DWord;
+    KeyData: array [0 .. ((NUMROUNDS * 2) + 3)] of UInt32;
     procedure InitKey(const Key; Size: longword); override;
   public
     class function GetAlgorithm: string; override;
@@ -38,17 +38,15 @@ implementation
 uses ncEncryption;
 
 const
-  sBox: array [0 .. 51] of DWord = ($B7E15163, $5618CB1C, $F45044D5, $9287BE8E, $30BF3847, $CEF6B200, $6D2E2BB9, $0B65A572, $A99D1F2B, $47D498E4, $E60C129D,
-    $84438C56, $227B060F, $C0B27FC8, $5EE9F981, $FD21733A, $9B58ECF3, $399066AC, $D7C7E065, $75FF5A1E, $1436D3D7, $B26E4D90, $50A5C749, $EEDD4102, $8D14BABB,
-    $2B4C3474, $C983AE2D, $67BB27E6, $05F2A19F, $A42A1B58, $42619511, $E0990ECA, $7ED08883, $1D08023C, $BB3F7BF5, $5976F5AE, $F7AE6F67, $95E5E920, $341D62D9,
-    $D254DC92, $708C564B, $0EC3D004, $ACFB49BD, $4B32C376, $E96A3D2F, $87A1B6E8, $25D930A1, $C410AA5A, $62482413, $007F9DCC, $9EB71785, $3CEE913E);
+  sBox: array [0 .. 51] of UInt32 = ($B7E15163, $5618CB1C, $F45044D5, $9287BE8E, $30BF3847, $CEF6B200, $6D2E2BB9, $0B65A572, $A99D1F2B, $47D498E4, $E60C129D, $84438C56, $227B060F, $C0B27FC8, $5EE9F981, $FD21733A, $9B58ECF3, $399066AC, $D7C7E065, $75FF5A1E, $1436D3D7, $B26E4D90, $50A5C749, $EEDD4102, $8D14BABB,
+    $2B4C3474, $C983AE2D, $67BB27E6, $05F2A19F, $A42A1B58, $42619511, $E0990ECA, $7ED08883, $1D08023C, $BB3F7BF5, $5976F5AE, $F7AE6F67, $95E5E920, $341D62D9, $D254DC92, $708C564B, $0EC3D004, $ACFB49BD, $4B32C376, $E96A3D2F, $87A1B6E8, $25D930A1, $C410AA5A, $62482413, $007F9DCC, $9EB71785, $3CEE913E);
 
-function LRot32(X: DWord; c: longword): DWord;
+function LRot32(const X: UInt32; const c: integer): UInt32; inline;
 begin
   LRot32 := (X shl c) or (X shr (32 - c));
 end;
 
-function RRot32(X: DWord; c: longword): DWord;
+function RRot32(const X: UInt32; const c: integer): UInt32; inline;
 begin
   RRot32 := (X shr c) or (X shl (32 - c));
 end;
@@ -68,8 +66,7 @@ const
   Key1: array [0 .. 15] of byte = ($01, $23, $45, $67, $89, $AB, $CD, $EF, $01, $12, $23, $34, $45, $56, $67, $78);
   Plain1: array [0 .. 15] of byte = ($02, $13, $24, $35, $46, $57, $68, $79, $8A, $9B, $AC, $BD, $CE, $DF, $E0, $F1);
   Cipher1: array [0 .. 15] of byte = ($52, $4E, $19, $2F, $47, $15, $C6, $23, $1F, $51, $F6, $36, $7E, $A4, $3F, $18);
-  Key2: array [0 .. 31] of byte = ($01, $23, $45, $67, $89, $AB, $CD, $EF, $01, $12, $23, $34, $45, $56, $67, $78, $89, $9A, $AB, $BC, $CD, $DE, $EF, $F0, $10,
-    $32, $54, $76, $98, $BA, $DC, $FE);
+  Key2: array [0 .. 31] of byte = ($01, $23, $45, $67, $89, $AB, $CD, $EF, $01, $12, $23, $34, $45, $56, $67, $78, $89, $9A, $AB, $BC, $CD, $DE, $EF, $F0, $10, $32, $54, $76, $98, $BA, $DC, $FE);
   Plain2: array [0 .. 15] of byte = ($02, $13, $24, $35, $46, $57, $68, $79, $8A, $9B, $AC, $BD, $CE, $DF, $E0, $F1);
   Cipher2: array [0 .. 15] of byte = ($C8, $24, $18, $16, $F0, $D7, $E4, $89, $20, $AD, $16, $A1, $67, $4E, $5D, $48);
 var
@@ -94,9 +91,9 @@ end;
 
 procedure TncEnc_rc6.InitKey(const Key; Size: longword);
 var
-  xKeyD: array [0 .. 63] of DWord;
+  xKeyD: array [0 .. 63] of UInt32;
   i, j, k, xKeyLen: longword;
-  A, B: DWord;
+  A, B: UInt32;
 begin
   Size := Size div 8;
   FillChar(xKeyD, Sizeof(xKeyD), 0);
@@ -133,16 +130,16 @@ end;
 
 procedure TncEnc_rc6.EncryptECB(const InData; var OutData);
 var
-  x0, x1, x2, x3: DWord;
-  u, t: DWord;
+  x0, x1, x2, x3: UInt32;
+  u, t: UInt32;
   i: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  x0 := PDword(@InData)^;
-  x1 := PDword(longword(@InData) + 4)^;
-  x2 := PDword(longword(@InData) + 8)^;
-  x3 := PDword(longword(@InData) + 12)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  x0 := PUInt32(@InData)^;
+  x1 := PUInt32(NativeUInt(@InData) + 4)^;
+  x2 := PUInt32(NativeUInt(@InData) + 8)^;
+  x3 := PUInt32(NativeUInt(@InData) + 12)^;
   x1 := x1 + KeyData[0];
   x3 := x3 + KeyData[1];
   for i := 1 to NUMROUNDS do
@@ -159,24 +156,24 @@ begin
   end;
   x0 := x0 + KeyData[(2 * NUMROUNDS) + 2];
   x2 := x2 + KeyData[(2 * NUMROUNDS) + 3];
-  PDword(@OutData)^ := x0;
-  PDword(longword(@OutData) + 4)^ := x1;
-  PDword(longword(@OutData) + 8)^ := x2;
-  PDword(longword(@OutData) + 12)^ := x3;
+  PUInt32(@OutData)^ := x0;
+  PUInt32(NativeUInt(@OutData) + 4)^ := x1;
+  PUInt32(NativeUInt(@OutData) + 8)^ := x2;
+  PUInt32(NativeUInt(@OutData) + 12)^ := x3;
 end;
 
 procedure TncEnc_rc6.DecryptECB(const InData; var OutData);
 var
-  x0, x1, x2, x3: DWord;
-  u, t: DWord;
+  x0, x1, x2, x3: UInt32;
+  u, t: UInt32;
   i: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  x0 := PDword(@InData)^;
-  x1 := PDword(longword(@InData) + 4)^;
-  x2 := PDword(longword(@InData) + 8)^;
-  x3 := PDword(longword(@InData) + 12)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  x0 := PUInt32(@InData)^;
+  x1 := PUInt32(NativeUInt(@InData) + 4)^;
+  x2 := PUInt32(NativeUInt(@InData) + 8)^;
+  x3 := PUInt32(NativeUInt(@InData) + 12)^;
   x2 := x2 - KeyData[(2 * NUMROUNDS) + 3];
   x0 := x0 - KeyData[(2 * NUMROUNDS) + 2];
   for i := NUMROUNDS downto 1 do
@@ -193,10 +190,10 @@ begin
   end;
   x3 := x3 - KeyData[1];
   x1 := x1 - KeyData[0];
-  PDword(@OutData)^ := x0;
-  PDword(longword(@OutData) + 4)^ := x1;
-  PDword(longword(@OutData) + 8)^ := x2;
-  PDword(longword(@OutData) + 12)^ := x3;
+  PUInt32(@OutData)^ := x0;
+  PUInt32(NativeUInt(@OutData) + 4)^ := x1;
+  PUInt32(NativeUInt(@OutData) + 8)^ := x2;
+  PUInt32(NativeUInt(@OutData) + 12)^ := x3;
 end;
 
 end.

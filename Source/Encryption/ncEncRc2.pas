@@ -17,7 +17,7 @@ uses
 type
   TncEnc_rc2 = class(TncEnc_blockcipher64)
   protected
-    KeyData: array [0 .. 63] of word;
+    KeyData: array [0 .. 63] of Word;
     procedure InitKey(const Key; Size: longword); override;
   public
     class function GetAlgorithm: string; override;
@@ -35,22 +35,18 @@ implementation
 uses ncEncryption;
 
 const
-  sBox: array [0 .. 255] of byte = ($D9, $78, $F9, $C4, $19, $DD, $B5, $ED, $28, $E9, $FD, $79, $4A, $A0, $D8, $9D, $C6, $7E, $37, $83, $2B, $76, $53, $8E, $62,
-    $4C, $64, $88, $44, $8B, $FB, $A2, $17, $9A, $59, $F5, $87, $B3, $4F, $13, $61, $45, $6D, $8D, $09, $81, $7D, $32, $BD, $8F, $40, $EB, $86, $B7, $7B, $0B,
-    $F0, $95, $21, $22, $5C, $6B, $4E, $82, $54, $D6, $65, $93, $CE, $60, $B2, $1C, $73, $56, $C0, $14, $A7, $8C, $F1, $DC, $12, $75, $CA, $1F, $3B, $BE, $E4,
-    $D1, $42, $3D, $D4, $30, $A3, $3C, $B6, $26, $6F, $BF, $0E, $DA, $46, $69, $07, $57, $27, $F2, $1D, $9B, $BC, $94, $43, $03, $F8, $11, $C7, $F6, $90, $EF,
-    $3E, $E7, $06, $C3, $D5, $2F, $C8, $66, $1E, $D7, $08, $E8, $EA, $DE, $80, $52, $EE, $F7, $84, $AA, $72, $AC, $35, $4D, $6A, $2A, $96, $1A, $D2, $71, $5A,
-    $15, $49, $74, $4B, $9F, $D0, $5E, $04, $18, $A4, $EC, $C2, $E0, $41, $6E, $0F, $51, $CB, $CC, $24, $91, $AF, $50, $A1, $F4, $70, $39, $99, $7C, $3A, $85,
-    $23, $B8, $B4, $7A, $FC, $02, $36, $5B, $25, $55, $97, $31, $2D, $5D, $FA, $98, $E3, $8A, $92, $AE, $05, $DF, $29, $10, $67, $6C, $BA, $C9, $D3, $00, $E6,
-    $CF, $E1, $9E, $A8, $2C, $63, $16, $01, $3F, $58, $E2, $89, $A9, $0D, $38, $34, $1B, $AB, $33, $FF, $B0, $BB, $48, $0C, $5F, $B9, $B1, $CD, $2E, $C5, $F3,
-    $DB, $47, $E5, $A5, $9C, $77, $0A, $A6, $20, $68, $FE, $7F, $C1, $AD);
+  sBox: array [0 .. 255] of byte = ($D9, $78, $F9, $C4, $19, $DD, $B5, $ED, $28, $E9, $FD, $79, $4A, $A0, $D8, $9D, $C6, $7E, $37, $83, $2B, $76, $53, $8E, $62, $4C, $64, $88, $44, $8B, $FB, $A2, $17, $9A, $59, $F5, $87, $B3, $4F, $13, $61, $45, $6D, $8D, $09, $81, $7D, $32, $BD, $8F, $40, $EB, $86, $B7, $7B, $0B, $F0,
+    $95, $21, $22, $5C, $6B, $4E, $82, $54, $D6, $65, $93, $CE, $60, $B2, $1C, $73, $56, $C0, $14, $A7, $8C, $F1, $DC, $12, $75, $CA, $1F, $3B, $BE, $E4, $D1, $42, $3D, $D4, $30, $A3, $3C, $B6, $26, $6F, $BF, $0E, $DA, $46, $69, $07, $57, $27, $F2, $1D, $9B, $BC, $94, $43, $03, $F8, $11, $C7, $F6, $90, $EF, $3E, $E7,
+    $06, $C3, $D5, $2F, $C8, $66, $1E, $D7, $08, $E8, $EA, $DE, $80, $52, $EE, $F7, $84, $AA, $72, $AC, $35, $4D, $6A, $2A, $96, $1A, $D2, $71, $5A, $15, $49, $74, $4B, $9F, $D0, $5E, $04, $18, $A4, $EC, $C2, $E0, $41, $6E, $0F, $51, $CB, $CC, $24, $91, $AF, $50, $A1, $F4, $70, $39, $99, $7C, $3A, $85, $23, $B8, $B4,
+    $7A, $FC, $02, $36, $5B, $25, $55, $97, $31, $2D, $5D, $FA, $98, $E3, $8A, $92, $AE, $05, $DF, $29, $10, $67, $6C, $BA, $C9, $D3, $00, $E6, $CF, $E1, $9E, $A8, $2C, $63, $16, $01, $3F, $58, $E2, $89, $A9, $0D, $38, $34, $1B, $AB, $33, $FF, $B0, $BB, $48, $0C, $5F, $B9, $B1, $CD, $2E, $C5, $F3, $DB, $47, $E5, $A5,
+    $9C, $77, $0A, $A6, $20, $68, $FE, $7F, $C1, $AD);
 
-function LRot16(a, n: word): word;
+function LRot16(a, n: Word): Word;
 begin
   Result := (a shl n) or (a shr (16 - n));
 end;
 
-function RRot16(a, n: word): word;
+function RRot16(a, n: Word): Word;
 begin
   Result := (a shr n) or (a shl (16 - n));
 end;
@@ -114,12 +110,12 @@ end;
 procedure TncEnc_rc2.EncryptECB(const InData; var OutData);
 var
   i, j: longword;
-  w: array [0 .. 3] of word;
+  w: array [0 .. 3] of Word;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  Pdword(@w[0])^ := Pdword(@InData)^;
-  Pdword(@w[2])^ := Pdword(longword(@InData) + 4)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  PUInt32(@w[0])^ := PUInt32(@InData)^;
+  PUInt32(@w[2])^ := PUInt32(NativeUInt(@InData) + 4)^;
   for i := 0 to 15 do
   begin
     j := i * 4;
@@ -135,19 +131,19 @@ begin
       w[3] := w[3] + KeyData[w[2] and 63];
     end;
   end;
-  Pdword(@OutData)^ := Pdword(@w[0])^;
-  Pdword(longword(@OutData) + 4)^ := Pdword(@w[2])^;
+  PUInt32(@OutData)^ := PUInt32(@w[0])^;
+  PUInt32(NativeUInt(@OutData) + 4)^ := PUInt32(@w[2])^;
 end;
 
 procedure TncEnc_rc2.DecryptECB(const InData; var OutData);
 var
   i, j: longword;
-  w: array [0 .. 3] of word;
+  w: array [0 .. 3] of Word;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  Pdword(@w[0])^ := Pdword(@InData)^;
-  Pdword(@w[2])^ := Pdword(longword(@InData) + 4)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  PUInt32(@w[0])^ := PUInt32(@InData)^;
+  PUInt32(@w[2])^ := PUInt32(NativeUInt(@InData) + 4)^;
   for i := 15 downto 0 do
   begin
     j := i * 4;
@@ -163,8 +159,8 @@ begin
       w[0] := w[0] - KeyData[w[3] and 63];
     end;
   end;
-  Pdword(@OutData)^ := Pdword(@w[0])^;
-  Pdword(longword(@OutData) + 4)^ := Pdword(@w[2])^;
+  PUInt32(@OutData)^ := PUInt32(@w[0])^;
+  PUInt32(NativeUInt(@OutData) + 4)^ := PUInt32(@w[2])^;
 end;
 
 end.

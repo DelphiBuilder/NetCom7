@@ -81,8 +81,8 @@ begin
     Result := x;
     Exit;
   end;
-  t1 := DWord($10001) div x;
-  y := DWord($10001) mod x;
+  t1 := UInt32($10001) div x;
+  y := UInt32($10001) mod x;
   if y = 1 then
   begin
     Result := (1 - t1) and $FFFF;
@@ -161,10 +161,10 @@ end;
 
 procedure Mul(var x: word; const y: word);
 var
-  p: DWord;
+  p: UInt32;
   t16: word;
 begin
-  p := DWord(x) * y;
+  p := UInt32(x) * y;
   if p = 0 then
     x := 1 - x - y
   else
@@ -183,10 +183,10 @@ var
   s3, s2: word;
   i: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  PDword(@x[1])^ := PDword(@InData)^;
-  PDword(@x[3])^ := PDword(DWord(@InData) + 4)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  PUInt32(@x[1])^ := PUInt32(@InData)^;
+  PUInt32(@x[3])^ := PUInt32(NativeUInt(@InData) + 4)^;
   for i := 1 to 4 do
     x[i] := (x[i] shl 8) or (x[i] shr 8);
   for i := 0 to 7 do
@@ -217,8 +217,8 @@ begin
   x[3] := (x[2] shl 8) or (x[2] shr 8);
   x[4] := (x[4] shl 8) or (x[4] shr 8);
   x[2] := s2;
-  PDword(@OutData)^ := PDword(@x[1])^;
-  PDword(DWord(@OutData) + 4)^ := PDword(@x[3])^;
+  PUInt32(@OutData)^ := PUInt32(@x[1])^;
+  PUInt32(NativeUInt(@OutData) + 4)^ := PUInt32(@x[3])^;
 end;
 
 procedure TncEnc_idea.DecryptECB(const InData; var OutData);
@@ -227,10 +227,10 @@ var
   s3, s2: word;
   i: longword;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
-  PDword(@x[1])^ := PDword(@InData)^;
-  PDword(@x[3])^ := PDword(DWord(@InData) + 4)^;
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
+  PUInt32(@x[1])^ := PUInt32(@InData)^;
+  PUInt32(@x[3])^ := PUInt32(NativeUInt(@InData) + 4)^;
   for i := 1 to 4 do
     x[i] := (x[i] shl 8) or (x[i] shr 8);
   for i := 0 to 7 do
@@ -261,8 +261,8 @@ begin
   x[3] := (x[2] shl 8) or (x[2] shr 8);
   x[4] := (x[4] shl 8) or (x[4] shr 8);
   x[2] := s2;
-  PDword(@OutData)^ := PDword(@x[1])^;
-  PDword(DWord(@OutData) + 4)^ := PDword(@x[3])^;
+  PUInt32(@OutData)^ := PUInt32(@x[1])^;
+  PUInt32(NativeUInt(@OutData) + 4)^ := PUInt32(@x[3])^;
 end;
 
 end.

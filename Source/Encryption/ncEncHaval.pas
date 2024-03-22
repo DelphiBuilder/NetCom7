@@ -15,21 +15,21 @@ uses
   System.Classes, System.Sysutils, ncEnccrypt2;
 
 type
-  TncEnc_haval = class(TncEnc_hash)
+  TncEnc_haval = class(TncEncHash)
   protected
-    LenHi, LenLo: longword;
-    Index: DWord;
-    CurrentHash: array [0 .. 7] of DWord;
-    HashBuffer: array [0 .. 127] of byte;
+    LenHi, LenLo: UInt32;
+    Index: UInt32;
+    CurrentHash: array [0 .. 7] of UInt32;
+    HashBuffer: array [0 .. 127] of Byte;
     procedure Compress;
   public
     class function GetAlgorithm: string; override;
-    class function GetHashSize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetHashSize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Init; override;
-    procedure Burn; override;
-    procedure Update(const Buffer; Size: longword); override;
+    procedure Update(const Buffer; Size: NativeUInt); override;
     procedure Final(var Digest); override;
+    procedure Burn; override;
   end;
 
   { Choose how many passes (previous versions of ncEnccrypt uses 5 passes) }
@@ -53,9 +53,9 @@ uses ncEncryption;
 
 procedure TncEnc_haval.Compress;
 var
-  t7, t6, t5, t4, t3, t2, t1, t0: DWord;
-  W: array [0 .. 31] of DWord;
-  Temp: DWord;
+  t7, t6, t5, t4, t3, t2, t1, t0: UInt32;
+  W: array [0 .. 31] of UInt32;
+  Temp: UInt32;
 begin
   t0 := CurrentHash[0];
   t1 := CurrentHash[1];
@@ -898,7 +898,7 @@ begin
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
 end;
 
-class function TncEnc_haval.GetHashSize: integer;
+class function TncEnc_haval.GetHashSize: Integer;
 begin
 {$IFDEF DIGEST128}
   Result := 128;
@@ -950,14 +950,14 @@ begin
 {$ENDIF}
 end;
 
-class function TncEnc_haval.SelfTest: boolean;
+class function TncEnc_haval.SelfTest: Boolean;
 {$IFDEF PASS3}
 {$IFDEF DIGEST128}
 const
-  Test1Out: array [0 .. 15] of byte = ($1B, $DC, $55, $6B, $29, $AD, $02, $EC, $09, $AF, $8C, $66, $47, $7F, $2A, $87);
+  Test1Out: array [0 .. 15] of Byte = ($1B, $DC, $55, $6B, $29, $AD, $02, $EC, $09, $AF, $8C, $66, $47, $7F, $2A, $87);
 var
   TestHash: TncEnc_haval;
-  TestOut: array [0 .. 15] of byte;
+  TestOut: array [0 .. 15] of Byte;
 begin
   TestHash := TncEnc_haval.Create(nil);
   TestHash.Init;
@@ -968,11 +968,11 @@ begin
 {$ELSE}
 {$IFDEF DIGEST160}
 const
-  Test1Out: array [0 .. 19] of byte = ($5E, $16, $10, $FC, $ED, $1D, $3A, $DB, $0B, $B1, $8E, $92, $AC, $2B, $11, $F0, $BD, $99, $D8, $ED);
+  Test1Out: array [0 .. 19] of Byte = ($5E, $16, $10, $FC, $ED, $1D, $3A, $DB, $0B, $B1, $8E, $92, $AC, $2B, $11, $F0, $BD, $99, $D8, $ED);
 
 var
   TestHash: TncEnc_haval;
-  TestOut: array [0 .. 19] of byte;
+  TestOut: array [0 .. 19] of Byte;
 begin
   TestHash := TncEnc_haval.Create(nil);
   TestHash.Init;
@@ -989,11 +989,11 @@ begin
 {$IFDEF PASS4}
 {$IFDEF DIGEST192}
 const
-  Test1Out: array [0 .. 23] of byte = ($74, $AA, $31, $18, $2F, $F0, $9B, $CC, $E4, $53, $A7, $F7, $1B, $5A, $7C, $5E, $80, $87, $2F, $A9, $0C, $D9, $3A, $E4);
+  Test1Out: array [0 .. 23] of Byte = ($74, $AA, $31, $18, $2F, $F0, $9B, $CC, $E4, $53, $A7, $F7, $1B, $5A, $7C, $5E, $80, $87, $2F, $A9, $0C, $D9, $3A, $E4);
 
 var
   TestHash: TncEnc_haval;
-  TestOut: array [0 .. 23] of byte;
+  TestOut: array [0 .. 23] of Byte;
 begin
   TestHash := TncEnc_haval.Create(nil);
   TestHash.Init;
@@ -1004,12 +1004,11 @@ begin
 {$ELSE}
 {$IFDEF DIGEST224}
 const
-  Test1Out: array [0 .. 27] of byte = ($14, $4C, $B2, $DE, $11, $F0, $5D, $F7, $C3, $56, $28, $2A, $3B, $48, $57, $96, $DA, $65, $3F, $6B, $70, $28, $68, $C7,
-    $DC, $F4, $AE, $76);
+  Test1Out: array [0 .. 27] of Byte = ($14, $4C, $B2, $DE, $11, $F0, $5D, $F7, $C3, $56, $28, $2A, $3B, $48, $57, $96, $DA, $65, $3F, $6B, $70, $28, $68, $C7, $DC, $F4, $AE, $76);
 
 var
   TestHash: TncEnc_haval;
-  TestOut: array [0 .. 27] of byte;
+  TestOut: array [0 .. 27] of Byte;
 begin
   TestHash := TncEnc_haval.Create(nil);
   TestHash.Init;
@@ -1025,14 +1024,12 @@ begin
 {$ELSE}
 {$IFDEF DIGEST256}
 const
-  Test1Out: array [0 .. 31] of byte = ($1A, $1D, $C8, $09, $9B, $DA, $A7, $F3, $5B, $4D, $A4, $E8, $05, $F1, $A2, $8F, $EE, $90, $9D, $8D, $EE, $92, $01, $98,
-    $18, $5C, $BC, $AE, $D8, $A1, $0A, $8D);
-  Test2Out: array [0 .. 31] of byte = ($C5, $64, $7F, $C6, $C1, $87, $7F, $FF, $96, $74, $2F, $27, $E9, $26, $6B, $68, $74, $89, $4F, $41, $A0, $8F, $59, $13,
-    $03, $3D, $9D, $53, $2A, $ED, $DB, $39);
+  Test1Out: array [0 .. 31] of Byte = ($1A, $1D, $C8, $09, $9B, $DA, $A7, $F3, $5B, $4D, $A4, $E8, $05, $F1, $A2, $8F, $EE, $90, $9D, $8D, $EE, $92, $01, $98, $18, $5C, $BC, $AE, $D8, $A1, $0A, $8D);
+  Test2Out: array [0 .. 31] of Byte = ($C5, $64, $7F, $C6, $C1, $87, $7F, $FF, $96, $74, $2F, $27, $E9, $26, $6B, $68, $74, $89, $4F, $41, $A0, $8F, $59, $13, $03, $3D, $9D, $53, $2A, $ED, $DB, $39);
 
 var
   TestHash: TncEnc_haval;
-  TestOut: array [0 .. 31] of byte;
+  TestOut: array [0 .. 31] of Byte;
 begin
   TestHash := TncEnc_haval.Create(nil);
   TestHash.Init;
@@ -1063,7 +1060,7 @@ begin
   CurrentHash[5] := $299F31D0;
   CurrentHash[6] := $082EFA98;
   CurrentHash[7] := $EC4E6C89;
-  fInitialized := true;
+  FInitialized := true;
 end;
 
 procedure TncEnc_haval.Burn;
@@ -1073,15 +1070,15 @@ begin
   Index := 0;
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
   FillChar(CurrentHash, Sizeof(CurrentHash), 0);
-  fInitialized := false;
+  FInitialized := false;
 end;
 
-procedure TncEnc_haval.Update(const Buffer; Size: longword);
+procedure TncEnc_haval.Update(const Buffer; Size: NativeUInt);
 var
-  PBuf: ^byte;
+  PBuf: ^Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
 
   Inc(LenHi, Size shr 29);
   Inc(LenLo, Size * 8);
@@ -1091,7 +1088,7 @@ begin
   PBuf := @Buffer;
   while Size > 0 do
   begin
-    if (Sizeof(HashBuffer) - Index) <= DWord(Size) then
+    if (Sizeof(HashBuffer) - Index) <= Size then
     begin
       Move(PBuf^, HashBuffer[Index], Sizeof(HashBuffer) - Index);
       Dec(Size, Sizeof(HashBuffer) - Index);
@@ -1111,12 +1108,13 @@ procedure TncEnc_haval.Final(var Digest);
 {$IFNDEF DIGEST256}
 {$IFNDEF DIGEST224}
 var
-  Temp: DWord;
+  Temp: UInt32;
 {$ENDIF}
 {$ENDIF}
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
+
   HashBuffer[Index] := $80;
   if Index >= 118 then
     Compress;
@@ -1192,8 +1190,8 @@ begin
 {$ENDIF}
 {$ENDIF}
 {$ENDIF}
-  PDWord(@HashBuffer[120])^ := LenLo;
-  PDWord(@HashBuffer[124])^ := LenHi;
+  PUInt32(@HashBuffer[120])^ := LenLo;
+  PUInt32(@HashBuffer[124])^ := LenHi;
   Compress;
 {$IFDEF DIGEST128}
   Temp := (CurrentHash[7] and $000000FF) or (CurrentHash[6] and $FF000000) or (CurrentHash[5] and $00FF0000) or (CurrentHash[4] and $0000FF00);

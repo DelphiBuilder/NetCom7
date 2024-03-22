@@ -17,12 +17,12 @@ uses
 type
   TncEnc_serpent = class(TncEnc_blockcipher128)
   protected
-    l_key: array [0 .. 131] of dword;
+    l_key: array [0 .. 131] of UInt32;
     procedure InitKey(const Key; Size: longword); override;
   public
     class function GetAlgorithm: string; override;
-    class function GetMaxKeySize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetMaxKeySize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Burn; override;
     procedure EncryptECB(const InData; var OutData); override;
     procedure DecryptECB(const InData; var OutData); override;
@@ -39,12 +39,12 @@ begin
   Result := 'Serpent';
 end;
 
-class function TncEnc_serpent.GetMaxKeySize: integer;
+class function TncEnc_serpent.GetMaxKeySize: Integer;
 begin
   Result := 256;
 end;
 
-class function TncEnc_serpent.SelfTest: boolean;
+class function TncEnc_serpent.SelfTest: Boolean;
 const
   Key1: array [0 .. 15] of byte = ($FF, $EE, $DD, $CC, $BB, $AA, $99, $88, $77, $66, $55, $44, $33, $22, $11, $00);
   InData1: array [0 .. 15] of byte = ($10, $32, $54, $76, $98, $BA, $DC, $FE, $EF, $CD, $AB, $89, $67, $45, $23, $01);
@@ -52,8 +52,7 @@ const
   Key2: array [0 .. 23] of byte = ($88, $99, $AA, $BB, $CC, $DD, $EE, $FF, $FF, $EE, $DD, $CC, $BB, $AA, $99, $88, $77, $66, $55, $44, $33, $22, $11, $00);
   InData2: array [0 .. 15] of byte = ($10, $32, $54, $76, $98, $BA, $DC, $FE, $EF, $CD, $AB, $89, $67, $45, $23, $01);
   OutData2: array [0 .. 15] of byte = ($DA, $86, $08, $42, $B7, $20, $80, $2B, $F4, $04, $A4, $C7, $10, $34, $87, $9A);
-  Key3: array [0 .. 31] of byte = ($00, $11, $22, $33, $44, $55, $66, $77, $88, $99, $AA, $BB, $CC, $DD, $EE, $FF, $FF, $EE, $DD, $CC, $BB, $AA, $99, $88, $77,
-    $66, $55, $44, $33, $22, $11, $00);
+  Key3: array [0 .. 31] of byte = ($00, $11, $22, $33, $44, $55, $66, $77, $88, $99, $AA, $BB, $CC, $DD, $EE, $FF, $FF, $EE, $DD, $CC, $BB, $AA, $99, $88, $77, $66, $55, $44, $33, $22, $11, $00);
   InData3: array [0 .. 15] of byte = ($10, $32, $54, $76, $98, $BA, $DC, $FE, $EF, $CD, $AB, $89, $67, $45, $23, $01);
   OutData3: array [0 .. 15] of byte = ($93, $DF, $9A, $3C, $AF, $E3, $87, $BD, $99, $9E, $EB, $E3, $93, $A1, $7F, $CA);
 var
@@ -63,31 +62,31 @@ begin
   Cipher := TncEnc_serpent.Create(nil);
   Cipher.Init(Key1, Sizeof(Key1) * 8, nil);
   Cipher.EncryptECB(InData1, Block);
-  Result := boolean(CompareMem(@Block, @OutData1, 16));
+  Result := Boolean(CompareMem(@Block, @OutData1, 16));
   Cipher.DecryptECB(Block, Block);
   Cipher.Burn;
-  Result := Result and boolean(CompareMem(@Block, @InData1, 16));
+  Result := Result and Boolean(CompareMem(@Block, @InData1, 16));
   Cipher.Init(Key2, Sizeof(Key2) * 8, nil);
   Cipher.EncryptECB(InData2, Block);
-  Result := Result and boolean(CompareMem(@Block, @OutData2, 16));
+  Result := Result and Boolean(CompareMem(@Block, @OutData2, 16));
   Cipher.DecryptECB(Block, Block);
   Cipher.Burn;
-  Result := Result and boolean(CompareMem(@Block, @InData2, 16));
+  Result := Result and Boolean(CompareMem(@Block, @InData2, 16));
   Cipher.Init(Key3, Sizeof(Key3) * 8, nil);
   Cipher.EncryptECB(InData3, Block);
-  Result := Result and boolean(CompareMem(@Block, @OutData3, 16));
+  Result := Result and Boolean(CompareMem(@Block, @OutData3, 16));
   Cipher.DecryptECB(Block, Block);
   Cipher.Burn;
-  Result := Result and boolean(CompareMem(@Block, @InData3, 16));
+  Result := Result and Boolean(CompareMem(@Block, @InData3, 16));
   Cipher.Free;
 end;
 
 procedure TncEnc_serpent.InitKey(const Key; Size: longword);
 var
-  kp: array [0 .. 139] of dword;
-  i, n: integer;
-  t, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17: dword;
-  a, b, c, d: dword;
+  kp: array [0 .. 139] of UInt32;
+  i, n: Integer;
+  t, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17: UInt32;
+  a, b, c, d: UInt32;
 begin
   FillChar(kp, 256 div 8, 0);
   Move(Key, kp, Size div 8);
@@ -309,17 +308,17 @@ end;
 
 procedure TncEnc_serpent.EncryptECB(const InData; var OutData);
 var
-  i: integer;
-  a, b, c, d, e, f, g, h: dword;
-  t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17: dword;
+  i: Integer;
+  a, b, c, d, e, f, g, h: UInt32;
+  t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17: UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
 
-  a := PDWord(@InData)^;
-  b := PDWord(longword(@InData) + 4)^;
-  c := PDWord(longword(@InData) + 8)^;
-  d := PDWord(longword(@InData) + 12)^;
+  a := PUInt32(@InData)^;
+  b := PUInt32(NativeUInt(@InData) + 4)^;
+  c := PUInt32(NativeUInt(@InData) + 8)^;
+  d := PUInt32(NativeUInt(@InData) + 12)^;
 
   i := 0;
   while i < 32 do
@@ -584,25 +583,25 @@ begin
   c := c xor l_key[128 + 2];
   d := d xor l_key[128 + 3];
 
-  PDWord(longword(@OutData) + 0)^ := a;
-  PDWord(longword(@OutData) + 4)^ := b;
-  PDWord(longword(@OutData) + 8)^ := c;
-  PDWord(longword(@OutData) + 12)^ := d;
+  PUInt32(NativeUInt(@OutData) + 0)^ := a;
+  PUInt32(NativeUInt(@OutData) + 4)^ := b;
+  PUInt32(NativeUInt(@OutData) + 8)^ := c;
+  PUInt32(NativeUInt(@OutData) + 12)^ := d;
 end;
 
 procedure TncEnc_serpent.DecryptECB(const InData; var OutData);
 var
-  i: integer;
-  a, b, c, d, e, f, g, h: dword;
-  t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16: dword;
+  i: Integer;
+  a, b, c, d, e, f, g, h: UInt32;
+  t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16: UInt32;
 begin
-  if not fInitialized then
-    raise EncEnc_blockcipher.Create('Cipher not initialized');
+  if not FInitialized then
+    raise EEncBlockcipherException.Create(rsCipherNotInitialised);
 
-  a := PDWord(@InData)^;
-  b := PDWord(longword(@InData) + 4)^;
-  c := PDWord(longword(@InData) + 8)^;
-  d := PDWord(longword(@InData) + 12)^;
+  a := PUInt32(@InData)^;
+  b := PUInt32(NativeUInt(@InData) + 4)^;
+  c := PUInt32(NativeUInt(@InData) + 8)^;
+  d := PUInt32(NativeUInt(@InData) + 12)^;
 
   i := 32;
   a := a xor l_key[4 * 32];
@@ -864,10 +863,10 @@ begin
     Dec(i, 8);
   end;
 
-  PDWord(longword(@OutData) + 0)^ := a;
-  PDWord(longword(@OutData) + 4)^ := b;
-  PDWord(longword(@OutData) + 8)^ := c;
-  PDWord(longword(@OutData) + 12)^ := d;
+  PUInt32(NativeUInt(@OutData) + 0)^ := a;
+  PUInt32(NativeUInt(@OutData) + 4)^ := b;
+  PUInt32(NativeUInt(@OutData) + 8)^ := c;
+  PUInt32(NativeUInt(@OutData) + 12)^ := d;
 end;
 
 end.

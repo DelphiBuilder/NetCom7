@@ -15,21 +15,21 @@ uses
   System.Classes, System.Sysutils, ncEnccrypt2;
 
 type
-  TncEnc_ripemd128 = class(TncEnc_hash)
+  TncEnc_ripemd128 = class(TncEncHash)
   protected
-    LenHi, LenLo: longword;
-    Index: DWord;
-    CurrentHash: array [0 .. 3] of DWord;
-    HashBuffer: array [0 .. 63] of byte;
+    LenHi, LenLo: UInt32;
+    Index: UInt32;
+    CurrentHash: array [0 .. 3] of UInt32;
+    HashBuffer: array [0 .. 63] of Byte;
     procedure Compress;
   public
     class function GetAlgorithm: string; override;
-    class function GetHashSize: integer; override;
-    class function SelfTest: boolean; override;
+    class function GetHashSize: Integer; override;
+    class function SelfTest: Boolean; override;
     procedure Init; override;
-    procedure Burn; override;
-    procedure Update(const Buffer; Size: longword); override;
+    procedure Update(const aBuffer; aSize: NativeUInt); override;
     procedure Final(var Digest); override;
+    procedure Burn; override;
   end;
 
   { ****************************************************************************** }
@@ -40,8 +40,8 @@ uses ncEncryption;
 
 procedure TncEnc_ripemd128.Compress;
 var
-  X: array [0 .. 15] of DWord;
-  a, aa, b, bb, c, cc, d, dd, t: DWord;
+  X: array [0 .. 15] of UInt32;
+  a, aa, b, bb, c, cc, d, dd, t: UInt32;
 begin
   Move(HashBuffer, X, Sizeof(X));
   a := CurrentHash[0];
@@ -328,7 +328,7 @@ begin
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
 end;
 
-class function TncEnc_ripemd128.GetHashSize: integer;
+class function TncEnc_ripemd128.GetHashSize: Integer;
 begin
   Result := 128;
 end;
@@ -338,13 +338,13 @@ begin
   Result := 'RipeMD-128';
 end;
 
-class function TncEnc_ripemd128.SelfTest: boolean;
+class function TncEnc_ripemd128.SelfTest: Boolean;
 const
-  Test1Out: array [0 .. 15] of byte = ($86, $BE, $7A, $FA, $33, $9D, $0F, $C7, $CF, $C7, $85, $E7, $2F, $57, $8D, $33);
-  Test2Out: array [0 .. 15] of byte = ($FD, $2A, $A6, $07, $F7, $1D, $C8, $F5, $10, $71, $49, $22, $B3, $71, $83, $4E);
+  Test1Out: array [0 .. 15] of Byte = ($86, $BE, $7A, $FA, $33, $9D, $0F, $C7, $CF, $C7, $85, $E7, $2F, $57, $8D, $33);
+  Test2Out: array [0 .. 15] of Byte = ($FD, $2A, $A6, $07, $F7, $1D, $C8, $F5, $10, $71, $49, $22, $B3, $71, $83, $4E);
 var
   TestHash: TncEnc_ripemd128;
-  TestOut: array [0 .. 15] of byte;
+  TestOut: array [0 .. 15] of Byte;
 begin
   TestHash := TncEnc_ripemd128.Create(nil);
   TestHash.Init;
@@ -365,7 +365,7 @@ begin
   CurrentHash[1] := $EFCDAB89;
   CurrentHash[2] := $98BADCFE;
   CurrentHash[3] := $10325476;
-  fInitialized := true;
+  FInitialized := true;
 end;
 
 procedure TncEnc_ripemd128.Burn;
@@ -375,49 +375,50 @@ begin
   Index := 0;
   FillChar(HashBuffer, Sizeof(HashBuffer), 0);
   FillChar(CurrentHash, Sizeof(CurrentHash), 0);
-  fInitialized := false;
+  FInitialized := false;
 end;
 
-procedure TncEnc_ripemd128.Update(const Buffer; Size: longword);
+procedure TncEnc_ripemd128.Update(const aBuffer; aSize: NativeUInt);
 var
-  PBuf: ^byte;
+  PBuf: ^Byte;
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
 
-  Inc(LenHi, Size shr 29);
-  Inc(LenLo, Size * 8);
-  if LenLo < (Size * 8) then
+  Inc(LenHi, aSize shr 29);
+  Inc(LenLo, aSize * 8);
+  if LenLo < (aSize * 8) then
     Inc(LenHi);
 
-  PBuf := @Buffer;
-  while Size > 0 do
+  PBuf := @aBuffer;
+  while aSize > 0 do
   begin
-    if (Sizeof(HashBuffer) - Index) <= DWord(Size) then
+    if (Sizeof(HashBuffer) - Index) <= aSize then
     begin
       Move(PBuf^, HashBuffer[Index], Sizeof(HashBuffer) - Index);
-      Dec(Size, Sizeof(HashBuffer) - Index);
+      Dec(aSize, Sizeof(HashBuffer) - Index);
       Inc(PBuf, Sizeof(HashBuffer) - Index);
       Compress;
     end
     else
     begin
-      Move(PBuf^, HashBuffer[Index], Size);
-      Inc(Index, Size);
-      Size := 0;
+      Move(PBuf^, HashBuffer[Index], aSize);
+      Inc(Index, aSize);
+      aSize := 0;
     end;
   end;
 end;
 
 procedure TncEnc_ripemd128.Final(var Digest);
 begin
-  if not fInitialized then
-    raise EncEnc_hash.Create('Hash not initialized');
+  if not FInitialized then
+    raise EEncHashException.Create(rsHashNotInitialised);
+
   HashBuffer[Index] := $80;
   if Index >= 56 then
     Compress;
-  PDWord(@HashBuffer[56])^ := LenLo;
-  PDWord(@HashBuffer[60])^ := LenHi;
+  PUInt32(@HashBuffer[56])^ := LenLo;
+  PUInt32(@HashBuffer[60])^ := LenHi;
   Compress;
   Move(CurrentHash, Digest, Sizeof(CurrentHash));
   Burn;
