@@ -45,9 +45,9 @@ function GetHash(const aBytes: TBytes; aHasherType: THasherType = htSha256; aBas
 function GetHashFromFile(const aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
 
 // Encryption
-function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
   aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
-function DecryptBytes(aBytes: TBytes; const aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
   aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 
 implementation
@@ -161,7 +161,7 @@ end;
 
 function GetHash(const aBytes: TBytes; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
 var
-  Hash: TncEnc_Hash;
+  Hash: TncEncHash;
   Digest: PByte;
 begin
   // Create unique hash
@@ -228,10 +228,10 @@ begin
   Result := GetHash(FileBytes, aHasherType, aBase64Encode);
 end;
 
-function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: string = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
   aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
 var
-  Encryptor: TncEnc_cipher;
+  Encryptor: TncEncCipher;
 begin
   case aEncryptorType of
     etRc2:
@@ -297,10 +297,10 @@ begin
     end;
 end;
 
-function DecryptBytes(aBytes: TBytes; const aDecryptionKey: string = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
   aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 var
-  Decryptor: TncEnc_cipher;
+  Decryptor: TncEncCipher;
 begin
   case aDecryptorType of
     etRc2:

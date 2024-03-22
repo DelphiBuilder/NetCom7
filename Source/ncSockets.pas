@@ -581,7 +581,8 @@ begin
 
   LineProcessor := TncClientProcessor.Create(Self);
   try
-    LineProcessor.Priority := FromNcThreadPriority(DefReaderThreadPriority);
+    if LineProcessor.Priority <> FromNcThreadPriority(DefReaderThreadPriority) then
+      LineProcessor.Priority := FromNcThreadPriority(DefReaderThreadPriority);
   except
     // Some Android devices do not like this
   end;
@@ -636,6 +637,13 @@ begin
   if KeepAlive then
     try
       TncLineInternal(Line).EnableKeepAlive;
+    except
+    end;
+
+    try
+      TncLineInternal(Line).SetReceiveSize(1048576);
+      TncLineInternal(Line).SetWriteSize(1048576);
+      TncLineInternal(Line).SetReceiveSize(20 * 1048576);
     except
     end;
 
@@ -811,7 +819,7 @@ begin
     try
       if FClientSocket.Line.Active then // Repeat reading socket until disconnected
       begin
-        if ReadableAnySocket(FClientSocket.ReadSocketHandles, 250) then
+        if ReadableAnySocket(FClientSocket.ReadSocketHandles, 100) then
         begin
           if ReadySocketsChanged then
           begin
@@ -1003,6 +1011,12 @@ begin
         TncLineInternal(aLine).EnableKeepAlive;
       except
       end;
+
+    try
+      TncLineInternal(aLine).SetReceiveSize(1048576);
+      TncLineInternal(aLine).SetWriteSize(1048576);
+    except
+    end;
 
     if Assigned(OnConnected) then
       try

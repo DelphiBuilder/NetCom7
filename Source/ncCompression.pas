@@ -30,7 +30,7 @@ end;
 function DecompressBytes(const aBytes: TBytes): TBytes;
 begin
   if Length(aBytes) > 0 then
-    ZDecompress(aBytes, Result)
+    ZDecompress(aBytes, Result, Length(aBytes) * 128)
   else
     SetLength(Result, 0);
 end;

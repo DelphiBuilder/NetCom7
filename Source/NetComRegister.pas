@@ -43,7 +43,7 @@ begin
 
   UnlistPublishedProperty(TncDBDataset, 'Connection');
   UnlistPublishedProperty(TncDBDataset, 'ConnectionString');
-  // RegisterPropertyEditor(TypeInfo(string), TncDBDataset, 'ConnectionString', nil);
+  RegisterPropertyEditor(TypeInfo(string), TncDBDataset, 'ConnectionString', nil);
 
   ForceDemandLoadState(dlDisable);
 end;

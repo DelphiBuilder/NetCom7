@@ -106,6 +106,8 @@ type
     procedure EnableNoDelay; inline;
     procedure EnableKeepAlive; inline;
     procedure EnableReuseAddress; inline;
+    procedure SetReceiveSize(const aBufferSize: Integer);
+    procedure SetWriteSize(const aBufferSize: Integer);
 
     property OnConnected: TncLineOnConnectDisconnect read FOnConnected write FOnConnected;
     property OnDisconnected: TncLineOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
@@ -263,7 +265,6 @@ begin
 end;
 
 {$ENDIF}
-
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncLine }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -525,6 +526,25 @@ begin
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, PAnsiChar(@optval), SizeOf(optval)));
 {$ELSE}
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, optval, SizeOf(optval)));
+{$ENDIF}
+end;
+
+procedure TncLine.SetReceiveSize(const aBufferSize: Integer);
+begin
+  // min is 512 bytes, max is 1048576
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, PAnsiChar(@aBufferSize), SizeOf(aBufferSize)));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize, SizeOf(aBufferSize)));
+{$ENDIF}
+end;
+
+procedure TncLine.SetWriteSize(const aBufferSize: Integer);
+begin
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_SNDBUF, PAnsiChar(@aBufferSize), SizeOf(aBufferSize)));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize, SizeOf(aBufferSize)));
 {$ENDIF}
 end;
 

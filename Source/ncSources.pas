@@ -164,7 +164,7 @@ type
     FEventsUseMainThread: Boolean;
     FCompression: TncCompressionLevel;
     FEncryption: TEncryptorType;
-    FEncryptionKey: string;
+    FEncryptionKey: AnsiString;
     FEncryptOnHashedKey: Boolean;
 
     FOnConnected: TncOnSourceConnectDisconnect;
@@ -212,8 +212,8 @@ type
     procedure SetCompression(const Value: TncCompressionLevel);
     function GetEncryption: TEncryptorType;
     procedure SetEncryption(const Value: TEncryptorType);
-    function GetEncryptionKey: string;
-    procedure SetEncryptionKey(const Value: string);
+    function GetEncryptionKey: AnsiString;
+    procedure SetEncryptionKey(const Value: AnsiString);
     function GetEncryptOnHashedKey: Boolean;
     procedure SetEncryptOnHashedKey(const Value: Boolean);
   private
@@ -276,7 +276,7 @@ type
     property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
     property Compression: TncCompressionLevel read GetCompression write SetCompression default DefCompression;
     property Encryption: TEncryptorType read GetEncryption write SetEncryption default DefEncryption;
-    property EncryptionKey: string read GetEncryptionKey write SetEncryptionKey;
+    property EncryptionKey: AnsiString read GetEncryptionKey write SetEncryptionKey;
     property EncryptOnHashedKey: Boolean read GetEncryptOnHashedKey write SetEncryptOnHashedKey default DefEncryptOnHashedKey;
 
     property OnConnected: TncOnSourceConnectDisconnect read GetOnConnected write SetOnConnected;
@@ -1080,7 +1080,7 @@ begin
   end;
 end;
 
-function TncSourceBase.GetEncryptionKey: string;
+function TncSourceBase.GetEncryptionKey: AnsiString;
 begin
   PropertyLock.Acquire;
   try
@@ -1090,7 +1090,7 @@ begin
   end;
 end;
 
-procedure TncSourceBase.SetEncryptionKey(const Value: string);
+procedure TncSourceBase.SetEncryptionKey(const Value: AnsiString);
 begin
   PropertyLock.Acquire;
   try
