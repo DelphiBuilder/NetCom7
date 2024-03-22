@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BorlandProject>
 	<ActiveMobileDevice>
-		<NoProfile Android="Y5LFKVQGYTL7JRV4" Android64="Y5LFKVQGYTL7JRV4"/>
+		<NoProfile Android="" Android64=""/>
 	</ActiveMobileDevice>
 	<Transactions>
     <Transaction>2020/08/08 06:05:23.000.402,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSocketList.pas</Transaction>
