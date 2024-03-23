@@ -21,7 +21,7 @@ unit ncEncRipemd160;
 // - const parameters when applicable
 // - inlined functions when necessary
 // 3. bug fixes:
-// - all cyphers do pointer walking arithmetic under only win32
+// - all ciphers do pointer walking arithmetic under only win32
 // For example, in DCPblowfish.pas, line 209, 210, you would find:
 // xL:= Pdword(@InData)^;
 // xR:= Pdword(longword(@InData)+4)^;
