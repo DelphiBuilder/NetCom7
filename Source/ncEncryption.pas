@@ -2,6 +2,61 @@
 {$O-}
 unit ncEncryption;
 
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// NetCom7 Package
+// 13 Dec 2010, 23/3/2024
+//
+// Written by Demos Bill
+// VasDemos@yahoo.co.uk
+//
+// This portion of NetCom adapts DCPCrypt into the library,
+// so that is does not depend on any DCP package the programmer may have installed.
+// The reason is because if there is an error in any encryption/decryption class,
+// That error should be maintained the same for any compilation of this library,
+// that is for any client using it.
+// To adapt DCPCrypt, a few changes had to be made:
+// 1. cosmetic changes (underscores were removed)
+// 2. performance changes
+// - const parameters when applicable
+// - inlined functions when necessary
+// 3. bug fixes:
+// - all cyphers do pointer walking arithmetic under only win32
+// For example, in DCPblowfish.pas, line 209, 210, you would find:
+// xL:= Pdword(@InData)^;
+// xR:= Pdword(longword(@InData)+4)^;
+// That would treat, wrongly, the address of @InData as a 32 bit unsigned int,
+// so all this type of pointer arithmetic has been replaced with the proper:
+// xL:= Pdword(@InData)^;
+// xR:= Pdword(NativeUInt(@InData)+4)^;
+// - All Pdword and dword references have been replaced with their appropriate
+// intrinsic types.
+//
+// Bellow is tribute to David Barton for supplying such a gem to the software community:
+//
+{ ****************************************************************************** }
+{ * Copyright (c) 1999-2002 David Barton                                       * }
+{ * Permission is hereby granted, free of charge, to any person obtaining a    * }
+{ * copy of this software and associated documentation files (the "Software"), * }
+{ * to deal in the Software without restriction, including without limitation  * }
+{ * the rights to use, copy, modify, merge, publish, distribute, sublicense,   * }
+{ * and/or sell copies of the Software, and to permit persons to whom the      * }
+{ * Software is furnished to do so, subject to the following conditions:       * }
+{ *                                                                            * }
+{ * The above copyright notice and this permission notice shall be included in * }
+{ * all copies or substantial portions of the Software.                        * }
+{ *                                                                            * }
+{ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR * }
+{ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   * }
+{ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    * }
+{ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER * }
+{ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    * }
+{ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        * }
+{ * DEALINGS IN THE SOFTWARE.                                                  * }
+{ ****************************************************************************** }
+//
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
 {$IF CompilerVersion >= 21.0}
@@ -29,8 +84,7 @@ uses
   ncEncHaval, ncEncMd4, ncEncMd5, ncEncTiger;
 
 type
-  TEncryptorType = (etNoEncryption, etRc2, etRc4, etRc5, etRc6, etBlowfish, etTwoFish, etCast128, etCast256, etRijndael, etMisty1, etIdea, etMars, etIce,
-    etThinIce, etIce2, etDES, et3DES, etTea, etSerpent);
+  TEncryptorType = (etNoEncryption, etRc2, etRc4, etRc5, etRc6, etBlowfish, etTwoFish, etCast128, etCast256, etRijndael, etMisty1, etIdea, etMars, etIce, etThinIce, etIce2, etDES, et3DES, etTea, etSerpent);
 
   THasherType = (htNoDigesting, htSha1, htSha256, htSha384, htSha512, htRipeMd128, htRipeMd160, htHaval, htMd4, htMd5, htTiger);
 
@@ -45,16 +99,13 @@ function GetHash(const aBytes: TBytes; aHasherType: THasherType = htSha256; aBas
 function GetHashFromFile(const aFileName: string; aHasherType: THasherType = htSha256; aBase64Encode: Boolean = True): TBytes;
 
 // Encryption
-function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
-  aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
-function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
-  aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish; aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish; aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 
 implementation
 
 const
-  B64: array [0 .. 63] of Byte = (65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101,
-    102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 43, 47);
+  B64: array [0 .. 63] of Byte = (65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 43, 47);
 
 function Base64Encode(pInput: Pointer; pOutput: Pointer; Size: longint): longint;
 var
@@ -186,8 +237,8 @@ begin
       Hash := TncEnc_Md5.Create(nil);
     htTiger:
       Hash := TncEnc_Tiger.Create(nil);
-    else
-      Hash := nil;
+  else
+    Hash := nil;
   end;
 
   if Hash = nil then
@@ -228,8 +279,7 @@ begin
   Result := GetHash(FileBytes, aHasherType, aBase64Encode);
 end;
 
-function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish;
-  aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
+function EncryptBytes(const aBytes: TBytes; const aEncryptionKey: AnsiString = 'TheEncryptionKey'; aEncryptorType: TEncryptorType = etBlowfish; aEncryptOnHashedKey: Boolean = True; aBase64Encode: Boolean = True): TBytes;
 var
   Encryptor: TncEncCipher;
 begin
@@ -272,8 +322,8 @@ begin
       Encryptor := TncEnc_Tea.Create(nil);
     etSerpent:
       Encryptor := TncEnc_Serpent.Create(nil);
-    else
-      Encryptor := nil;
+  else
+    Encryptor := nil;
   end;
 
   if Encryptor = nil then
@@ -297,8 +347,7 @@ begin
     end;
 end;
 
-function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish;
-  aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
+function DecryptBytes(aBytes: TBytes; const aDecryptionKey: AnsiString = 'TheEncryptionKey'; aDecryptorType: TEncryptorType = etBlowfish; aDecryptOnHashedKey: Boolean = True; aBase64Encoded: Boolean = True): TBytes;
 var
   Decryptor: TncEncCipher;
 begin
@@ -341,8 +390,8 @@ begin
       Decryptor := TncEnc_Tea.Create(nil);
     etSerpent:
       Decryptor := TncEnc_Serpent.Create(nil);
-    else
-      Decryptor := nil;
+  else
+    Decryptor := nil;
   end;
 
   if Decryptor = nil then
