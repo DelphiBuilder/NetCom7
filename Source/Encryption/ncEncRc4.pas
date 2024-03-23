@@ -2,6 +2,61 @@
 {$Q-}
 unit ncEncRc4;
 
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// NetCom7 Package
+// 13 Dec 2010, 23/3/2024
+//
+// Written by Demos Bill
+// VasDemos@yahoo.co.uk
+//
+// This portion of NetCom adapts DCPCrypt into the library,
+// so that is does not depend on any DCP package the programmer may have installed.
+// The reason is because if there is an error in any encryption/decryption class,
+// That error should be maintained the same for any compilation of this library,
+// that is for any client using it.
+// To adapt DCPCrypt, a few changes had to be made:
+// 1. cosmetic changes (underscores were removed)
+// 2. performance changes
+// - const parameters when applicable
+// - inlined functions when necessary
+// 3. bug fixes:
+// - all cyphers do pointer walking arithmetic under only win32
+// For example, in DCPblowfish.pas, line 209, 210, you would find:
+// xL:= Pdword(@InData)^;
+// xR:= Pdword(longword(@InData)+4)^;
+// That would treat, wrongly, the address of @InData as a 32 bit unsigned int,
+// so all this type of pointer arithmetic has been replaced with the proper:
+// xL:= Pdword(@InData)^;
+// xR:= Pdword(NativeUInt(@InData)+4)^;
+// - All Pdword and dword references have been replaced with their appropriate
+// intrinsic types.
+//
+// Bellow is tribute to David Barton for supplying such a gem to the software community:
+//
+{ ****************************************************************************** }
+{ * Copyright (c) 1999-2002 David Barton                                       * }
+{ * Permission is hereby granted, free of charge, to any person obtaining a    * }
+{ * copy of this software and associated documentation files (the "Software"), * }
+{ * to deal in the Software without restriction, including without limitation  * }
+{ * the rights to use, copy, modify, merge, publish, distribute, sublicense,   * }
+{ * and/or sell copies of the Software, and to permit persons to whom the      * }
+{ * Software is furnished to do so, subject to the following conditions:       * }
+{ *                                                                            * }
+{ * The above copyright notice and this permission notice shall be included in * }
+{ * all copies or substantial portions of the Software.                        * }
+{ *                                                                            * }
+{ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR * }
+{ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   * }
+{ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL    * }
+{ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER * }
+{ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING    * }
+{ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER        * }
+{ * DEALINGS IN THE SOFTWARE.                                                  * }
+{ ****************************************************************************** }
+//
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // To disable as much of RTTI as possible (Delphi 2009/2010),
 // Note: There is a bug if $RTTI is used before the "unit <unitname>;" section of a unit, hence the position
 {$IF CompilerVersion >= 21.0}
