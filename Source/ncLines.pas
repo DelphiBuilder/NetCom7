@@ -38,7 +38,8 @@ uses
   System.SyncObjs,
   System.Math,
   System.SysUtils,
-  System.Diagnostics;
+  System.Diagnostics,
+  ncThreads;
 
 const
   // Flag that indicates that the socket is intended for bind() + listen() when constructing it
@@ -56,6 +57,23 @@ const
 type
 {$IFDEF MSWINDOWS}
   TSocketHandle = Winapi.Winsock2.TSocket;
+
+  PAddrInfoW = ^TAddrInfoW;
+  PPAddrInfoW = ^PAddrInfoW;
+
+  TAddrInfoW = record
+    ai_flags: Integer;
+    ai_family: Integer;
+    ai_socktype: Integer;
+    ai_protocol: Integer;
+    ai_addrlen: ULONG; // is NativeUInt
+    ai_canonname: PWideChar;
+    ai_addr: PSOCKADDR;
+    ai_next: PAddrInfoW;
+  end;
+
+  TGetAddrInfoW = function(NodeName: PWideChar; ServiceName: PWideChar; Hints: PAddrInfoW; ppResult: PPAddrInfoW): Integer; stdcall;
+  TFreeAddrInfoW = procedure(ai: PAddrInfoW); stdcall;
 {$ELSE}
   TSocketHandle = Integer;
 {$ENDIF}
@@ -67,11 +85,19 @@ type
 
   TncLineOnConnectDisconnect = procedure(aLine: TncLine) of object;
 
+  TConnectThread = class(TncReadyThread)
+  public
+    Line: TncLine;
+    ConnectResult: Integer;
+    procedure ProcessEvent; override;
+  end;
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TncLine
   // Bring in all functionality from WinSock API, with appropriate exception raising on errors
 
   TncLine = class(TObject)
+  private const
+    DefaultConnectTimeout = 100; // msec
   private
     FActive: Boolean;
     FLastSent: Int64;
@@ -83,11 +109,21 @@ type
   private
     PropertyLock: TCriticalSection;
     FHandle: TSocketHandle;
+    FConnectTimeout: Integer;
+{$IFDEF MSWINDOWS}
+    AddrResult: PAddrInfoW;
+{$ELSE}
+    AddrResult: Paddrinfo;
+{$ENDIF}
     procedure SetConnected;
     procedure SetDisconnected;
+    function GetReceiveTimeout: Integer;
+    procedure SetReceiveTimeout(const Value: Integer);
+    function GetSendTimeout: Integer;
+    procedure SetSendTimeout(const Value: Integer);
     function GetLastReceived: Int64;
-    function GetLastSent: Int64;
     procedure SetLastReceived(const Value: Int64);
+    function GetLastSent: Int64;
     procedure SetLastSent(const Value: Int64);
   protected
     function CreateLineObject: TncLine; virtual;
@@ -121,6 +157,9 @@ type
     property LastReceived: Int64 read GetLastReceived write SetLastReceived;
     property PeerIP: string read FPeerIP;
     property DataObject: TObject read FDataObject write FDataObject;
+    property ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout default DefaultConnectTimeout;
+    property ReceiveTimeout: Integer read GetReceiveTimeout write SetReceiveTimeout;
+    property SendTimeout: Integer read GetSendTimeout write SetSendTimeout;
   end;
 
 function Readable(const aSocketHandleArray: TSocketHandleArray; const aTimeout: Cardinal): TSocketHandleArray;
@@ -225,24 +264,6 @@ end;
 
 {$IFDEF MSWINDOWS}
 
-type
-  PAddrInfoW = ^TAddrInfoW;
-  PPAddrInfoW = ^PAddrInfoW;
-
-  TAddrInfoW = record
-    ai_flags: Integer;
-    ai_family: Integer;
-    ai_socktype: Integer;
-    ai_protocol: Integer;
-    ai_addrlen: ULONG; // is NativeUInt
-    ai_canonname: PWideChar;
-    ai_addr: PSOCKADDR;
-    ai_next: PAddrInfoW;
-  end;
-
-  TGetAddrInfoW = function(NodeName: PWideChar; ServiceName: PWideChar; Hints: PAddrInfoW; ppResult: PPAddrInfoW): Integer; stdcall;
-  TFreeAddrInfoW = procedure(ai: PAddrInfoW); stdcall;
-
 var
   DllGetAddrInfo: TGetAddrInfoW = nil;
   DllFreeAddrInfo: TFreeAddrInfoW = nil;
@@ -277,6 +298,7 @@ begin
 
   FHandle := InvalidSocket;
 
+  FConnectTimeout := DefaultConnectTimeout;
   FActive := False;
   FLastSent := TStopWatch.GetTimeStamp;
   FLastReceived := FLastSent;
@@ -316,12 +338,11 @@ end;
 
 procedure TncLine.CreateClientHandle(const aHost: string; const aPort: Integer);
 var
+  ConnectThread: TConnectThread;
 {$IFDEF MSWINDOWS}
   Hints: TAddrInfoW;
-  AddrResult: PAddrInfoW;
 {$ELSE}
   Hints: addrinfo;
-  AddrResult: Paddrinfo;
   AnsiHost, AnsiPort: RawByteString;
 {$ENDIF}
 begin
@@ -348,9 +369,27 @@ begin
 {$IFNDEF MSWINDOWS}
         EnableReuseAddress;
 {$ENDIF}
-        // Connect to server
-        Check(Connect(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen));
-        SetConnected;
+        ConnectThread := TConnectThread.Create;
+        try
+          ConnectThread.Line := Self;
+          ConnectThread.ConnectResult := -1;
+
+          // Connect to server
+          ConnectThread.ReadyEvent.WaitFor;
+          ConnectThread.ReadyEvent.ResetEvent;
+          ConnectThread.WakeupEvent.SetEvent;
+          ConnectThread.WaitForReady(FConnectTimeout);
+
+          if ConnectThread.ConnectResult = -1 then
+            raise EncLineException.Create('Connect timeout');
+
+          Check(ConnectThread.ConnectResult);
+          SetConnected;
+        finally
+          ConnectThread.FreeOnTerminate := True;
+          ConnectThread.Terminate;
+          ConnectThread.WakeupEvent.SetEvent;
+        end;
       except
         DestroyHandle;
         raise;
@@ -372,10 +411,8 @@ procedure TncLine.CreateServerHandle(const aPort: Integer);
 var
 {$IFDEF MSWINDOWS}
   Hints: TAddrInfoW;
-  AddrResult: PAddrInfoW;
 {$ELSE}
   Hints: addrinfo;
-  AddrResult: Paddrinfo;
   AnsiPort: RawByteString;
 {$ENDIF}
 begin
@@ -602,6 +639,62 @@ begin
   end;
 end;
 
+function TncLine.GetReceiveTimeout: Integer;
+var
+  Opt: DWord;
+  OptSize: Integer;
+begin
+  OptSize := SizeOf(Opt);
+{$IFDEF MSWINDOWS}
+  Check(GetSockOpt(FHandle, SOL_SOCKET, SO_RCVTIMEO, PAnsiChar(@Opt), OptSize));
+{$ELSE}
+  Check(GetSockOpt(FHandle, SOL_SOCKET, SO_RCVTIMEO, Opt, OptSize));
+{$ENDIF}
+  Result := Opt;
+end;
+
+procedure TncLine.SetReceiveTimeout(const Value: Integer);
+var
+  Opt: DWord;
+  OptSize: Integer;
+begin
+  Opt := Value;
+  OptSize := SizeOf(Opt);
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVTIMEO, PAnsiChar(@Opt), OptSize));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVTIMEO, Opt, OptSize));
+{$ENDIF}
+end;
+
+function TncLine.GetSendTimeout: Integer;
+var
+  Opt: DWord;
+  OptSize: Integer;
+begin
+  OptSize := SizeOf(Opt);
+{$IFDEF MSWINDOWS}
+  Check(GetSockOpt(FHandle, SOL_SOCKET, SO_SNDTIMEO, PAnsiChar(@Opt), OptSize));
+{$ELSE}
+  Check(GetSockOpt(FHandle, SOL_SOCKET, SO_SNDTIMEO, Opt, OptSize));
+{$ENDIF}
+  Result := Opt;
+end;
+
+procedure TncLine.SetSendTimeout(const Value: Integer);
+var
+  Opt: DWord;
+  OptSize: Integer;
+begin
+  Opt := Value;
+  OptSize := SizeOf(Opt);
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_SNDTIMEO, PAnsiChar(@Opt), OptSize));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_SNDTIMEO, Opt, OptSize));
+{$ENDIF}
+end;
+
 function TncLine.GetLastReceived: Int64;
 begin
   PropertyLock.Acquire;
@@ -674,6 +767,13 @@ end;
 
 var
   WSAData: TWSAData;
+
+  { TConnectThread }
+
+procedure TConnectThread.ProcessEvent;
+begin
+  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^, Line.AddrResult^.ai_addrlen);
+end;
 
 initialization
 
