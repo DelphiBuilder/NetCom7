@@ -7,6 +7,11 @@ unit ncSockets;
 // This unit creates a TCP Server and TCP Client socket, along with their
 // threads dealing with reading from the socket
 //
+// 14/01/2025 - by J.Pauwels
+// - Ajust TncCustomTCPServer.DataSocketDisconnected
+// - Explicitly set this unit to use TCP
+// - Update Client Send method so data cannot be send while socket is inactive
+//
 // 9/8/2020
 // - Added a ShutDownLine in the TCPServer component so as to allow to
 // shutdown a line even when within a read operation
@@ -61,6 +66,7 @@ const
 resourcestring
   ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set Port property whilst the connection is active';
   ECannotSetHostWhileConnectionIsActiveStr = 'Cannot set Host property whilst the connection is active';
+  ECannotSendWhileSocketInactiveStr = 'Cannot send data while socket is inactive';
   ECannotSetUseReaderThreadWhileActiveStr = 'Cannot set UseReaderThread property whilst the connection is active';
   ECannotReceiveIfUseReaderThreadStr =
     'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
@@ -106,9 +112,12 @@ type
     FEventsUseMainThread: Boolean;
     FNoDelay: Boolean;
     FKeepAlive: Boolean;
+    FReadBufferLen: Integer; // Update
     FOnConnected: TncOnConnectDisconnect;
     FOnDisconnected: TncOnConnectDisconnect;
     FOnReadData: TncOnReadData;
+    function GetReadBufferLen: Integer;  // Update
+    procedure SetReadBufferLen(const Value: Integer);  // Update
     function GetActive: Boolean; virtual; abstract;
     procedure SetActive(const Value: Boolean);
     function GetPort: Integer;
@@ -135,6 +144,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    function Kind: TSocketType; virtual;
+
     property Active: Boolean read GetActive write SetActive default False;
     property Port: Integer read GetPort write SetPort default DefPort;
     property ReaderThreadPriority: TncThreadPriority read GetReaderThreadPriority write SetReaderThreadPriority default DefReaderThreadPriority;
@@ -145,6 +156,7 @@ type
     property OnConnected: TncOnConnectDisconnect read FOnConnected write FOnConnected;
     property OnDisconnected: TncOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
     property OnReadData: TncOnReadData read FOnReadData write FOnReadData;
+    property ReadBufferLen: Integer read GetReadBufferLen write SetReadBufferLen default DefReadBufferLen;  // Update
   published
   end;
 
@@ -197,6 +209,7 @@ type
     property UseReaderThread;
     property NoDelay;
     property KeepAlive;
+    property ReadBufferLen;  // Update
     property Reconnect;
     property ReconnectInterval;
     property OnConnected;
@@ -252,6 +265,7 @@ type
     property UseReaderThread;
     property NoDelay;
     property KeepAlive;
+    property ReadBufferLen; // Update
     property OnConnected;
     property OnDisconnected;
     property OnReadData;
@@ -397,11 +411,18 @@ begin
   FUseReaderThread := DefUseReaderThread;
   FNoDelay := DefNoDelay;
   FKeepAlive := DefKeepAlive;
+  FReadBufferLen := DefReadBufferLen;  // Update
   FOnConnected := nil;
   FOnDisconnected := nil;
   FOnReadData := nil;
 
   SetLength(ReadBuf, DefReadBufferLen);
+
+end;
+
+function TncTCPBase.Kind: TSocketType;
+begin
+  Result := stTCP;
 end;
 
 destructor TncTCPBase.Destroy;
@@ -422,6 +443,7 @@ end;
 function TncTCPBase.CreateLineObject: TncLine;
 begin
   Result := TncLineInternal.Create;
+  TncLineInternal(Result).SetKind(Kind);
 end;
 
 procedure TncTCPBase.SetActive(const Value: Boolean);
@@ -559,6 +581,29 @@ begin
   end;
 end;
 
+// Update
+function TncTCPBase.GetReadBufferLen: Integer;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FReadBufferLen;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+// Update
+procedure TncTCPBase.SetReadBufferLen(const Value: Integer);
+begin
+  PropertyLock.Acquire;
+  try
+    FReadBufferLen := Value;
+    SetLength(ReadBuf, FReadBufferLen);
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncCustomTCPClient }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -641,9 +686,10 @@ begin
     end;
 
     try
-      TncLineInternal(Line).SetReceiveSize(1048576);
-      TncLineInternal(Line).SetWriteSize(1048576);
-      TncLineInternal(Line).SetReceiveSize(20 * 1048576);
+      TncLineInternal(Line).SetReceiveSize(1048576); // 1MB
+      TncLineInternal(Line).SetWriteSize(1048576); // 1MB
+      //TncLineInternal(Line).SetReceiveSize(20 * 1048576);
+
     except
     end;
 
@@ -671,7 +717,9 @@ end;
 
 procedure TncCustomTCPClient.Send(const aBuf; aBufSize: Integer);
 begin
-  Active := True;
+  if not Active then
+    raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
+
   TncLineInternal(Line).SendBuffer(aBuf, aBufSize);
 end;
 
@@ -1026,6 +1074,8 @@ begin
   end;
 end;
 
+// Update : Moves the handle removal before the disconnect event handling
+// This prevents other threads from trying to use the handle while the disconnect event is processing.
 procedure TncCustomTCPServer.DataSocketDisconnected(aLine: TncLine);
 var
   i: Integer;
@@ -1034,18 +1084,25 @@ begin
     SetLength(ReadSocketHandles, 0)
   else
   begin
+    // First remove the handle to prevent further processing
+    PropertyLock.Acquire;
+    try
+      for i := 0 to High(ReadSocketHandles) do
+        if ReadSocketHandles[i] = aLine.Handle then
+        begin
+          ReadSocketHandles[i] := ReadSocketHandles[High(ReadSocketHandles)];
+          SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
+          Break;
+        end;
+    finally
+      PropertyLock.Release;
+    end;
+
+    // Then handle disconnect event
     if Assigned(OnDisconnected) then
       try
         OnDisconnected(Self, aLine);
       except
-      end;
-
-    for i := 0 to High(ReadSocketHandles) do
-      if ReadSocketHandles[i] = aLine.Handle then
-      begin
-        ReadSocketHandles[i] := ReadSocketHandles[High(ReadSocketHandles)];
-        SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
-        Break;
       end;
   end;
 end;
@@ -1260,3 +1317,5 @@ begin
 end;
 
 end.
+
+

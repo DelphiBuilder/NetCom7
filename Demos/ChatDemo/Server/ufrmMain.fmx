@@ -43,6 +43,7 @@ object frmMain: TfrmMain
       Size.PlatformDefault = False
       TabOrder = 0
       Text = 'Activate Server'
+      TextSettings.Trimming = None
       OnClick = btnActivateServerClick
     end
     object btnShutDownClients: TButton
@@ -57,15 +58,8 @@ object frmMain: TfrmMain
       Size.PlatformDefault = False
       TabOrder = 2
       Text = 'Shutdown Clients'
+      TextSettings.Trimming = None
       OnClick = btnShutDownClientsClick
     end
-  end
-  object Server: TncServerSource
-    EncryptionKey = 'SetEncryptionKey'
-    OnConnected = ServerConnected
-    OnDisconnected = ServerDisconnected
-    OnHandleCommand = ServerHandleCommand
-    Left = 32
-    Top = 32
   end
 end

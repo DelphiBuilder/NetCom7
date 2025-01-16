@@ -36,12 +36,12 @@
     <Transaction>2020/08/10 13:26:25.000.247,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/12 00:19:14.000.567,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/12 09:20:35.000.938,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/12 09:22:06.000.529,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\ufrmMain.fmx=C:\Users\Programmer\Documents\Development\Projects\Unit3.fmx</Transaction>
-    <Transaction>2020/08/12 09:22:06.000.529,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\ufrmMain.pas=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/12 09:22:13.000.248,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\VideoChatServer.dproj=C:\Users\Programmer\Documents\Development\Projects\Project1.dproj</Transaction>
+    <Transaction>2020/08/12 09:22:06.000.529,C:\Users\Programmer\Documents\Development\Projects\Unit3.fmx=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\ufrmMain.fmx</Transaction>
+    <Transaction>2020/08/12 09:22:06.000.529,C:\Users\Programmer\Documents\Development\Projects\Unit3.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\ufrmMain.pas</Transaction>
+    <Transaction>2020/08/12 09:22:13.000.248,C:\Users\Programmer\Documents\Development\Projects\Project1.dproj=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\VideoChatServer.dproj</Transaction>
     <Transaction>2020/08/12 10:07:55.000.801,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\VideoChat\Server\CommonCommands.pas</Transaction>
   </Transactions>
 	<ActiveMobileDevice>
-		<NoProfile iOSSimulator="iPhone5" Android64="Y5LFKVQGYTL7JRV4" Android="Y5LFKVQGYTL7JRV4"/>
+		<NoProfile iOSSimulator="iPhone5" Android64="" Android=""/>
 	</ActiveMobileDevice>
 </BorlandProject>

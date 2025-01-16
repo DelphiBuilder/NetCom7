@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<ActiveMobileDevice>
+		<NoProfile Android64="Y5LFKVQGYTL7JRV4"/>
+	</ActiveMobileDevice>
+	<Transactions>
+    <Transaction>2025/01/14 21:49:41.000.186,=D:\_Delphi\_Library\Netcom7\Demos\SimpleSockets_UDP\Client\Unit1.pas</Transaction>
+    <Transaction>2025/01/14 21:49:56.000.966,D:\_Delphi\_Library\Netcom7\Demos\SimpleSockets_UDP\Client\Unit1.pas=D:\_Delphi\_Library\Netcom7\Demos\SimpleSockets_UDP\Client\uMainClient.pas</Transaction>
+    <Transaction>2025/01/16 20:06:27.000.079,D:\_Delphi\_Library\NetCom7\Demos\SimpleSockets_UDP_v2\Client\uMainClient.pas=</Transaction>
+  </Transactions>
+</BorlandProject>
