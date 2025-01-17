@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{6E48DFFF-AAE3-4438-A954-55FF10D019D0}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Client\NetComVSIndyClient.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Server\NetComVSIndyServer.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="NetComVSIndyClient">
+        <MSBuild Projects="Client\NetComVSIndyClient.dproj"/>
+    </Target>
+    <Target Name="NetComVSIndyClient:Clean">
+        <MSBuild Projects="Client\NetComVSIndyClient.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="NetComVSIndyClient:Make">
+        <MSBuild Projects="Client\NetComVSIndyClient.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="NetComVSIndyServer">
+        <MSBuild Projects="Server\NetComVSIndyServer.dproj"/>
+    </Target>
+    <Target Name="NetComVSIndyServer:Clean">
+        <MSBuild Projects="Server\NetComVSIndyServer.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="NetComVSIndyServer:Make">
+        <MSBuild Projects="Server\NetComVSIndyServer.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="NetComVSIndyClient;NetComVSIndyServer"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="NetComVSIndyClient:Clean;NetComVSIndyServer:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="NetComVSIndyClient:Make;NetComVSIndyServer:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

@@ -35,9 +35,9 @@
     <Transaction>2020/08/08 10:30:32.000.363,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/10 13:26:25.000.247,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
     <Transaction>2020/08/11 06:18:58.000.380,=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/11 06:47:57.000.575,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\ufrmMain.dfm=C:\Users\Programmer\Documents\Development\Projects\Unit3.dfm</Transaction>
-    <Transaction>2020/08/11 06:47:57.000.575,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\ufrmMain.pas=C:\Users\Programmer\Documents\Development\Projects\Unit3.pas</Transaction>
-    <Transaction>2020/08/11 06:48:06.000.793,C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\NetComVSIndyClient.dproj=C:\Users\Programmer\Documents\Development\Projects\Project1.dproj</Transaction>
+    <Transaction>2020/08/11 06:47:57.000.575,C:\Users\Programmer\Documents\Development\Projects\Unit3.dfm=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\ufrmMain.dfm</Transaction>
+    <Transaction>2020/08/11 06:47:57.000.575,C:\Users\Programmer\Documents\Development\Projects\Unit3.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\ufrmMain.pas</Transaction>
+    <Transaction>2020/08/11 06:48:06.000.793,C:\Users\Programmer\Documents\Development\Projects\Project1.dproj=C:\Users\Programmer\Documents\Development\Components\NetCom7\Demos\NetComVSIndy\Client\NetComVSIndyClient.dproj</Transaction>
   </Transactions>
 	<ActiveMobileDevice>
 		<NoProfile iOSSimulator="iPhone5"/>

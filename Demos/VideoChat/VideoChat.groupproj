@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{2E93D9D1-5946-4396-8D3F-12E365F37294}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Client\VideoChatClient.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Server\VideoChatServer.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="VideoChatClient">
+        <MSBuild Projects="Client\VideoChatClient.dproj"/>
+    </Target>
+    <Target Name="VideoChatClient:Clean">
+        <MSBuild Projects="Client\VideoChatClient.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VideoChatClient:Make">
+        <MSBuild Projects="Client\VideoChatClient.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="VideoChatServer">
+        <MSBuild Projects="Server\VideoChatServer.dproj"/>
+    </Target>
+    <Target Name="VideoChatServer:Clean">
+        <MSBuild Projects="Server\VideoChatServer.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VideoChatServer:Make">
+        <MSBuild Projects="Server\VideoChatServer.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="VideoChatClient;VideoChatServer"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="VideoChatClient:Clean;VideoChatServer:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="VideoChatClient:Make;VideoChatServer:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

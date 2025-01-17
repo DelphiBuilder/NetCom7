@@ -1,8 +1,36 @@
 # NetCom7
+
 The fastest communications possible.
 
-This is version 7.2 of the NetCom package. In this version, the NetCom package is now multi-platform! 
-You can compile your apps under all platforms in FireMonkey!
+This is an updated version of the NetCom7 package, now with enhanced UDP support and improved cross-platform capabilities! You can compile your apps under all platforms in FireMonkey!
+
+## Recent Updates
+
+### Major Updates
+- **Full UDP Support**: Added comprehensive UDP functionality through the new `ncUDPSockets` unit
+  - New components: `TncUDPClient` and `TncUDPServer`
+  - Configurable broadcast support
+  - Flexible port binding with `BoundPort`, `BoundPortMin`, and `BoundPortMax`
+  - Custom IP binding with `BoundIP`
+- **Improved Linux Support**: Enhanced cross-platform compatibility with fixed Linux compilation
+- **TCP Enhancements**:
+  - Optimized socket disconnection handling
+  - Improved socket state management
+  - Buffer size customization
+
+### New Components
+The UDP components can be dragged from the palette and customized in the object inspector with the following properties:
+- Broadcast capabilities
+- Port binding options
+- IP binding configuration
+- Buffer size customization
+
+### Demo Updates
+- Added new `SimpleSockets_UDP` demonstration
+- Organized projects into logical groups for easier navigation
+- Updated existing demos for compatibility
+
+<br>
 
 This set of components is the fastest possible implementation of socket communications, in any language; this is an extremely optimised code on TCP/IP sockets. Forget using a thread per connection: With this suite you can have as many concurrent connections to your server as you like. Threads are used per request and not per connection, and are maintained in a very fast thread pool class.
 

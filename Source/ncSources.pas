@@ -25,6 +25,9 @@ unit ncSources;
 // These components have built in encryption and compression, set by the
 // corresponding properties.
 //
+// 14/01/2025 - by J.Pauwels
+// - Explicitly set this unit to use TCP
+//
 // 12/8/2020
 // - Complete re-engineering of the base component
 //
@@ -365,6 +368,7 @@ end;
 function TncSourceLine.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create; // Create its own kind of objects
+  TncSourceLine(Result).SetKind(stTCP); // Explicitly set to TCP
 end;
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1259,6 +1263,7 @@ type
 function TncTCPClientSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
+  TncSourceLine(Result).SetKind(stTCP);
 end;
 
 constructor TncClientSource.Create(AOwner: TComponent);
@@ -1351,6 +1356,7 @@ type
 function TncTCPServerSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
+  TncSourceLine(Result).SetKind(stTCP);
 end;
 
 constructor TncServerSource.Create(AOwner: TComponent);
