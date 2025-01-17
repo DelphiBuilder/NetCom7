@@ -169,10 +169,6 @@ procedure TForm1.UDPClientReadDatagram(Sender: TObject; aLine: TncLine;
 var
   SenderIP: string;
 begin
-
-  // Add debug logging
-  Form1.Log('Debug: ReadDatagram event triggered');
-
   // Format the sender IP address
   SenderIP := Format('%d.%d.%d.%d', [Ord(SenderAddr.sa_data[2]),
     Ord(SenderAddr.sa_data[3]), Ord(SenderAddr.sa_data[4]),

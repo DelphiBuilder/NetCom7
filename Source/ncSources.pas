@@ -26,7 +26,6 @@ unit ncSources;
 // corresponding properties.
 //
 // 14/01/2025 - by J.Pauwels
-// - Ajust TncCustomTCPServer.DataSocketDisconnected
 // - Explicitly set this unit to use TCP
 //
 // 12/8/2020
