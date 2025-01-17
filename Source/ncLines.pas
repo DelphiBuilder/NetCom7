@@ -370,6 +370,7 @@ begin
   PropertyLock := TCriticalSection.Create;
   FBoundAddr := nil;
   FHandle := InvalidSocket;
+  FKind := DefaultKind;
 
   FConnectTimeout := DefaultConnectTimeout;
   FActive := False;
