@@ -1,24 +1,18 @@
 unit NetComRegister;
 
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// NetCom7 Package
-// 13 Dec 2010, 12/8/2020
-//
-// Written by Demos Bill
-// VasDemos@yahoo.co.uk
-//
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 interface
 
 uses
   WinApi.Windows, System.Classes, System.SysUtils, ToolsAPI, DesignIntf, DesignEditors,
-
-  ncSockets, ncSources, ncCommandHandlers, ncDBSrv, ncDBCnt;
+  ncSockets, ncSources, ncCommandHandlers, ncDBSrv, ncDBCnt, ncUDPSockets;  // Added ncUDPSockets
 
 type
   TncTCPSocketDefaultEditor = class(TDefaultEditor)
+  public
+    procedure EditProperty(const Prop: IProperty; var Continue: Boolean); override;
+  end;
+
+  TncUDPSocketDefaultEditor = class(TDefaultEditor)  // Added UDP editor
   public
     procedure EditProperty(const Prop: IProperty; var Continue: Boolean); override;
   end;
@@ -34,10 +28,22 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('NetCom7', [TncTCPServer, TncTCPClient, TncServerSource, TncClientSource, TncCommandHandler, TncDBServer, TncDBDataset]);
+  RegisterComponents('NetCom7', [
+    TncTCPServer,
+    TncTCPClient,
+    TncUDPServer,     // Added UDP components
+    TncUDPClient,
+    TncServerSource,
+    TncClientSource,
+    TncCommandHandler,
+    TncDBServer,
+    TncDBDataset
+  ]);
 
   RegisterComponentEditor(TncTCPServer, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncTCPClient, TncTCPSocketDefaultEditor);
+  RegisterComponentEditor(TncUDPServer, TncUDPSocketDefaultEditor);  // Added UDP editors
+  RegisterComponentEditor(TncUDPClient, TncUDPSocketDefaultEditor);
   RegisterComponentEditor(TncServerSource, TncSourceDefaultEditor);
   RegisterComponentEditor(TncClientSource, TncSourceDefaultEditor);
 
@@ -143,7 +149,20 @@ begin
     inherited;
 end;
 
-{ TncCustomPeerSourceDefaultEditor }
+{ TncUDPSocketDefaultEditor }  // Added UDP editor implementation
+
+procedure TncUDPSocketDefaultEditor.EditProperty(const Prop: IProperty; var Continue: Boolean);
+begin
+  if CompareText(Prop.GetName, 'ONREADDATAGRAM') = 0 then
+  begin
+    Prop.Edit;
+    Continue := False;
+  end
+  else
+    inherited;
+end;
+
+{ TncSourceDefaultEditor }
 
 procedure TncSourceDefaultEditor.EditProperty(const Prop: IProperty; var Continue: Boolean);
 begin
@@ -157,12 +176,10 @@ begin
 end;
 
 initialization
-
-RegisterSplashScreen;
-RegisterAboutBox;
+  RegisterSplashScreen;
+  RegisterAboutBox;
 
 finalization
-
-UnregisterAboutBox;
+  UnregisterAboutBox;
 
 end.

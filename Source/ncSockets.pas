@@ -7,6 +7,13 @@ unit ncSockets;
 // This unit creates a TCP Server and TCP Client socket, along with their
 // threads dealing with reading from the socket
 //
+// 14/01/2025 - by J.Pauwels
+// - Defined DefReadBufferLen as a new property
+// - Ajust TncCustomTCPServer.DataSocketDisconnected
+// - Explicitly set this unit to use TCP
+// - Update Client Send method so data cannot be send while socket is inactive
+// - Added IPV6 support
+//
 // 9/8/2020
 // - Added a ShutDownLine in the TCPServer component so as to allow to
 // shutdown a line even when within a read operation
@@ -49,7 +56,7 @@ uses
 
 const
   DefPort = 16233;
-  DefHost = 'LocalHost';
+  DefHost = '';
   DefReadBufferLen = 1024 * 1024; // 1 MB
   DefReaderThreadPriority = ntpNormal;
   DefCntReconnectInterval = 1000;
@@ -57,18 +64,30 @@ const
   DefUseReaderThread = True;
   DefNoDelay = False;
   DefKeepAlive = True;
+  DefFamily = afIPv4;
 
 resourcestring
   ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set Port property whilst the connection is active';
   ECannotSetHostWhileConnectionIsActiveStr = 'Cannot set Host property whilst the connection is active';
+  ECannotSendWhileSocketInactiveStr = 'Cannot send data while socket is inactive';
   ECannotSetUseReaderThreadWhileActiveStr = 'Cannot set UseReaderThread property whilst the connection is active';
   ECannotReceiveIfUseReaderThreadStr =
     'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
+  ECannotSetFamilyWhileConnectionIsActiveStr = 'Cannot set Family property whilst the connection is active';
 
-type
+ type
   EPropertySetError = class(Exception);
   ENonActiveSocket = class(Exception);
   ECannotReceiveIfUseReaderThread = class(Exception);
+
+    // We bring in TncLine so that a form that uses our components does
+  // not have to reference ncLines unit to get the type
+  TncLine = ncLines.TncLine;
+
+  // We make a descendant of TncLine so that we can access the API functions.
+  // These API functions are not made puclic in TncLine so that the user cannot
+  // mangle up the line
+  TncLineInternal = class(TncLine);
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TThreadLineList
@@ -102,15 +121,23 @@ type
   TncTCPBase = class(TComponent)
   private
     FInitActive: Boolean;
+    FFamily: TAddressType;
     FPort: Integer;
     FEventsUseMainThread: Boolean;
     FNoDelay: Boolean;
     FKeepAlive: Boolean;
+    FReadBufferLen: Integer; // Update
     FOnConnected: TncOnConnectDisconnect;
     FOnDisconnected: TncOnConnectDisconnect;
     FOnReadData: TncOnReadData;
+    FLine: TncLine;
+    function GetReadBufferLen: Integer;  // Update
+    procedure SetReadBufferLen(const Value: Integer);  // Update
     function GetActive: Boolean; virtual; abstract;
     procedure SetActive(const Value: Boolean);
+    function GetFamily: TAddressType;
+    procedure SetFamily(const Value: TAddressType);
+
     function GetPort: Integer;
     procedure SetPort(const Value: Integer);
     function GetReaderThreadPriority: TncThreadPriority;
@@ -130,12 +157,16 @@ type
     ReadBuf: TBytes;
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
+    property Line: TncLine read FLine;
   public
     LineProcessor: TncReadyThread;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    function Kind: TSocketType; virtual;
+
     property Active: Boolean read GetActive write SetActive default False;
+    property Family: TAddressType read GetFamily write SetFamily default afIPv4;
     property Port: Integer read GetPort write SetPort default DefPort;
     property ReaderThreadPriority: TncThreadPriority read GetReaderThreadPriority write SetReaderThreadPriority default DefReaderThreadPriority;
     property EventsUseMainThread: Boolean read GetEventsUseMainThread write SetEventsUseMainThread default DefEventsUseMainThread;
@@ -145,6 +176,7 @@ type
     property OnConnected: TncOnConnectDisconnect read FOnConnected write FOnConnected;
     property OnDisconnected: TncOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
     property OnReadData: TncOnReadData read FOnReadData write FOnReadData;
+    property ReadBufferLen: Integer read GetReadBufferLen write SetReadBufferLen default DefReadBufferLen;  // Update
   published
   end;
 
@@ -190,6 +222,7 @@ type
   TncTCPClient = class(TncCustomTCPClient)
   published
     property Active;
+    property Family;
     property Port;
     property Host;
     property ReaderThreadPriority;
@@ -197,6 +230,7 @@ type
     property UseReaderThread;
     property NoDelay;
     property KeepAlive;
+    property ReadBufferLen;
     property Reconnect;
     property ReconnectInterval;
     property OnConnected;
@@ -246,12 +280,14 @@ type
   public
   published
     property Active;
+    property Family;
     property Port;
     property ReaderThreadPriority;
     property EventsUseMainThread;
     property UseReaderThread;
     property NoDelay;
     property KeepAlive;
+    property ReadBufferLen; // Update
     property OnConnected;
     property OnDisconnected;
     property OnReadData;
@@ -268,15 +304,6 @@ type
     procedure SocketProcess; inline;
     procedure ProcessEvent; override;
   end;
-
-  // We bring in TncLine so that a form that uses our components does
-  // not have to reference ncLines unit to get the type
-  TncLine = ncLines.TncLine;
-
-  // We make a descendant of TncLine so that we can access the API functions.
-  // These API functions are not made puclic in TncLine so that the user cannot
-  // mangle up the line
-  TncLineInternal = class(TncLine);
 
 implementation
 
@@ -392,16 +419,24 @@ begin
   ShutDownLock := TCriticalSection.Create;
 
   FInitActive := False;
+  FFamily := DefFamily;
   FPort := DefPort;
   FEventsUseMainThread := DefEventsUseMainThread;
   FUseReaderThread := DefUseReaderThread;
   FNoDelay := DefNoDelay;
   FKeepAlive := DefKeepAlive;
+  FReadBufferLen := DefReadBufferLen;  // Update
   FOnConnected := nil;
   FOnDisconnected := nil;
   FOnReadData := nil;
 
   SetLength(ReadBuf, DefReadBufferLen);
+
+end;
+
+function TncTCPBase.Kind: TSocketType;
+begin
+  Result := stTCP;
 end;
 
 destructor TncTCPBase.Destroy;
@@ -422,6 +457,8 @@ end;
 function TncTCPBase.CreateLineObject: TncLine;
 begin
   Result := TncLineInternal.Create;
+  TncLineInternal(Result).SetKind(Kind);
+  TncLineInternal(Result).SetFamily(FFamily);
 end;
 
 procedure TncTCPBase.SetActive(const Value: Boolean);
@@ -432,6 +469,39 @@ begin
       DoActivate(Value);
 
     FInitActive := GetActive; // we only care here for the loaded event
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetFamily: TAddressType;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FFamily;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetFamily(const Value: TAddressType);
+begin
+  if not (csLoading in ComponentState) then
+  begin
+    if Active then
+      raise EPropertySetError.Create(ECannotSetFamilyWhileConnectionIsActiveStr);
+  end;
+
+  PropertyLock.Acquire;
+  try
+    // Update base class family
+    FFamily := Value;
+
+    // Update the Line's family
+    if FLine <> nil then
+    begin
+      TncLineInternal(FLine).SetFamily(Value);
+    end;
   finally
     PropertyLock.Release;
   end;
@@ -559,6 +629,29 @@ begin
   end;
 end;
 
+// Update
+function TncTCPBase.GetReadBufferLen: Integer;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FReadBufferLen;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+// Update
+procedure TncTCPBase.SetReadBufferLen(const Value: Integer);
+begin
+  PropertyLock.Acquire;
+  try
+    FReadBufferLen := Value;
+    SetLength(ReadBuf, FReadBufferLen);
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncCustomTCPClient }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -575,7 +668,13 @@ begin
   LastConnectAttempt := TStopWatch.GetTimeStamp;
   WasConnected := False;
 
+  // Create Line with correct family
   Line := CreateLineObject;
+  if Line.Family <> FFamily then
+  begin
+    TncLineInternal(Line).SetFamily(FFamily);
+  end;
+
   TncLineInternal(Line).OnConnected := DataSocketConnected;
   TncLineInternal(Line).OnDisconnected := DataSocketDisconnected;
 
@@ -588,6 +687,7 @@ begin
   end;
   LineProcessor.WaitForReady;
 end;
+
 
 destructor TncCustomTCPClient.Destroy;
 begin
@@ -605,12 +705,20 @@ end;
 
 procedure TncCustomTCPClient.DoActivate(aActivate: Boolean);
 begin
+
   if aActivate = GetActive then
     Exit;
 
   if aActivate then
   begin
+    // Verify family setting before creating handle
+    if Line.Family <> FFamily then
+    begin
+      TncLineInternal(Line).SetFamily(FFamily);
+    end;
+
     TncLineInternal(Line).CreateClientHandle(FHost, FPort);
+
     // if there were no exceptions, and line is still not active,
     // that means the user has deactivated it in the OnConnect handler
     if not Line.Active then
@@ -641,9 +749,10 @@ begin
     end;
 
     try
-      TncLineInternal(Line).SetReceiveSize(1048576);
-      TncLineInternal(Line).SetWriteSize(1048576);
-      TncLineInternal(Line).SetReceiveSize(20 * 1048576);
+      TncLineInternal(Line).SetReceiveSize(1048576); // 1MB
+      TncLineInternal(Line).SetWriteSize(1048576); // 1MB
+      //TncLineInternal(Line).SetReceiveSize(20 * 1048576);
+
     except
     end;
 
@@ -669,9 +778,12 @@ begin
     end;
 end;
 
+
 procedure TncCustomTCPClient.Send(const aBuf; aBufSize: Integer);
 begin
-  Active := True;
+  if not Active then
+    raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
+
   TncLineInternal(Line).SendBuffer(aBuf, aBufSize);
 end;
 
@@ -890,6 +1002,11 @@ begin
   inherited Create(AOwner);
 
   Listener := CreateLineObject;
+  if Listener.Family <> FFamily then
+  begin
+    TncLineInternal(Listener).SetFamily(FFamily);
+  end;
+
   TncLineInternal(Listener).OnConnected := DataSocketConnected;
   TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
 
@@ -933,23 +1050,31 @@ begin
 
   if aActivate then
   begin
+    // Verify family setting before creating handle
+    if Assigned(Listener) and (Listener.Family <> FFamily) then
+    begin
+      TncLineInternal(Listener).SetFamily(FFamily);
+    end;
     TncLineInternal(Listener).CreateServerHandle(FPort);
   end
   else
   begin
-    TncLineInternal(Listener).DestroyHandle;
+    if Assigned(Listener) then
+      TncLineInternal(Listener).DestroyHandle;
 
-    // Delphi complains about the free that it does nothing except nil the variable
-    // That is under the mostly forgettable and thankgoodness "gotten rid off"
-    // ARC compilers...
+    // Cleanup connected sockets
 {$HINTS OFF}
     DataSockets := Lines.LockListNoCopy;
     try
       for i := 0 to DataSockets.Count - 1 do
         try
-          TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
-          TncLineInternal(DataSockets.Lines[i]).Free;
+          if Assigned(DataSockets.Lines[i]) then
+          begin
+            TncLineInternal(DataSockets.Lines[i]).DestroyHandle;
+            DataSockets.Lines[i].Free;
+          end;
         except
+          //
         end;
       DataSockets.Clear;
     finally
@@ -1026,6 +1151,8 @@ begin
   end;
 end;
 
+// Update : Moves the handle removal before the disconnect event handling
+// This prevents other threads from trying to use the handle while the disconnect event is processing.
 procedure TncCustomTCPServer.DataSocketDisconnected(aLine: TncLine);
 var
   i: Integer;
@@ -1034,18 +1161,25 @@ begin
     SetLength(ReadSocketHandles, 0)
   else
   begin
+    // First remove the handle to prevent further processing
+    PropertyLock.Acquire;
+    try
+      for i := 0 to High(ReadSocketHandles) do
+        if ReadSocketHandles[i] = aLine.Handle then
+        begin
+          ReadSocketHandles[i] := ReadSocketHandles[High(ReadSocketHandles)];
+          SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
+          Break;
+        end;
+    finally
+      PropertyLock.Release;
+    end;
+
+    // Then handle disconnect event
     if Assigned(OnDisconnected) then
       try
         OnDisconnected(Self, aLine);
       except
-      end;
-
-    for i := 0 to High(ReadSocketHandles) do
-      if ReadSocketHandles[i] = aLine.Handle then
-      begin
-        ReadSocketHandles[i] := ReadSocketHandles[High(ReadSocketHandles)];
-        SetLength(ReadSocketHandles, Length(ReadSocketHandles) - 1);
-        Break;
       end;
   end;
 end;
@@ -1260,3 +1394,5 @@ begin
 end;
 
 end.
+
+

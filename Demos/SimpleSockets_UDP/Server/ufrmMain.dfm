@@ -1,0 +1,93 @@
+object Form1: TForm1
+  Left = 0
+  Top = 0
+  Caption = 'UDPServer'
+  ClientHeight = 244
+  ClientWidth = 527
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  TextHeight = 13
+  object memLog: TMemo
+    AlignWithMargins = True
+    Left = 5
+    Top = 37
+    Width = 517
+    Height = 202
+    Margins.Left = 5
+    Margins.Top = 0
+    Margins.Right = 5
+    Margins.Bottom = 5
+    Align = alClient
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 0
+    OnKeyDown = memLogKeyDown
+  end
+  object pnlToolbar: TPanel
+    Left = 0
+    Top = 0
+    Width = 527
+    Height = 37
+    Align = alTop
+    BevelOuter = bvNone
+    FullRepaint = False
+    TabOrder = 1
+    object btnActivate: TButton
+      AlignWithMargins = True
+      Left = 5
+      Top = 5
+      Width = 105
+      Height = 27
+      Margins.Left = 5
+      Margins.Top = 5
+      Margins.Right = 5
+      Margins.Bottom = 5
+      Align = alLeft
+      Caption = 'Start UDP Server'
+      TabOrder = 0
+      OnClick = btnActivateClick
+    end
+    object pblPort: TPanel
+      AlignWithMargins = True
+      Left = 115
+      Top = 3
+      Width = 412
+      Height = 31
+      Margins.Left = 0
+      Margins.Right = 0
+      Align = alClient
+      BevelOuter = bvNone
+      FullRepaint = False
+      TabOrder = 1
+      object edtPort: TSpinEdit
+        AlignWithMargins = True
+        Left = 0
+        Top = 5
+        Width = 121
+        Height = 22
+        Margins.Left = 0
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
+        Align = alLeft
+        MaxValue = 0
+        MinValue = 0
+        TabOrder = 0
+        Value = 16233
+        OnChange = edtPortChange
+      end
+    end
+  end
+  object UDPServer: TncUDPServer
+    OnReadDatagram = UDPServerReadDatagram
+    Left = 232
+    Top = 104
+  end
+end
