@@ -10,7 +10,7 @@ uses
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Samples.Spin,
-  System.Diagnostics, ncLines, ncUDPSockets;
+  System.Diagnostics, ncLines, ncUDPSockets, ncIPv6Utils;
 
 type
   TForm1 = class(TForm)
@@ -177,40 +177,20 @@ end;
 // Read Data
 // *****************************************************************************
 procedure TForm1.UDPClientReadDatagram(Sender: TObject; aLine: TncLine;
-const aBuf: TBytes; aBufCount: Integer; const SenderAddr: TSockAddrStorage);
+  const aBuf: TBytes; aBufCount: Integer; const SenderAddr: TSockAddrStorage);
 var
   ReceivedData: string;
   SenderIP: string;
-  addrIn: PSockAddrIn;
-  addrIn6: PSockAddrIn6;
-  ipv6Str: array [0 .. INET6_ADDRSTRLEN] of AnsiChar;
 begin
-
+  // Convert received data to string
   ReceivedData := StringOf(Copy(aBuf, 0, aBufCount));
 
-  case SenderAddr.ss_family of
-    AF_INET:
-      begin
-        addrIn := PSockAddrIn(@SenderAddr);
-        with addrIn^.sin_addr.S_un_b do
-          SenderIP := Format('%d.%d.%d.%d', [s_b1, s_b2, s_b3, s_b4]);
-      end;
-
-    AF_INET6:
-      begin
-        addrIn6 := PSockAddrIn6(@SenderAddr);
-        if inet_ntop(AF_INET6, @addrIn6^.sin6_addr, ipv6Str, INET6_ADDRSTRLEN)
-          <> nil then
-        begin
-          SenderIP := string(AnsiString(ipv6Str));
-          if addrIn6^.sin6_scope_id <> 0 then
-            SenderIP := Format('%s%%%d', [SenderIP, addrIn6^.sin6_scope_id]);
-        end
-        else
-          SenderIP := 'Invalid IPv6 Address';
-      end;
-  else
-    SenderIP := Format('Unknown Address Family: %d', [SenderAddr.ss_family]);
+  // Get sender IP address using our utils
+  try
+    SenderIP := TIPv6AddressUtils.GetIPFromStorage(SenderAddr);
+  except
+    on E: EIPv6Error do
+      SenderIP := Format('Invalid Address: %s', [E.Message]);
   end;
 
   Form1.Log(Format('Received from %s: %s', [SenderIP, ReceivedData]));

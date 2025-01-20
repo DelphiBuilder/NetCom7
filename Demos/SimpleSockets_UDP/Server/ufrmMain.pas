@@ -10,7 +10,7 @@ uses
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Samples.Spin, System.Diagnostics,
-  ncLines, ncSocketList, ncUDPSockets;
+  ncLines, ncUDPSockets, ncIPv6Utils;
 
 type
   TForm1 = class(TForm)
@@ -100,40 +100,17 @@ end;
 procedure TForm1.SendToClient(const Data: string; const DestAddr: TSockAddrStorage);
 var
   SenderIP: string;
-  addrIn: PSockAddrIn;
-  addrIn6: PSockAddrIn6;
-  ipv6Str: array[0..INET6_ADDRSTRLEN] of AnsiChar;
 begin
   if not UDPServer.Active then
     Exit;
 
   try
-    // Get the proper IP address string for logging
-    case DestAddr.ss_family of
-      AF_INET:
-        begin
-          addrIn := PSockAddrIn(@DestAddr);
-          with addrIn^.sin_addr.S_un_b do
-            SenderIP := Format('%d.%d.%d.%d', [s_b1, s_b2, s_b3, s_b4]);
-        end;
+    // Get IP address using our utils
+    SenderIP := TIPv6AddressUtils.GetIPFromStorage(DestAddr);
 
-      AF_INET6:
-        begin
-          addrIn6 := PSockAddrIn6(@DestAddr);
-          if inet_ntop(AF_INET6, @addrIn6^.sin6_addr, ipv6Str, INET6_ADDRSTRLEN) <> nil then
-          begin
-            SenderIP := string(AnsiString(ipv6Str));
-            if addrIn6^.sin6_scope_id <> 0 then
-              SenderIP := Format('%s%%%d', [SenderIP, addrIn6^.sin6_scope_id]);
-          end
-          else
-            SenderIP := 'Invalid IPv6 Address';
-        end;
-    else
-      SenderIP := Format('Unknown Address Family: %d', [DestAddr.ss_family]);
-    end;
-
+    // Send the data - pass TSockAddrStorage directly
     UDPServer.SendTo(BytesOf(Data), DestAddr);
+
     Form1.Log(Format('Sent to %s: %s', [SenderIP, Data]));
   except
     on E: Exception do
@@ -149,40 +126,21 @@ procedure TForm1.UDPServerReadDatagram(Sender: TObject; aLine: TncLine;
 var
   ReceivedData: string;
   SenderIP: string;
-  addrIn: PSockAddrIn;
-  addrIn6: PSockAddrIn6;
-  ipv6Str: array[0..INET6_ADDRSTRLEN] of AnsiChar;
 begin
+  try
+    // Convert received data to string
+    ReceivedData := StringOf(Copy(aBuf, 0, aBufCount));
 
-  ReceivedData := StringOf(Copy(aBuf, 0, aBufCount));
+    // Get sender IP address using our utils
+    SenderIP := TIPv6AddressUtils.GetIPFromStorage(SenderAddr);
 
-  case SenderAddr.ss_family of
-    AF_INET:
-      begin
-        addrIn := PSockAddrIn(@SenderAddr);
-        with addrIn^.sin_addr.S_un_b do
-          SenderIP := Format('%d.%d.%d.%d', [s_b1, s_b2, s_b3, s_b4]);
-      end;
-
-    AF_INET6:
-      begin
-        addrIn6 := PSockAddrIn6(@SenderAddr);
-        if inet_ntop(AF_INET6, @addrIn6^.sin6_addr, ipv6Str, INET6_ADDRSTRLEN)
-          <> nil then
-        begin
-          SenderIP := string(AnsiString(ipv6Str));
-          if addrIn6^.sin6_scope_id <> 0 then
-            SenderIP := Format('%s%%%d', [SenderIP, addrIn6^.sin6_scope_id]);
-        end
-        else
-          SenderIP := 'Invalid IPv6 Address';
-      end;
-  else
-    SenderIP := Format('Unknown Address Family: %d', [SenderAddr.ss_family]);
+    // Log and echo
+    Form1.Log(Format('Received from %s: %s', [SenderIP, ReceivedData]));
+    SendToClient('Echo: ' + ReceivedData, SenderAddr);
+  except
+    on E: Exception do
+      Form1.Log(Format('Error processing datagram: %s', [E.Message]));
   end;
-
-  Form1.Log(Format('Received from %s: %s', [SenderIP, ReceivedData]));
-  SendToClient('Echo: ' + ReceivedData, SenderAddr);
 end;
 
 // *****************************************************************************

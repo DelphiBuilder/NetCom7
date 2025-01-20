@@ -46,6 +46,7 @@ uses
   System.Diagnostics,
   System.IOUtils,
   System.Classes,
+  ncIpv6Utils,
   ncThreads;
 
 const
@@ -123,36 +124,6 @@ type
     ConnectResult: Integer;
     procedure ProcessEvent; override;
   end;
-
-  // IPv6
-  TIn6Addr = packed record
-    case Integer of
-      0:
-        (s6_bytes: packed array [0 .. 15] of Byte);
-      1:
-        (s6_words: packed array [0 .. 7] of Word);
-  end;
-
-  PIn6Addr = ^TIn6Addr;
-
-  TSockAddrIn6 = packed record
-    sin6_family: Word; // AF_INET6
-    sin6_port: Word; // Transport level port number
-    sin6_flowinfo: Cardinal; // IPv6 flow information
-    sin6_addr: TIn6Addr; // IPv6 address
-    sin6_scope_id: Cardinal; // Scope ID (new in Windows Socket 2)
-  end;
-
-  PSockAddrIn6 = ^TSockAddrIn6;
-
-  TSockAddrStorage = record
-    ss_family: Word; // Address family
-    __ss_pad1: array [0 .. 5] of Byte; // 6 bytes of padding
-    __ss_align: Int64; // Force alignment
-    __ss_pad2: array [0 .. 111] of Byte; // 112 bytes of padding
-  end;
-
-  PSockAddrStorage = ^TSockAddrStorage;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TncLine
@@ -472,9 +443,16 @@ var
   ResolveHost: string;
 begin
   try
+    // Validate host for IPv6 if applicable
+    if (FFamily = afIPv6) and (aHost <> '') and (LowerCase(aHost) <> 'localhost') then
+    begin
+      // Validate IPv6 address format if it looks like an IPv6 address
+      if (Pos(':', aHost) > 0) and not TIPv6AddressUtils.IsValidAddress(aHost) then
+        raise EIPv6Error.CreateFmt('Invalid IPv6 address format: %s', [aHost]);
+    end;
+
     if IsBroadcastAddress(aHost) and not aBroadcast then
-      raise Exception.Create
-        ('Cannot use broadcast address when Broadcast is False');
+      raise Exception.Create('Cannot use broadcast address when Broadcast is False');
 
     FillChar(Hints, SizeOf(Hints), 0);
 
@@ -492,8 +470,20 @@ begin
         begin
           Hints.ai_family := AF_INET6;
           Hints.ai_flags := AI_ADDRCONFIG;
-          // Remove AI_NUMERICHOST to allow hostname resolution
-          ResolveHost := aHost;
+          // If it's a valid IPv6 address, normalize it
+          if (Pos(':', aHost) > 0) and TIPv6AddressUtils.IsValidAddress(aHost) then
+            ResolveHost := TIPv6AddressUtils.NormalizeAddress(aHost)
+          else
+            ResolveHost := aHost;
+
+          // Handle link-local addresses correctly
+          if TIPv6AddressUtils.IsLinkLocal(ResolveHost) then
+          begin
+            // Extract scope ID if present in the address
+            var ScopePos := Pos('%', ResolveHost);
+            if ScopePos > 0 then
+              ResolveHost := Copy(ResolveHost, 1, ScopePos - 1);
+          end;
         end;
     end;
 
@@ -559,7 +549,13 @@ begin
             end;
           afIPv6:
             begin
-              // IPv6 UDP works without connect
+              // For IPv6 UDP with link-local addresses, ensure scope ID is set
+              if TIPv6AddressUtils.IsLinkLocal(ResolveHost) then
+              begin
+                var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
+                // Set appropriate scope ID if needed
+                // Add a method to get interface index ?
+              end;
               SetConnected;
             end;
         end;
@@ -864,9 +860,8 @@ end;
 
 procedure TncLine.SetConnected;
 var
-  addr: TSockAddrStorage; // Changed from sockaddr to TSockAddrStorage
+  addr: TSockAddrStorage;
   AddrSize: {$IFDEF MSWINDOWS}Integer{$ELSE}socklen_t{$ENDIF};
-  ipv6Str: array [0 .. INET6_ADDRSTRLEN] of AnsiChar;
 begin
   if not FActive then
   begin
@@ -877,50 +872,29 @@ begin
     if IsConnectionBased then
     begin
       // Get peer information
-      AddrSize := SizeOf(TSockAddrStorage); // Use full storage size
+      AddrSize := SizeOf(TSockAddrStorage);
 
       if GetPeerName(FHandle, PSOCKADDR(@addr)^, AddrSize) = 0 then
       begin
-        case addr.ss_family of
-          AF_INET:
-            begin
-              var
-                addr_in: PSockAddrIn := PSockAddrIn(@addr);
-              with addr_in^.sin_addr.S_un_b do
-                FPeerIP := Format('%d.%d.%d.%d', [s_b1, s_b2, s_b3, s_b4]);
-            end;
-
-          AF_INET6:
-            begin
-              var
-                addr_in6: PSockAddrIn6 := PSockAddrIn6(@addr);
-              if inet_ntop(AF_INET6, @addr_in6^.sin6_addr, ipv6Str,
-                INET6_ADDRSTRLEN) <> nil then
-              begin
-                FPeerIP := string(AnsiString(ipv6Str));
-                // If this is a link-local address, append the scope ID
-                if (Length(FPeerIP) >= 4) and
-                  (LowerCase(Copy(FPeerIP, 1, 4)) = 'fe80') then
-                  FPeerIP := Format('%s%%%d',
-                    [FPeerIP, addr_in6^.sin6_scope_id]);
-              end
-              else
-              begin
-                FPeerIP := '::';
-              end;
-            end;
-
-        else
-          begin
+        try
+          FPeerIP := TIPv6AddressUtils.GetIPFromStorage(addr);
+        except
+          on E: EIPv6Error do
             FPeerIP := '';
+        end;
+
+        // If we got an empty string, set default values based on family
+        if FPeerIP = '' then
+        begin
+          case FFamily of
+            afIPv4: FPeerIP := '0.0.0.0';
+            afIPv6: FPeerIP := '::';
           end;
         end;
       end
       else
       begin
-        var
-        ErrorCode :=
-{$IFDEF MSWINDOWS}WSAGetLastError(){$ELSE}GetLastError(){$ENDIF};
+        var ErrorCode := {$IFDEF MSWINDOWS}WSAGetLastError(){$ELSE}GetLastError(){$ENDIF};
         FPeerIP := '';
       end;
     end
@@ -928,10 +902,8 @@ begin
     begin
       // For UDP, we're always "connected" but might not have peer info yet
       case FFamily of
-        afIPv4:
-          FPeerIP := '0.0.0.0';
-        afIPv6:
-          FPeerIP := '::';
+        afIPv4: FPeerIP := '0.0.0.0';
+        afIPv6: FPeerIP := '::';
       end;
     end;
 
