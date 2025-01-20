@@ -79,7 +79,8 @@ contains
   ncEncTiger in 'Source\Encryption\ncEncTiger.pas',
   ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas',
   ncPendingCommandsList in 'Source\ncPendingCommandsList.pas',
-  ncUDPSockets in 'Source\ncUDPSockets.pas';
+  ncUDPSockets in 'Source\ncUDPSockets.pas',
+  ncIPUtils in 'Source\ncIPUtils.pas';
 
 end.
 

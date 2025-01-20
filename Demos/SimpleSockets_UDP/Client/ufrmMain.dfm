@@ -30,6 +30,8 @@ object Form1: TForm1
     ScrollBars = ssVertical
     TabOrder = 1
     OnKeyDown = memLogKeyDown
+    ExplicitWidth = 515
+    ExplicitHeight = 161
   end
   object pnlToolbar: TPanel
     Left = 0
@@ -40,6 +42,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     FullRepaint = False
     TabOrder = 0
+    ExplicitWidth = 525
     object btnActivate: TButton
       AlignWithMargins = True
       Left = 5
@@ -67,6 +70,7 @@ object Form1: TForm1
       BevelOuter = bvNone
       FullRepaint = False
       TabOrder = 1
+      ExplicitWidth = 415
       object edtHost: TEdit
         AlignWithMargins = True
         Left = 5
@@ -81,6 +85,7 @@ object Form1: TForm1
         TabOrder = 0
         TextHint = 'Enter host address'
         OnChange = edtHostChange
+        ExplicitWidth = 279
       end
       object edtPort: TSpinEdit
         AlignWithMargins = True
@@ -98,6 +103,7 @@ object Form1: TForm1
         TabOrder = 1
         Value = 16233
         OnChange = edtPortChange
+        ExplicitLeft = 289
       end
     end
   end
@@ -114,6 +120,8 @@ object Form1: TForm1
     BevelOuter = bvNone
     FullRepaint = False
     TabOrder = 2
+    ExplicitTop = 203
+    ExplicitWidth = 525
     object btnSendData: TButton
       AlignWithMargins = True
       Left = 5
@@ -142,6 +150,7 @@ object Form1: TForm1
       BevelOuter = bvNone
       FullRepaint = False
       TabOrder = 1
+      ExplicitWidth = 415
       object edtDataToSend: TEdit
         AlignWithMargins = True
         Left = 5
@@ -158,10 +167,12 @@ object Form1: TForm1
         TextHint = 'Enter data to send here'
         OnEnter = edtDataToSendEnter
         OnExit = edtDataToSendExit
+        ExplicitWidth = 405
       end
     end
   end
   object UDPClient: TncUDPClient
+    Family = afIPv6
     OnReadDatagram = UDPClientReadDatagram
     Left = 216
     Top = 96

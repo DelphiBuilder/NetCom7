@@ -46,7 +46,7 @@ uses
   System.Diagnostics,
   System.IOUtils,
   System.Classes,
-  ncIpv6Utils,
+  ncIPUtils,
   ncThreads;
 
 const
@@ -447,8 +447,8 @@ begin
     if (FFamily = afIPv6) and (aHost <> '') and (LowerCase(aHost) <> 'localhost') then
     begin
       // Validate IPv6 address format if it looks like an IPv6 address
-      if (Pos(':', aHost) > 0) and not TIPv6AddressUtils.IsValidAddress(aHost) then
-        raise EIPv6Error.CreateFmt('Invalid IPv6 address format: %s', [aHost]);
+      if (Pos(':', aHost) > 0) and not TNetworkAddressUtils.IsIPv6ValidAddress(aHost) then
+        raise EIPError.CreateFmt('Invalid IPv6 address format: %s', [aHost]);
     end;
 
     if IsBroadcastAddress(aHost) and not aBroadcast then
@@ -471,13 +471,13 @@ begin
           Hints.ai_family := AF_INET6;
           Hints.ai_flags := AI_ADDRCONFIG;
           // If it's a valid IPv6 address, normalize it
-          if (Pos(':', aHost) > 0) and TIPv6AddressUtils.IsValidAddress(aHost) then
-            ResolveHost := TIPv6AddressUtils.NormalizeAddress(aHost)
+          if (Pos(':', aHost) > 0) and TNetworkAddressUtils.IsIPv6ValidAddress(aHost) then
+            ResolveHost := TNetworkAddressUtils.NormalizeAddress(aHost)
           else
             ResolveHost := aHost;
 
           // Handle link-local addresses correctly
-          if TIPv6AddressUtils.IsLinkLocal(ResolveHost) then
+          if TNetworkAddressUtils.IsLinkLocal(ResolveHost) then
           begin
             // Extract scope ID if present in the address
             var ScopePos := Pos('%', ResolveHost);
@@ -550,7 +550,7 @@ begin
           afIPv6:
             begin
               // For IPv6 UDP with link-local addresses, ensure scope ID is set
-              if TIPv6AddressUtils.IsLinkLocal(ResolveHost) then
+              if TNetworkAddressUtils.IsLinkLocal(ResolveHost) then
               begin
                 var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
                 // Set appropriate scope ID if needed
@@ -689,57 +689,43 @@ end;
 
 function TncLine.SendBuffer(const aBuf; aLen: Integer): Integer;
 begin
-  if IsConnectionBased then
-  begin
-    // TCP mode - use stream-oriented send
-    Result := Send(FHandle, aBuf, aLen, 0);
-    try
-      if Result = SocketError then
-        Abort; // raise silent exception instead of Check
+  Result := Send(FHandle, aBuf, aLen, 0);
 
-      LastSent := TStopWatch.GetTimeStamp;
+  if Result = SocketError then
+  begin
+    if IsConnectionBased then
+    try
+      Abort;  // TCP: raise silent exception
     except
       DestroyHandle;
       raise;
-    end;
+    end
+    else
+      Check(Result);  // UDP: normal error check
   end
   else
-  begin
-    // UDP mode - use datagram send
-    Result := Send(FHandle, aBuf, aLen, 0);
-    if Result = SocketError then
-      Check(Result)
-    else
-      LastSent := TStopWatch.GetTimeStamp;
-  end;
+    LastSent := TStopWatch.GetTimeStamp;
 end;
 
 function TncLine.RecvBuffer(var aBuf; aLen: Integer): Integer;
 begin
-  if IsConnectionBased then
-  begin
-    // TCP mode - use stream-oriented receive
-    Result := recv(FHandle, aBuf, aLen, 0);
-    try
-      if (Result = SocketError) or (Result = 0) then
-        Abort; // raise silent exception instead of Check, something has disconnected
+  Result := recv(FHandle, aBuf, aLen, 0);
 
-      LastReceived := TStopWatch.GetTimeStamp;
+  if (Result = SocketError) or
+     (IsConnectionBased and (Result = 0)) then  // TCP: 0 means disconnected
+  begin
+    if IsConnectionBased then
+    try
+      Abort;  // TCP: raise silent exception
     except
       DestroyHandle;
       raise;
-    end;
+    end
+    else
+      Check(Result);  // UDP: normal error check
   end
   else
-  begin
-    // UDP mode - use datagram receive
-    Result := recv(FHandle, aBuf, aLen, 0);
-    if Result = SocketError then
-      Check(Result)
-    else
-      LastReceived := TStopWatch.GetTimeStamp;
-    // Note: UDP can legitimately receive 0 bytes, so we don't treat it as an error
-  end;
+    LastReceived := TStopWatch.GetTimeStamp;
 end;
 
 procedure TncLine.EnableNoDelay;
@@ -877,9 +863,9 @@ begin
       if GetPeerName(FHandle, PSOCKADDR(@addr)^, AddrSize) = 0 then
       begin
         try
-          FPeerIP := TIPv6AddressUtils.GetIPFromStorage(addr);
+          FPeerIP := TNetworkAddressUtils.GetIPFromStorage(addr);
         except
-          on E: EIPv6Error do
+          on E: EIPError do
             FPeerIP := '';
         end;
 

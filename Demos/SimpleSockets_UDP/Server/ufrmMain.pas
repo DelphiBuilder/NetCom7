@@ -10,7 +10,7 @@ uses
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Samples.Spin, System.Diagnostics,
-  ncLines, ncUDPSockets, ncIPv6Utils;
+  ncLines, ncUDPSockets, ncIPUtils;
 
 type
   TForm1 = class(TForm)
@@ -106,7 +106,7 @@ begin
 
   try
     // Get IP address using our utils
-    SenderIP := TIPv6AddressUtils.GetIPFromStorage(DestAddr);
+    SenderIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
 
     // Send the data - pass TSockAddrStorage directly
     UDPServer.SendTo(BytesOf(Data), DestAddr);
@@ -132,7 +132,7 @@ begin
     ReceivedData := StringOf(Copy(aBuf, 0, aBufCount));
 
     // Get sender IP address using our utils
-    SenderIP := TIPv6AddressUtils.GetIPFromStorage(SenderAddr);
+    SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
 
     // Log and echo
     Form1.Log(Format('Received from %s: %s', [SenderIP, ReceivedData]));

@@ -234,8 +234,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileVersion=7.2.0.632;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=7.2;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
-        <VerInfo_Build>632</VerInfo_Build>
+        <VerInfo_Keys>CompanyName=;FileVersion=7.2.0.636;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=7.2;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Build>636</VerInfo_Build>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
         <VerInfo_AutoGenVersion>false</VerInfo_AutoGenVersion>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
@@ -326,6 +326,7 @@
         <DCCReference Include="Source\Encryption\ncEncTwofish.pas"/>
         <DCCReference Include="Source\ncPendingCommandsList.pas"/>
         <DCCReference Include="Source\ncUDPSockets.pas"/>
+        <DCCReference Include="Source\ncIPUtils.pas"/>
         <RcItem Include="PaletteIcons\TncIcon.bmp">
             <ResourceType>BITMAP</ResourceType>
             <ResourceId>TNCICON</ResourceId>

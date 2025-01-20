@@ -29,6 +29,8 @@ object Form1: TForm1
     ScrollBars = ssVertical
     TabOrder = 0
     OnKeyDown = memLogKeyDown
+    ExplicitWidth = 515
+    ExplicitHeight = 194
   end
   object pnlToolbar: TPanel
     Left = 0
@@ -39,6 +41,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     FullRepaint = False
     TabOrder = 1
+    ExplicitWidth = 525
     object btnActivate: TButton
       AlignWithMargins = True
       Left = 5
@@ -66,6 +69,7 @@ object Form1: TForm1
       BevelOuter = bvNone
       FullRepaint = False
       TabOrder = 1
+      ExplicitWidth = 410
       object edtPort: TSpinEdit
         AlignWithMargins = True
         Left = 0
@@ -86,6 +90,7 @@ object Form1: TForm1
     end
   end
   object UDPServer: TncUDPServer
+    Family = afIPv6
     OnReadDatagram = UDPServerReadDatagram
     Left = 232
     Top = 104

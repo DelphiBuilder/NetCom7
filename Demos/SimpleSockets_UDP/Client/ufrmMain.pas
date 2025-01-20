@@ -10,7 +10,7 @@ uses
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Samples.Spin,
-  System.Diagnostics, ncLines, ncUDPSockets, ncIPv6Utils;
+  System.Diagnostics, ncLines, ncUDPSockets, ncIPUtils;
 
 type
   TForm1 = class(TForm)
@@ -187,9 +187,9 @@ begin
 
   // Get sender IP address using our utils
   try
-    SenderIP := TIPv6AddressUtils.GetIPFromStorage(SenderAddr);
+    SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
   except
-    on E: EIPv6Error do
+    on E: EIPError do
       SenderIP := Format('Invalid Address: %s', [E.Message]);
   end;
 

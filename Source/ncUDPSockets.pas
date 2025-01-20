@@ -28,7 +28,7 @@ uses
   Posix.SysSocket, Posix.Unistd,
 {$ENDIF}
   System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.Diagnostics, System.TimeSpan,
-  ncLines, ncSocketList, ncThreads, ncIPv6Utils;
+  ncLines, ncSocketList, ncThreads, ncIPUtils;
 
 const
   DefPort = 16233;
@@ -584,7 +584,7 @@ begin
         else
         begin
           // Validate IPv6 address format
-          if not TIPv6AddressUtils.IsValidAddress(FHost) then
+          if not TNetworkAddressUtils.IsIPv6ValidAddress(FHost) then
             raise Exception.Create('Invalid IPv6 address format');
 
           FillChar(storage, SizeOf(storage), 0);
@@ -595,7 +595,7 @@ begin
           addrV6^.sin6_port := htons(FPort);
 
           // Handle link-local address with scope ID
-          if TIPv6AddressUtils.IsLinkLocal(FHost) then
+          if TNetworkAddressUtils.IsLinkLocal(FHost) then
           begin
             var scopePos := Pos('%', FHost);
             if scopePos > 0 then
@@ -607,16 +607,16 @@ begin
               begin
                 addrV6^.sin6_scope_id := scopeID;
                 // Convert the address part without scope ID
-                if not TIPv6AddressUtils.StringToAddress(hostAddr, addrV6^.sin6_addr) then
+                if not TNetworkAddressUtils.StringToAddress(hostAddr, addrV6^.sin6_addr) then
                   raise Exception.Create('Invalid IPv6 address format');
               end
               else
                 raise Exception.Create('Invalid IPv6 scope ID');
             end
-            else if not TIPv6AddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
+            else if not TNetworkAddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
               raise Exception.Create('Invalid IPv6 address format');
           end
-          else if not TIPv6AddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
+          else if not TNetworkAddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
             raise Exception.Create('Invalid IPv6 address format');
 
           SendTo(aBuf, aBufSize, storage);
@@ -653,7 +653,7 @@ begin
 
   try
     // Get destination address for logging/error reporting
-    DestIP := TIPv6AddressUtils.GetIPFromStorage(DestAddr);
+    DestIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
 
     // Set proper address length based on family
     case DestAddr.ss_family of
@@ -677,7 +677,7 @@ begin
         [DestIP, SysErrorMessage(GetLastError)]);
     {$ENDIF}
   except
-    on E: EIPv6Error do
+    on E: EIPError do
       raise Exception.Create('Invalid destination address: ' + E.Message);
   end;
 end;
@@ -702,7 +702,6 @@ begin
     SendTo(bytes[0], len, DestAddr);
 end;
 
-// Update Receive function
 function TncCustomUDPClient.Receive(aTimeout: Cardinal = 2000): TBytes;
 var
   BufRead: Integer;
@@ -731,7 +730,7 @@ begin
     if BufRead > 0 then
     begin
       // Get sender IP for logging if needed
-      SenderIP := TIPv6AddressUtils.GetIPFromStorage(SenderAddr);
+      SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
       Result := Copy(ReadBuf, 0, BufRead);
     end
     else if BufRead = 0 then
@@ -749,7 +748,7 @@ begin
       {$ENDIF}
     end;
   except
-    on E: EIPv6Error do
+    on E: EIPError do
     begin
       SetLength(Result, 0);
       raise Exception.Create('Invalid sender address: ' + E.Message);
@@ -914,57 +913,56 @@ begin
   end;
 end;
 
-
+// 1. Base SendTo that does the actual sending
 procedure TncCustomUDPServer.SendTo(const aBuf; aBufSize: Integer; const DestAddr: TSockAddrStorage);
 var
   AddrLen: Integer;
-{$IFDEF MSWINDOWS}
+  {$IFDEF MSWINDOWS}
   BytesSent: Integer;
-begin
-  if not Active then
-    raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
-
-  // Set proper address length based on family
-  case DestAddr.ss_family of
-    AF_INET: AddrLen := SizeOf(TSockAddr);
-    AF_INET6: AddrLen := SizeOf(TSockAddrIn6);
-  else
-    AddrLen := SizeOf(TSockAddrStorage);
-  end;
-
-  BytesSent := Winapi.Winsock2.sendto(Line.Handle, aBuf, aBufSize, 0,
-    Psockaddr(@DestAddr), AddrLen);
-
-  if BytesSent = SOCKET_ERROR then
-    raise Exception.Create(SysErrorMessage(WSAGetLastError));
-{$ELSE}
+  {$ELSE}
   BytesSent: ssize_t;
+  {$ENDIF}
+  DestIP: string;
 begin
   if not Active then
     raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
-
-  // Set proper address length based on family
-  case DestAddr.ss_family of
-    AF_INET: AddrLen := SizeOf(TSockAddr);
-    AF_INET6: AddrLen := SizeOf(TSockAddrIn6);
-  else
-    AddrLen := SizeOf(TSockAddrStorage);
+  try
+    // Get destination address for logging/error reporting
+    DestIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
+    // Set proper address length based on family
+    case DestAddr.ss_family of
+      AF_INET: AddrLen := SizeOf(TSockAddr);
+      AF_INET6: AddrLen := SizeOf(TSockAddrIn6);
+    else
+      AddrLen := SizeOf(TSockAddrStorage);
+    end;
+    {$IFDEF MSWINDOWS}
+    BytesSent := Winapi.Winsock2.sendto(Line.Handle, aBuf, aBufSize, 0,
+      Psockaddr(@DestAddr), AddrLen);
+    if BytesSent = SOCKET_ERROR then
+      raise Exception.CreateFmt('Failed to send to %s: %s',
+        [DestIP, SysErrorMessage(WSAGetLastError)]);
+    {$ELSE}
+    BytesSent := Posix.SysSocket.sendto(Line.Handle, @aBuf, aBufSize, 0,
+      Psockaddr(@DestAddr), AddrLen);
+    if BytesSent < 0 then
+      raise Exception.CreateFmt('Failed to send to %s: %s',
+        [DestIP, SysErrorMessage(GetLastError)]);
+    {$ENDIF}
+  except
+    on E: EIPError do
+      raise Exception.Create('Invalid destination address: ' + E.Message);
   end;
-
-  BytesSent := Posix.SysSocket.sendto(Line.Handle, @aBuf, aBufSize, 0,
-    Psockaddr(@DestAddr), AddrLen);
-
-  if BytesSent < 0 then
-    raise Exception.Create(SysErrorMessage(GetLastError));
-{$ENDIF}
 end;
 
+// 2. SendTo for byte arrays
 procedure TncCustomUDPServer.SendTo(const aBytes: TBytes; const DestAddr: TSockAddrStorage);
 begin
   if Length(aBytes) > 0 then
     SendTo(aBytes[0], Length(aBytes), DestAddr);
 end;
 
+// 3. SendTo for strings
 procedure TncCustomUDPServer.SendTo(const aStr: string; const DestAddr: TSockAddrStorage);
 var
   bytes: TBytes;
@@ -981,11 +979,14 @@ var
   BufRead: Integer;
   SenderAddr: TSockAddrStorage;
   SenderAddrLen: Integer;
+  SenderIP: string;
 begin
   if UseReaderThread then
     raise Exception.Create(ECannotReceiveIfUseReaderThreadStr);
 
-  if not ReadableAnySocket(ReadSocketHandles, aTimeout) then
+  Active := True;
+
+  if not ReadableAnySocket([Line.Handle], aTimeout) then
   begin
     SetLength(Result, 0);
     Exit;
@@ -997,10 +998,34 @@ begin
   BufRead := recvfrom(Line.Handle, ReadBuf[0], Length(ReadBuf), 0,
     PSockAddr(@SenderAddr)^, SenderAddrLen);
 
-  if BufRead > 0 then
-    Result := Copy(ReadBuf, 0, BufRead)
-  else
-    SetLength(Result, 0);
+  try
+    if BufRead > 0 then
+    begin
+      // Get sender IP for logging if needed
+      SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
+      Result := Copy(ReadBuf, 0, BufRead);
+    end
+    else if BufRead = 0 then
+    begin
+      SetLength(Result, 0);
+      // Optional: raise Exception.Create('Connection closed by peer');
+    end
+    else
+    begin
+      SetLength(Result, 0);
+      {$IFDEF MSWINDOWS}
+      raise Exception.Create('Receive error: ' + SysErrorMessage(WSAGetLastError));
+      {$ELSE}
+      raise Exception.Create('Receive error: ' + SysErrorMessage(GetLastError));
+      {$ENDIF}
+    end;
+  except
+    on E: EIPError do
+    begin
+      SetLength(Result, 0);
+      raise Exception.Create('Invalid sender address: ' + E.Message);
+    end;
+  end;
 end;
 
 { TncUDPServerProcessor }
