@@ -447,7 +447,7 @@ begin
     if (FFamily = afIPv6) and (aHost <> '') and (LowerCase(aHost) <> 'localhost') then
     begin
       // Validate IPv6 address format if it looks like an IPv6 address
-      if (Pos(':', aHost) > 0) and not TNetworkAddressUtils.IsIPv6ValidAddress(aHost) then
+      if (Pos(':', aHost) > 0) and not TncIPUtils.IsIPv6ValidAddress(aHost) then
         raise EIPError.CreateFmt('Invalid IPv6 address format: %s', [aHost]);
     end;
 
@@ -471,13 +471,13 @@ begin
           Hints.ai_family := AF_INET6;
           Hints.ai_flags := AI_ADDRCONFIG;
           // If it's a valid IPv6 address, normalize it
-          if (Pos(':', aHost) > 0) and TNetworkAddressUtils.IsIPv6ValidAddress(aHost) then
-            ResolveHost := TNetworkAddressUtils.NormalizeAddress(aHost)
+          if (Pos(':', aHost) > 0) and TncIPUtils.IsIPv6ValidAddress(aHost) then
+            ResolveHost := TncIPUtils.NormalizeAddress(aHost)
           else
             ResolveHost := aHost;
 
           // Handle link-local addresses correctly
-          if TNetworkAddressUtils.IsLinkLocal(ResolveHost) then
+          if TncIPUtils.IsLinkLocal(ResolveHost) then
           begin
             // Extract scope ID if present in the address
             var ScopePos := Pos('%', ResolveHost);
@@ -550,7 +550,7 @@ begin
           afIPv6:
             begin
               // For IPv6 UDP with link-local addresses, ensure scope ID is set
-              if TNetworkAddressUtils.IsLinkLocal(ResolveHost) then
+              if TncIPUtils.IsLinkLocal(ResolveHost) then
               begin
                 var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
                 // Set appropriate scope ID if needed
@@ -863,7 +863,7 @@ begin
       if GetPeerName(FHandle, PSOCKADDR(@addr)^, AddrSize) = 0 then
       begin
         try
-          FPeerIP := TNetworkAddressUtils.GetIPFromStorage(addr);
+          FPeerIP := TncIPUtils.GetIPFromStorage(addr);
         except
           on E: EIPError do
             FPeerIP := '';

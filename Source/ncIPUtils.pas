@@ -1,4 +1,15 @@
 unit ncIPUtils;
+// /////////////////////////////////////////////////////////////////////////////
+//
+// NetCom7 Package - IP Address utils
+//
+// This unit implements UDP Server and UDP Client components
+//
+// 21/01/2025
+// - Initial creation
+// Written by J.Pauwels
+//
+// /////////////////////////////////////////////////////////////////////////////
 
 interface
 
@@ -55,7 +66,7 @@ type
     pStringBuf: PAnsiChar; StringBufSize: size_t): PAnsiChar; stdcall;
   {$ENDIF}
 
-  TNetworkAddressUtils = class
+  TncIPUtils = class
   private
     {$IFDEF MSWINDOWS}
     class var
@@ -92,7 +103,7 @@ var
   Ws2_32DllHandle: THandle;
 
 
-class function TNetworkAddressUtils.LoadIPv6Functions: Boolean;
+class function TncIPUtils.LoadIPv6Functions: Boolean;
 begin
   Result := False;
 
@@ -108,7 +119,7 @@ begin
 end;
 {$ENDIF}
 
-class constructor TNetworkAddressUtils.Create;
+class constructor TncIPUtils.Create;
 begin
   {$IFDEF MSWINDOWS}
   if not LoadIPv6Functions then
@@ -116,7 +127,7 @@ begin
   {$ENDIF}
 end;
 
-class function TNetworkAddressUtils.StorageToString(const Storage: TSockAddrStorage): string;
+class function TncIPUtils.StorageToString(const Storage: TSockAddrStorage): string;
 begin
   case Storage.ss_family of
     AF_INET:
@@ -138,17 +149,17 @@ begin
   end;
 end;
 
-class function TNetworkAddressUtils.IsIPv6Storage(const Storage: TSockAddrStorage): Boolean;
+class function TncIPUtils.IsIPv6Storage(const Storage: TSockAddrStorage): Boolean;
 begin
   Result := Storage.ss_family = AF_INET6;
 end;
 
-class function TNetworkAddressUtils.GetStorageFamily(const Storage: TSockAddrStorage): Word;
+class function TncIPUtils.GetStorageFamily(const Storage: TSockAddrStorage): Word;
 begin
   Result := Storage.ss_family;
 end;
 
-class function TNetworkAddressUtils.StorageToIPv6Address(const Storage: TSockAddrStorage;
+class function TncIPUtils.StorageToIPv6Address(const Storage: TSockAddrStorage;
   out Addr: TSockAddrIn6): Boolean;
 begin
   Result := Storage.ss_family = AF_INET6;
@@ -156,12 +167,12 @@ begin
     Addr := PSockAddrIn6(@Storage)^;
 end;
 
-class function TNetworkAddressUtils.GetIPFromStorage(const Storage: TSockAddrStorage): string;
+class function TncIPUtils.GetIPFromStorage(const Storage: TSockAddrStorage): string;
 begin
   Result := StorageToString(Storage);
 end;
 
-class function TNetworkAddressUtils.GetPortFromStorage(const Storage: TSockAddrStorage): Word;
+class function TncIPUtils.GetPortFromStorage(const Storage: TSockAddrStorage): Word;
 begin
   case Storage.ss_family of
     AF_INET: Result := ntohs(PSockAddrIn(@Storage)^.sin_port);
@@ -171,14 +182,14 @@ begin
   end;
 end;
 
-class function TNetworkAddressUtils.IsIPv6ValidAddress(const AddrStr: string): Boolean;
+class function TncIPUtils.IsIPv6ValidAddress(const AddrStr: string): Boolean;
 var
   Addr: TIn6Addr;
 begin
   Result := StringToAddress(AddrStr, Addr);
 end;
 
-class function TNetworkAddressUtils.AddressToString(const Addr: TIn6Addr): string;
+class function TncIPUtils.AddressToString(const Addr: TIn6Addr): string;
 var
   StringBuffer: array[0..IPV6_STR_MAX_LEN-1] of AnsiChar;
 begin
@@ -195,7 +206,7 @@ begin
   Result := string(AnsiString(StringBuffer));
 end;
 
-class function TNetworkAddressUtils.StringToAddress(const AddrStr: string; out Addr: TIn6Addr): Boolean;
+class function TncIPUtils.StringToAddress(const AddrStr: string; out Addr: TIn6Addr): Boolean;
 var
   AnsiAddr: AnsiString;
 begin
@@ -207,14 +218,14 @@ begin
   {$ENDIF}
 end;
 
-class function TNetworkAddressUtils.IsLinkLocal(const AddrStr: string): Boolean;
+class function TncIPUtils.IsLinkLocal(const AddrStr: string): Boolean;
 begin
   // Link-local addresses start with fe80::/10
   Result := (Length(AddrStr) >= 4) and
             (LowerCase(Copy(AddrStr, 1, 4)) = 'fe80');
 end;
 
-class function TNetworkAddressUtils.NormalizeAddress(const AddrStr: string): string;
+class function TncIPUtils.NormalizeAddress(const AddrStr: string): string;
 var
   Addr: TIn6Addr;
 begin
@@ -224,7 +235,7 @@ begin
     raise EIPError.CreateFmt('Invalid IPv6 address: %s', [AddrStr]);
 end;
 
-class function TNetworkAddressUtils.AddressToPresentation(const Addr: TIn6Addr): string;
+class function TncIPUtils.AddressToPresentation(const Addr: TIn6Addr): string;
 var
   i: Integer;
   NonZeroFound: Boolean;
@@ -251,7 +262,7 @@ begin
     Result := Result + ':';
 end;
 
-class function TNetworkAddressUtils.PresentationToAddress(const Present: string;
+class function TncIPUtils.PresentationToAddress(const Present: string;
   var Addr: TIn6Addr): Boolean;
 begin
   FillChar(Addr, SizeOf(Addr), 0);

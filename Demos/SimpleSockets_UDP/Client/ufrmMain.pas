@@ -180,6 +180,7 @@ procedure TForm1.UDPClientReadDatagram(Sender: TObject; aLine: TncLine;
   const aBuf: TBytes; aBufCount: Integer; const SenderAddr: TSockAddrStorage);
 var
   ReceivedData: string;
+  BytesReceived: TBytes;
   SenderIP: string;
 begin
   // Convert received data to string
@@ -187,7 +188,7 @@ begin
 
   // Get sender IP address using our utils
   try
-    SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
+    SenderIP := TncIPUtils.GetIPFromStorage(SenderAddr);
   except
     on E: EIPError do
       SenderIP := Format('Invalid Address: %s', [E.Message]);

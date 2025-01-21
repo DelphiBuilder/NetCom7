@@ -584,7 +584,7 @@ begin
         else
         begin
           // Validate IPv6 address format
-          if not TNetworkAddressUtils.IsIPv6ValidAddress(FHost) then
+          if not TncIPUtils.IsIPv6ValidAddress(FHost) then
             raise Exception.Create('Invalid IPv6 address format');
 
           FillChar(storage, SizeOf(storage), 0);
@@ -595,7 +595,7 @@ begin
           addrV6^.sin6_port := htons(FPort);
 
           // Handle link-local address with scope ID
-          if TNetworkAddressUtils.IsLinkLocal(FHost) then
+          if TncIPUtils.IsLinkLocal(FHost) then
           begin
             var scopePos := Pos('%', FHost);
             if scopePos > 0 then
@@ -607,16 +607,16 @@ begin
               begin
                 addrV6^.sin6_scope_id := scopeID;
                 // Convert the address part without scope ID
-                if not TNetworkAddressUtils.StringToAddress(hostAddr, addrV6^.sin6_addr) then
+                if not TncIPUtils.StringToAddress(hostAddr, addrV6^.sin6_addr) then
                   raise Exception.Create('Invalid IPv6 address format');
               end
               else
                 raise Exception.Create('Invalid IPv6 scope ID');
             end
-            else if not TNetworkAddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
+            else if not TncIPUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
               raise Exception.Create('Invalid IPv6 address format');
           end
-          else if not TNetworkAddressUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
+          else if not TncIPUtils.StringToAddress(FHost, addrV6^.sin6_addr) then
             raise Exception.Create('Invalid IPv6 address format');
 
           SendTo(aBuf, aBufSize, storage);
@@ -653,7 +653,7 @@ begin
 
   try
     // Get destination address for logging/error reporting
-    DestIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
+    DestIP := TncIPUtils.GetIPFromStorage(DestAddr);
 
     // Set proper address length based on family
     case DestAddr.ss_family of
@@ -730,7 +730,7 @@ begin
     if BufRead > 0 then
     begin
       // Get sender IP for logging if needed
-      SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
+      SenderIP := TncIPUtils.GetIPFromStorage(SenderAddr);
       Result := Copy(ReadBuf, 0, BufRead);
     end
     else if BufRead = 0 then
@@ -928,7 +928,7 @@ begin
     raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
   try
     // Get destination address for logging/error reporting
-    DestIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
+    DestIP := TncIPUtils.GetIPFromStorage(DestAddr);
     // Set proper address length based on family
     case DestAddr.ss_family of
       AF_INET: AddrLen := SizeOf(TSockAddr);
@@ -1002,7 +1002,7 @@ begin
     if BufRead > 0 then
     begin
       // Get sender IP for logging if needed
-      SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
+      SenderIP := TncIPUtils.GetIPFromStorage(SenderAddr);
       Result := Copy(ReadBuf, 0, BufRead);
     end
     else if BufRead = 0 then

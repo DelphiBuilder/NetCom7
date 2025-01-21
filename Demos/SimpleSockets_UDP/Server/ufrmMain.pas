@@ -106,7 +106,7 @@ begin
 
   try
     // Get IP address using our utils
-    SenderIP := TNetworkAddressUtils.GetIPFromStorage(DestAddr);
+    SenderIP := TncIPUtils.GetIPFromStorage(DestAddr);
 
     // Send the data - pass TSockAddrStorage directly
     UDPServer.SendTo(BytesOf(Data), DestAddr);
@@ -132,7 +132,7 @@ begin
     ReceivedData := StringOf(Copy(aBuf, 0, aBufCount));
 
     // Get sender IP address using our utils
-    SenderIP := TNetworkAddressUtils.GetIPFromStorage(SenderAddr);
+    SenderIP := TncIPUtils.GetIPFromStorage(SenderAddr);
 
     // Log and echo
     Form1.Log(Format('Received from %s: %s', [SenderIP, ReceivedData]));
