@@ -15,7 +15,7 @@ The **UDP** components can be dragged from the palette and customized in the obj
 
 ### IPV6
 
-TCP v4 / TCP v6 /UDP v4 /UDP V6 are now avaible.
+TCP v4 / TCP v6 / UDP v4 / UDP v6 are now avaible.
 
 ⚠️ Client and Server must use the same familly version (no dual-stack sockets).
 
