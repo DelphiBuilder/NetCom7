@@ -3,7 +3,7 @@ unit ncIPUtils;
 //
 // NetCom7 Package - IP Address utils
 //
-// This unit implements UDP Server and UDP Client components
+//
 //
 // 21/01/2025
 // - Initial creation
