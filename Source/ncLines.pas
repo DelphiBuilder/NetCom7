@@ -6,6 +6,11 @@
 // socket, organised in an object which contains the handle of the socket,
 // and also makes sure it checks every API command for errors
 //
+// 14/01/2025 - by J.Pauwels
+// - Fix Linux compilation
+// - Added UDP support
+// - Added IPV6 support
+//
 // 9/8/2020
 // - Completed multiplatform support, now NetCom can be compiled in all
 // platforms
@@ -39,11 +44,19 @@ uses
   System.Math,
   System.SysUtils,
   System.Diagnostics,
+  System.IOUtils,
+  System.Classes,
+  ncIPUtils,
   ncThreads;
 
 const
   // Flag that indicates that the socket is intended for bind() + listen() when constructing it
   AI_PASSIVE = 1;
+  IPV6_V6ONLY = 27;
+  AI_ADDRCONFIG = $0020; // Return only if local system configured
+  AI_NUMERICHOST = $0004; // Don't use name resolution
+  INET6_ADDRSTRLEN = 46;
+  // Maximum length of IPv6 address string including null terminator
 {$IFDEF MSWINDOWS}
   InvalidSocket = Winapi.Winsock2.INVALID_SOCKET;
   SocketError = SOCKET_ERROR;
@@ -53,6 +66,25 @@ const
   IPPROTO_TCP = 6;
   TCP_NODELAY = $0001;
 {$ENDIF}
+
+type
+  TSocketType = (stUDP, stTCP);
+
+const
+  CSocketTypeNames: array [TSocketType] of string = ('UDP', 'TCP');
+
+  CRawSocketTypes: array [TSocketType] of Integer = (SOCK_DGRAM, // UDP datagram
+    SOCK_STREAM // TCP stream
+    );
+
+  CRawProtocolTypes: array [TSocketType] of Integer = (IPPROTO_UDP,
+    IPPROTO_TCP);
+
+type
+  TAddressType = (afIPv4, afIPv6);
+
+const
+  CAddressTypeNames: array [TAddressType] of string = ('IPv4', 'IPv6');
 
 type
 {$IFDEF MSWINDOWS}
@@ -72,7 +104,8 @@ type
     ai_next: PAddrInfoW;
   end;
 
-  TGetAddrInfoW = function(NodeName: PWideChar; ServiceName: PWideChar; Hints: PAddrInfoW; ppResult: PPAddrInfoW): Integer; stdcall;
+  TGetAddrInfoW = function(NodeName: PWideChar; ServiceName: PWideChar;
+    Hints: PAddrInfoW; ppResult: PPAddrInfoW): Integer; stdcall;
   TFreeAddrInfoW = procedure(ai: PAddrInfoW); stdcall;
 {$ELSE}
   TSocketHandle = Integer;
@@ -91,6 +124,7 @@ type
     ConnectResult: Integer;
     procedure ProcessEvent; override;
   end;
+
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TncLine
   // Bring in all functionality from WinSock API, with appropriate exception raising on errors
@@ -99,6 +133,9 @@ type
   private const
     DefaultConnectTimeout = 100; // msec
   private
+    FKind: TSocketType;
+    FFamily: TAddressType;
+    FMaxPort: Integer;
     FActive: Boolean;
     FLastSent: Int64;
     FLastReceived: Int64;
@@ -110,11 +147,13 @@ type
     PropertyLock: TCriticalSection;
     FHandle: TSocketHandle;
     FConnectTimeout: Integer;
+
 {$IFDEF MSWINDOWS}
     AddrResult: PAddrInfoW;
 {$ELSE}
     AddrResult: Paddrinfo;
 {$ENDIF}
+    function IsConnectionBased: Boolean;
     procedure SetConnected;
     procedure SetDisconnected;
     function GetReceiveTimeout: Integer;
@@ -125,12 +164,20 @@ type
     procedure SetLastReceived(const Value: Int64);
     function GetLastSent: Int64;
     procedure SetLastSent(const Value: Int64);
+  protected const
+    DefaultKind = stTCP;
+
+  const
+    DefaultFamily = afIPv4;
   protected
+    procedure SetKind(const AKind: TSocketType);
+    procedure SetFamily(const Value: TAddressType);
     function CreateLineObject: TncLine; virtual;
     procedure Check(aCmdRes: Integer); inline;
 
     // API functions
-    procedure CreateClientHandle(const aHost: string; const aPort: Integer);
+    procedure CreateClientHandle(const aHost: string; const aPort: Integer;
+      const aBroadcast: Boolean = False);
     procedure CreateServerHandle(const aPort: Integer);
     procedure DestroyHandle;
 
@@ -141,35 +188,47 @@ type
 
     procedure EnableNoDelay; inline;
     procedure EnableKeepAlive; inline;
+    procedure EnableBroadcast; inline;
+    procedure EnableIPv6Only; inline;
+
     procedure EnableReuseAddress; inline;
     procedure SetReceiveSize(const aBufferSize: Integer);
     procedure SetWriteSize(const aBufferSize: Integer);
 
-    property OnConnected: TncLineOnConnectDisconnect read FOnConnected write FOnConnected;
-    property OnDisconnected: TncLineOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
+    property OnConnected: TncLineOnConnectDisconnect read FOnConnected
+      write FOnConnected;
+    property OnDisconnected: TncLineOnConnectDisconnect read FOnDisconnected
+      write FOnDisconnected;
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
 
+    property Kind: TSocketType read FKind;
+    property Family: TAddressType read FFamily;
     property Handle: TSocketHandle read FHandle;
     property Active: Boolean read FActive;
     property LastSent: Int64 read GetLastSent write SetLastSent;
     property LastReceived: Int64 read GetLastReceived write SetLastReceived;
     property PeerIP: string read FPeerIP;
     property DataObject: TObject read FDataObject write FDataObject;
-    property ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout default DefaultConnectTimeout;
-    property ReceiveTimeout: Integer read GetReceiveTimeout write SetReceiveTimeout;
+    property ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout
+      default DefaultConnectTimeout;
+    property ReceiveTimeout: Integer read GetReceiveTimeout
+      write SetReceiveTimeout;
     property SendTimeout: Integer read GetSendTimeout write SetSendTimeout;
   end;
 
-function Readable(const aSocketHandleArray: TSocketHandleArray; const aTimeout: Cardinal): TSocketHandleArray;
-function ReadableAnySocket(const aSocketHandleArray: TSocketHandleArray; const aTimeout: Cardinal): Boolean; inline;
+function Readable(const aSocketHandleArray: TSocketHandleArray;
+  const aTimeout: Cardinal): TSocketHandleArray;
+function ReadableAnySocket(const aSocketHandleArray: TSocketHandleArray;
+  const aTimeout: Cardinal): Boolean; inline;
 
 implementation
 
 // Readable checks to see if any socket handles have data
 // and if so, overwrites aReadFDS with the data
-function Readable(const aSocketHandleArray: TSocketHandleArray; const aTimeout: Cardinal): TSocketHandleArray;
+function Readable(const aSocketHandleArray: TSocketHandleArray;
+  const aTimeout: Cardinal): TSocketHandleArray;
 {$IFDEF MSWINDOWS}
 var
   TimeoutValue: timeval;
@@ -193,7 +252,8 @@ begin
     if FDSetPtr^.fd_count > 0 then
     begin
       SetLength(Result, FDSetPtr^.fd_count);
-      move(FDSetPtr^.fd_array[0], Result[0], FDSetPtr^.fd_count * SizeOf(TSocketHandle));
+      move(FDSetPtr^.fd_array[0], Result[0], FDSetPtr^.fd_count *
+        SizeOf(TSocketHandle));
     end
     else
       SetLength(Result, 0); // This is needed with newer compilers
@@ -201,6 +261,7 @@ begin
     FreeMem(FDSetPtr);
   end;
 end;
+
 {$ELSE}
 
 var
@@ -228,10 +289,12 @@ begin
     begin
       SocketHandle := aSocketHandleArray[i];
       FDNdx := SocketHandle div NFDBITS;
-      FDSetPtr.fds_bits[FDNdx] := FDSetPtr.fds_bits[FDNdx] or (1 shl (SocketHandle mod NFDBITS));
+      FDSetPtr.fds_bits[FDNdx] := FDSetPtr.fds_bits[FDNdx] or
+        (1 shl (SocketHandle mod NFDBITS));
     end;
 
-    ReadySockets := Select(FDArrayLen * NFDBITS, FDSetPtr, nil, nil, @TimeoutValue);
+    ReadySockets := Select(FDArrayLen * NFDBITS, FDSetPtr, nil, nil,
+      @TimeoutValue);
 
     if ReadySockets > 0 then
     begin
@@ -242,7 +305,8 @@ begin
       begin
         SocketHandle := aSocketHandleArray[i];
         FDNdx := SocketHandle div NFDBITS;
-        if FDSetPtr.fds_bits[FDNdx] and (1 shl (SocketHandle mod NFDBITS)) <> 0 then
+        if FDSetPtr.fds_bits[FDNdx] and (1 shl (SocketHandle mod NFDBITS)) <> 0
+        then
         begin
           Result[ResultNdx] := SocketHandle;
           ResultNdx := ResultNdx + 1;
@@ -257,7 +321,8 @@ begin
 end;
 {$ENDIF}
 
-function ReadableAnySocket(const aSocketHandleArray: TSocketHandleArray; const aTimeout: Cardinal): Boolean;
+function ReadableAnySocket(const aSocketHandleArray: TSocketHandleArray;
+  const aTimeout: Cardinal): Boolean;
 begin
   Result := Length(Readable(aSocketHandleArray, aTimeout)) > 0;
 end;
@@ -268,7 +333,8 @@ var
   DllGetAddrInfo: TGetAddrInfoW = nil;
   DllFreeAddrInfo: TFreeAddrInfoW = nil;
 
-procedure GetAddressInfo(NodeName: PWideChar; ServiceName: PWideChar; Hints: PAddrInfoW; ppResult: PPAddrInfoW);
+procedure GetAddressInfo(NodeName: PWideChar; ServiceName: PWideChar;
+  Hints: PAddrInfoW; ppResult: PPAddrInfoW);
 var
   iRes: Integer;
 begin
@@ -285,6 +351,31 @@ begin
   DllFreeAddrInfo(ai);
 end;
 
+function IsBroadcastAddress(const aHost: string): Boolean;
+var
+  Octets: TArray<string>;
+  LastOctet: Integer;
+begin
+  // Split the IP into octets
+  Octets := aHost.Split(['.']);
+
+  // Basic validation
+  if Length(Octets) <> 4 then
+    Exit(False);
+
+  // Try to parse last octet
+  if not TryStrToInt(Octets[3], LastOctet) then
+    Exit(False);
+
+  Result :=
+  // Global broadcast
+    (aHost = '255.255.255.255') or
+  // Limited broadcast
+    (aHost = '0.0.0.0') or
+  // Subnet broadcast (last octet is 255)
+    (LastOctet = 255);
+end;
+
 {$ENDIF}
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncLine }
@@ -295,8 +386,9 @@ begin
   inherited Create;
 
   PropertyLock := TCriticalSection.Create;
-
   FHandle := InvalidSocket;
+  FKind := DefaultKind;
+  FFamily := DefaultFamily;
 
   FConnectTimeout := DefaultConnectTimeout;
   FActive := False;
@@ -315,13 +407,14 @@ begin
     DestroyHandle;
 
   PropertyLock.Free;
-
   inherited Destroy;
 end;
 
 function TncLine.CreateLineObject: TncLine;
 begin
   Result := TncLine.Create;
+  Result.SetKind(Kind);
+  Result.SetFamily(Family);
 end;
 
 /// /////////////////////////////////////////////////////////////////////////////
@@ -336,53 +429,104 @@ begin
 {$ENDIF}
 end;
 
-procedure TncLine.CreateClientHandle(const aHost: string; const aPort: Integer);
+procedure TncLine.CreateClientHandle(const aHost: string; const aPort: Integer;
+  const aBroadcast: Boolean = False);
 var
   ConnectThread: TConnectThread;
 {$IFDEF MSWINDOWS}
   Hints: TAddrInfoW;
+  ErrorCode: Integer;
 {$ELSE}
   Hints: addrinfo;
   AnsiHost, AnsiPort: RawByteString;
 {$ENDIF}
+  ResolveHost: string;
 begin
   try
+    // Validate host for IPv6 if applicable
+    if (FFamily = afIPv6) and (aHost <> '') and (LowerCase(aHost) <> 'localhost') then
+    begin
+      // Validate IPv6 address format if it looks like an IPv6 address
+      if (Pos(':', aHost) > 0) and not TncIPUtils.IsIPv6ValidAddress(aHost) then
+        raise EIPError.CreateFmt('Invalid IPv6 address format: %s', [aHost]);
+    end;
+
+    if IsBroadcastAddress(aHost) and not aBroadcast then
+      raise Exception.Create('Cannot use broadcast address when Broadcast is False');
+
     FillChar(Hints, SizeOf(Hints), 0);
-    Hints.ai_family := AF_INET;
-    Hints.ai_socktype := SOCK_STREAM;
-    Hints.ai_protocol := IPPROTO_TCP;
+
+    // Set address family and related flags based on FFamily
+    case FFamily of
+      afIPv4:
+        begin
+          Hints.ai_family := AF_INET;
+          if LowerCase(aHost) = 'localhost' then
+            ResolveHost := '127.0.0.1'
+          else
+            ResolveHost := aHost;
+        end;
+      afIPv6:
+        begin
+          Hints.ai_family := AF_INET6;
+          Hints.ai_flags := AI_ADDRCONFIG;
+          // If it's a valid IPv6 address, normalize it
+          if (Pos(':', aHost) > 0) and TncIPUtils.IsIPv6ValidAddress(aHost) then
+            ResolveHost := TncIPUtils.NormalizeAddress(aHost)
+          else
+            ResolveHost := aHost;
+
+          // Handle link-local addresses correctly
+          if TncIPUtils.IsLinkLocal(ResolveHost) then
+          begin
+            // Extract scope ID if present in the address
+            var ScopePos := Pos('%', ResolveHost);
+            if ScopePos > 0 then
+              ResolveHost := Copy(ResolveHost, 1, ScopePos - 1);
+          end;
+        end;
+    end;
+
+    Hints.ai_socktype := CRawSocketTypes[FKind];
+    Hints.ai_protocol := CRawProtocolTypes[FKind];
+
+    // Create the socket first
+    FHandle := Socket(Hints.ai_family, CRawSocketTypes[FKind],
+      CRawProtocolTypes[FKind]);
+    if FHandle = InvalidSocket then
+    begin
+      ErrorCode :=
+{$IFDEF MSWINDOWS}WSAGetLastError(){$ELSE}GetLastError(){$ENDIF};
+      raise Exception.Create(Format('Socket creation failed: %s',
+        [SysErrorMessage(ErrorCode)]));
+    end;
 
     // Resolve the server address and port
 {$IFDEF MSWINDOWS}
-    GetAddressInfo(PChar(aHost), PChar(IntToStr(aPort)), @Hints, @AddrResult);
+    GetAddressInfo(PChar(ResolveHost), PChar(IntToStr(aPort)), @Hints,
+      @AddrResult);
 {$ELSE}
-    AnsiHost := RawByteString(aHost);
+    AnsiHost := RawByteString(ResolveHost);
     AnsiPort := RawByteString(IntToStr(aPort));
-
-    GetAddrInfo(MarshaledAString(AnsiHost), MarshaledAString(AnsiPort), Hints, AddrResult);
+    GetAddrInfo(MarshaledAString(AnsiHost), MarshaledAString(AnsiPort), Hints,
+      AddrResult);
 {$ENDIF}
     try
-      // Create a SOCKET for connecting to server
-      FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype, AddrResult^.ai_protocol);
-      Check(FHandle);
-      try
 {$IFNDEF MSWINDOWS}
-        EnableReuseAddress;
+      EnableReuseAddress;
 {$ENDIF}
+      if IsConnectionBased then
+      begin
         ConnectThread := TConnectThread.Create;
         try
           ConnectThread.Line := Self;
           ConnectThread.ConnectResult := -1;
-
-          // Connect to server
           ConnectThread.ReadyEvent.WaitFor;
           ConnectThread.ReadyEvent.ResetEvent;
           ConnectThread.WakeupEvent.SetEvent;
           ConnectThread.WaitForReady(FConnectTimeout);
-
           if ConnectThread.ConnectResult = -1 then
             raise EncLineException.Create('Connect timeout');
-
           Check(ConnectThread.ConnectResult);
           SetConnected;
         finally
@@ -390,20 +534,43 @@ begin
           ConnectThread.Terminate;
           ConnectThread.WakeupEvent.SetEvent;
         end;
-      except
-        DestroyHandle;
-        raise;
+      end
+      else
+      begin
+        // For UDP, handle IPv4 and IPv6 differently
+        case FFamily of
+          afIPv4:
+            begin
+              // IPv4 UDP needs connect
+              if not aBroadcast then
+                Check(Connect(FHandle, AddrResult^.ai_addr^,
+                  AddrResult^.ai_addrlen));
+              SetConnected;
+            end;
+          afIPv6:
+            begin
+              // For IPv6 UDP with link-local addresses, ensure scope ID is set
+              if TncIPUtils.IsLinkLocal(ResolveHost) then
+              begin
+                var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
+                // Set appropriate scope ID if needed
+                // Add a method to get interface index ?
+              end;
+              SetConnected;
+            end;
+        end;
       end;
-    finally
-{$IFDEF MSWINDOWS}
-      FreeAddressInfo(AddrResult);
-{$ELSE}
-      freeaddrinfo(AddrResult^);
-{$ENDIF}
+
+    except
+      DestroyHandle;
+      raise;
     end;
-  except
-    FHandle := InvalidSocket;
-    raise;
+  finally
+{$IFDEF MSWINDOWS}
+    FreeAddressInfo(AddrResult);
+{$ELSE}
+    freeaddrinfo(AddrResult^);
+{$ENDIF}
   end;
 end;
 
@@ -417,9 +584,18 @@ var
 {$ENDIF}
 begin
   FillChar(Hints, SizeOf(Hints), 0);
-  Hints.ai_family := AF_INET;
-  Hints.ai_socktype := SOCK_STREAM;
-  Hints.ai_protocol := IPPROTO_TCP;
+  case FFamily of
+    afIPv4:
+      begin
+        Hints.ai_family := AF_INET;
+      end;
+    afIPv6:
+      begin
+        Hints.ai_family := AF_INET6;
+      end;
+  end;
+  Hints.ai_socktype := CRawSocketTypes[FKind];
+  Hints.ai_protocol := CRawProtocolTypes[FKind];
   Hints.ai_flags := AI_PASSIVE; // Inform GetAddrInfo to return a server socket
 
   // Resolve the server address and port
@@ -431,15 +607,22 @@ begin
 {$ENDIF}
   try
     // Create a server listener socket
-    FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype, AddrResult^.ai_protocol);
+    FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype,
+      AddrResult^.ai_protocol);
     Check(FHandle);
     try
+      EnableIPv6Only;
+
 {$IFNDEF MSWINDOWS}
       EnableReuseAddress;
 {$ENDIF}
-      // Setup the TCP listening socket
-      Check(Bind(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen));
-      Check(Listen(FHandle, SOMAXCONN));
+      // Bind the socket
+      Check(bind(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen));
+
+      // For TCP, we need to listen for incoming connections
+      if IsConnectionBased then
+        Check(Listen(FHandle, SOMAXCONN));
+
       SetConnected;
     except
       DestroyHandle;
@@ -467,12 +650,15 @@ begin
       Posix.Unistd.__Close(FHandle);
 {$ENDIF}
     except
+      on E: Exception do
+        //
     end;
     try
       SetDisconnected;
     except
+      on E: Exception do
+        //
     end;
-
     FHandle := InvalidSocket;
   end;
 end;
@@ -481,14 +667,14 @@ function TncLine.AcceptLine: TncLine;
 var
   NewHandle: TSocketHandle;
 {$IFNDEF MSWINDOWS}
-  Addr: sockaddr;
+  addr: sockaddr;
   AddrLen: socklen_t;
 {$ENDIF}
 begin
 {$IFDEF MSWINDOWS}
   NewHandle := Accept(FHandle, nil, nil);
 {$ELSE}
-  NewHandle := Accept(FHandle, Addr, AddrLen);
+  NewHandle := Accept(FHandle, addr, AddrLen);
 {$ENDIF}
   if NewHandle = InvalidSocket then
     Abort; // raise silent exception
@@ -503,31 +689,43 @@ end;
 
 function TncLine.SendBuffer(const aBuf; aLen: Integer): Integer;
 begin
-  // Send all buffer in one go, the most optimal by far
   Result := Send(FHandle, aBuf, aLen, 0);
-  try
-    if Result = SocketError then
-      Abort; // raise silent exception instead of Check
 
+  if Result = SocketError then
+  begin
+    if IsConnectionBased then
+    try
+      Abort;  // TCP: raise silent exception
+    except
+      DestroyHandle;
+      raise;
+    end
+    else
+      Check(Result);  // UDP: normal error check
+  end
+  else
     LastSent := TStopWatch.GetTimeStamp;
-  except
-    DestroyHandle;
-    raise;
-  end;
 end;
 
 function TncLine.RecvBuffer(var aBuf; aLen: Integer): Integer;
 begin
   Result := recv(FHandle, aBuf, aLen, 0);
-  try
-    if (Result = SocketError) or (Result = 0) then
-      Abort; // raise silent exception instead of Check, something has disconnected
 
+  if (Result = SocketError) or
+     (IsConnectionBased and (Result = 0)) then  // TCP: 0 means disconnected
+  begin
+    if IsConnectionBased then
+    try
+      Abort;  // TCP: raise silent exception
+    except
+      DestroyHandle;
+      raise;
+    end
+    else
+      Check(Result);  // UDP: normal error check
+  end
+  else
     LastReceived := TStopWatch.GetTimeStamp;
-  except
-    DestroyHandle;
-    raise;
-  end;
 end;
 
 procedure TncLine.EnableNoDelay;
@@ -536,7 +734,8 @@ var
 begin
   optval := 1;
 {$IFDEF MSWINDOWS}
-  Check(SetSockOpt(FHandle, IPPROTO_TCP, TCP_NODELAY, PAnsiChar(@optval), SizeOf(optval)));
+  Check(SetSockOpt(FHandle, IPPROTO_TCP, TCP_NODELAY, PAnsiChar(@optval),
+    SizeOf(optval)));
 {$ELSE}
   Check(SetSockOpt(FHandle, IPPROTO_TCP, TCP_NODELAY, optval, SizeOf(optval)));
 {$ENDIF}
@@ -548,10 +747,41 @@ var
 begin
   optval := 1; // any non zero indicates true
 {$IFDEF MSWINDOWS}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_KEEPALIVE, PAnsiChar(@optval), SizeOf(optval)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_KEEPALIVE, PAnsiChar(@optval),
+    SizeOf(optval)));
 {$ELSE}
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_KEEPALIVE, optval, SizeOf(optval)));
 {$ENDIF}
+end;
+
+procedure TncLine.EnableBroadcast;
+var
+  optval: Integer;
+begin
+  optval := 1;
+{$IFDEF MSWINDOWS}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_BROADCAST, PAnsiChar(@optval),
+    SizeOf(optval)));
+{$ELSE}
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_BROADCAST, optval, SizeOf(optval)));
+{$ENDIF}
+end;
+
+procedure TncLine.EnableIPv6Only;
+var
+  optval: Integer;
+begin
+  if FFamily = afIPv6 then
+  begin
+    optval := 1;
+{$IFDEF MSWINDOWS}
+    Check(SetSockOpt(FHandle, IPPROTO_IPV6, IPV6_V6ONLY, PAnsiChar(@optval),
+      SizeOf(optval)));
+{$ELSE}
+    Check(SetSockOpt(FHandle, IPPROTO_IPV6, IPV6_V6ONLY, optval,
+      SizeOf(optval)));
+{$ENDIF}
+  end;
 end;
 
 procedure TncLine.EnableReuseAddress;
@@ -560,61 +790,107 @@ var
 begin
   optval := 1;
 {$IFDEF MSWINDOWS}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, PAnsiChar(@optval), SizeOf(optval)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, PAnsiChar(@optval),
+    SizeOf(optval)));
 {$ELSE}
   Check(SetSockOpt(FHandle, SOL_SOCKET, SO_REUSEADDR, optval, SizeOf(optval)));
 {$ENDIF}
+end;
+
+procedure TncLine.SetKind(const AKind: TSocketType);
+begin
+  if FHandle = InvalidSocket then // TODO: Raise exception otherwise???
+  begin
+    FKind := AKind;
+  end;
+end;
+
+procedure TncLine.SetFamily(const Value: TAddressType);
+begin
+  if FHandle = InvalidSocket then
+  // Only allow changing family when socket is not active
+  begin
+    FFamily := Value;
+  end
+  else
+    // Form1.Log('WARNING: Attempted to change Family while socket is active');
+end;
+
+function TncLine.IsConnectionBased: Boolean;
+begin
+  Result := FKind = stTCP;
 end;
 
 procedure TncLine.SetReceiveSize(const aBufferSize: Integer);
 begin
   // min is 512 bytes, max is 1048576
 {$IFDEF MSWINDOWS}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, PAnsiChar(@aBufferSize), SizeOf(aBufferSize)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, PAnsiChar(@aBufferSize),
+    SizeOf(aBufferSize)));
 {$ELSE}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize, SizeOf(aBufferSize)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize,
+    SizeOf(aBufferSize)));
 {$ENDIF}
 end;
 
 procedure TncLine.SetWriteSize(const aBufferSize: Integer);
 begin
 {$IFDEF MSWINDOWS}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_SNDBUF, PAnsiChar(@aBufferSize), SizeOf(aBufferSize)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_SNDBUF, PAnsiChar(@aBufferSize),
+    SizeOf(aBufferSize)));
 {$ELSE}
-  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize, SizeOf(aBufferSize)));
+  Check(SetSockOpt(FHandle, SOL_SOCKET, SO_RCVBUF, aBufferSize,
+    SizeOf(aBufferSize)));
 {$ENDIF}
 end;
 
 procedure TncLine.SetConnected;
 var
-  Addr: sockaddr;
-{$IFDEF MSWINDOWS}
-  AddrSize: Integer;
-{$ELSE}
-  AddrSize: socklen_t;
-{$ENDIF}
+  addr: TSockAddrStorage;
+  AddrSize: {$IFDEF MSWINDOWS}Integer{$ELSE}socklen_t{$ENDIF};
 begin
   if not FActive then
   begin
     FActive := True;
-
     LastSent := TStopWatch.GetTimeStamp;
     LastReceived := LastSent;
 
-    AddrSize := SizeOf(Addr);
-    if GetPeerName(FHandle, Addr, AddrSize) <> SocketError then
+    if IsConnectionBased then
     begin
-      // FPeerIP := IntToStr(Ord(addr.sin_addr.S_un_b.s_b1)) + '.' + IntToStr(Ord(addr.sin_addr.S_un_b.s_b2)) + '.' + IntToStr(Ord(addr.sin_addr.S_un_b.s_b3)) +
-      // '.' + IntToStr(Ord(addr.sin_addr.S_un_b.s_b4));
-      FPeerIP :=
+      // Get peer information
+      AddrSize := SizeOf(TSockAddrStorage);
 
-        IntToStr(Ord(Addr.sa_data[2])) + '.' +
+      if GetPeerName(FHandle, PSOCKADDR(@addr)^, AddrSize) = 0 then
+      begin
+        try
+          FPeerIP := TncIPUtils.GetIPFromStorage(addr);
+        except
+          on E: EIPError do
+            FPeerIP := '';
+        end;
 
-        IntToStr(Ord(Addr.sa_data[3])) + '.' +
-
-        IntToStr(Ord(Addr.sa_data[4])) + '.' +
-
-        IntToStr(Ord(Addr.sa_data[5]));
+        // If we got an empty string, set default values based on family
+        if FPeerIP = '' then
+        begin
+          case FFamily of
+            afIPv4: FPeerIP := '0.0.0.0';
+            afIPv6: FPeerIP := '::';
+          end;
+        end;
+      end
+      else
+      begin
+        var ErrorCode := {$IFDEF MSWINDOWS}WSAGetLastError(){$ELSE}GetLastError(){$ENDIF};
+        FPeerIP := '';
+      end;
+    end
+    else
+    begin
+      // For UDP, we're always "connected" but might not have peer info yet
+      case FFamily of
+        afIPv4: FPeerIP := '0.0.0.0';
+        afIPv6: FPeerIP := '::';
+      end;
     end;
 
     if Assigned(OnConnected) then
@@ -641,8 +917,8 @@ end;
 
 function TncLine.GetReceiveTimeout: Integer;
 var
-  Opt: DWord;
-  OptSize: Integer;
+  Opt: Cardinal;
+  OptSize: {$IFDEF MSWINDOWS}Integer{$ELSE}socklen_t{$ENDIF};
 begin
   OptSize := SizeOf(Opt);
 {$IFDEF MSWINDOWS}
@@ -655,7 +931,7 @@ end;
 
 procedure TncLine.SetReceiveTimeout(const Value: Integer);
 var
-  Opt: DWord;
+  Opt: Cardinal;
   OptSize: Integer;
 begin
   Opt := Value;
@@ -669,8 +945,8 @@ end;
 
 function TncLine.GetSendTimeout: Integer;
 var
-  Opt: DWord;
-  OptSize: Integer;
+  Opt: Cardinal;
+  OptSize: {$IFDEF MSWINDOWS}Integer{$ELSE}socklen_t{$ENDIF};
 begin
   OptSize := SizeOf(Opt);
 {$IFDEF MSWINDOWS}
@@ -683,7 +959,7 @@ end;
 
 procedure TncLine.SetSendTimeout(const Value: Integer);
 var
-  Opt: DWord;
+  Opt: Cardinal;
   OptSize: Integer;
 begin
   Opt := Value;
@@ -737,11 +1013,11 @@ end;
 
 {$IFDEF MSWINDOWS}
 
+// Windows-specific types and variables
 var
   ExtDllHandle: THandle = 0;
 
 procedure AttachAddrInfo;
-
   procedure SafeLoadFrom(aDll: string);
   begin
     if not Assigned(DllGetAddrInfo) then
@@ -761,33 +1037,41 @@ procedure AttachAddrInfo;
   end;
 
 begin
-  SafeLoadFrom('ws2_32.dll'); // WinSock2 dll
-  SafeLoadFrom('wship6.dll'); // WshIp6 dll
+  SafeLoadFrom('ws2_32.dll');
+  SafeLoadFrom('wship6.dll');
 end;
+{$ENDIF}
 
-var
-  WSAData: TWSAData;
-
-  { TConnectThread }
-
+{ TConnectThread }
 procedure TConnectThread.ProcessEvent;
 begin
-  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^, Line.AddrResult^.ai_addrlen);
+{$IFDEF MSWINDOWS}
+  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^,
+    Line.AddrResult^.ai_addrlen);
+{$ELSE}
+  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^,
+    Line.AddrResult^.ai_addrlen);
+{$ENDIF}
 end;
 
 initialization
 
-WSAStartup(MakeWord(2, 2), WSAData); // Require WinSock 2 version
+{$IFDEF MSWINDOWS}
 
-AttachAddrInfo;
+var
+  WSAData: TWSAData;
+begin
+  WSAStartup(MakeWord(2, 2), WSAData);
+  AttachAddrInfo;
+end;
+{$ENDIF}
 
 finalization
 
+{$IFDEF MSWINDOWS}
 if ExtDllHandle <> 0 then
   FreeLibrary(ExtDllHandle);
-
 WSACleanup;
-
 {$ENDIF}
 
 end.

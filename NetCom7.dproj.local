@@ -6,8 +6,8 @@
 	<Transactions>
     <Transaction>2020/08/08 06:05:23.000.402,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncSocketList.pas</Transaction>
     <Transaction>2020/08/08 06:14:41.000.027,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Unit1.pas</Transaction>
-    <Transaction>2020/08/08 06:15:03.000.683,C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLine.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Unit1.pas</Transaction>
-    <Transaction>2020/08/08 07:50:30.000.380,C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLine.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas</Transaction>
+    <Transaction>2020/08/08 06:15:03.000.683,C:\Users\Programmer\Documents\Development\Components\NetCom7\Unit1.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLine.pas</Transaction>
+    <Transaction>2020/08/08 07:50:30.000.380,C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLines.pas=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncLine.pas</Transaction>
     <Transaction>2020/08/10 13:33:07.000.316,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Icons\TncClientSource.png</Transaction>
     <Transaction>2020/08/10 13:45:09.000.739,C:\Users\Programmer\Documents\Development\Components\NetCom7\Icons\TncClientSource.png=</Transaction>
     <Transaction>2020/08/10 13:45:27.000.192,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Icons\TncClientSource.png</Transaction>
@@ -15,5 +15,17 @@
     <Transaction>2020/08/10 13:50:07.000.192,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Icons\TncIcon.bmp</Transaction>
     <Transaction>2020/08/10 14:10:53.000.681,=C:\Users\Programmer\Documents\Development\Components\NetCom7\PaletteIcons\TncIcon.bmp</Transaction>
     <Transaction>2020/08/11 19:21:43.000.342,=C:\Users\Programmer\Documents\Development\Components\NetCom7\Source\ncPendingCommandsList.pas</Transaction>
+    <Transaction>2025/01/15 16:33:36.000.508,=D:\_Delphi\_Library\NetCom7\Unit1.pas</Transaction>
+    <Transaction>2025/01/15 16:35:56.000.977,=D:\_Delphi\_Library\NetCom7\Source\ncUDPSockets.pas</Transaction>
+    <Transaction>2025/01/15 20:33:31.000.011,=D:\_Delphi\_Library\NetCom7 - Copie\PaletteIcons\tncudpclient_32x32.bmp</Transaction>
+    <Transaction>2025/01/15 20:33:39.000.888,=D:\_Delphi\_Library\NetCom7 - Copie\PaletteIcons\tncudpserver_32x32.bmp</Transaction>
+    <Transaction>2025/01/15 21:36:54.000.533,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpserver_32x32.bmp</Transaction>
+    <Transaction>2025/01/15 21:36:59.000.040,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient_32x32.bmp</Transaction>
+    <Transaction>2025/01/15 21:38:09.000.173,D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpserver_32x32.bmp=</Transaction>
+    <Transaction>2025/01/15 21:38:44.000.282,D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient_32x32.bmp=</Transaction>
+    <Transaction>2025/01/16 20:01:26.000.332,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient.bmp</Transaction>
+    <Transaction>2025/01/16 20:01:26.000.367,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpserver.bmp</Transaction>
+    <Transaction>2025/01/21 00:15:32.000.432,=D:\_Delphi\_Library\Netcom7\Source\ncIPv6Utils.pas</Transaction>
+    <Transaction>2025/01/21 00:36:50.000.240,D:\_Delphi\_Library\Netcom7\Source\ncIPv6Utils.pas=D:\_Delphi\_Library\Netcom7\Source\ncIPUtils.pas</Transaction>
   </Transactions>
 </BorlandProject>

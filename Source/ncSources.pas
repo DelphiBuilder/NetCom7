@@ -25,6 +25,10 @@ unit ncSources;
 // These components have built in encryption and compression, set by the
 // corresponding properties.
 //
+// 14/01/2025 - by J.Pauwels
+// - Explicitly set this unit to use TCP
+// - Added IPV6 support
+//
 // 12/8/2020
 // - Complete re-engineering of the base component
 //
@@ -184,6 +188,9 @@ type
     function GetReaderThreadPriority: TncThreadPriority;
     procedure SetReaderThreadPriority(const Value: TncThreadPriority);
 
+    function GetFamily: TAddressType;
+    procedure SetFamily(const Value: TAddressType);
+
     // For implementing the IncCommandHandler interface
     function GetComponentName: string;
     function GetOnConnected: TncOnSourceConnectDisconnect;
@@ -264,6 +271,7 @@ type
     property ReaderThreadPriority: TncThreadPriority read GetReaderThreadPriority write SetReaderThreadPriority default DefReaderThreadPriority;
     property NoDelay: Boolean read GetNoDelay write SetNoDelay default True;
     property KeepAlive: Boolean read GetKeepAlive write SetKeepAlive default True;
+    property Family: TAddressType read GetFamily write SetFamily default afIPv4;
 
     // New properties for sources
     property CommandProcessorThreadPriority: TncThreadPriority read GetCommandProcessorThreadPriority write SetCommandProcessorThreadPriority
@@ -365,6 +373,7 @@ end;
 function TncSourceLine.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create; // Create its own kind of objects
+  TncSourceLine(Result).SetKind(stTCP); // Explicitly set to TCP
 end;
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -865,6 +874,16 @@ begin
     Socket.Active := Value;
 end;
 
+function TncSourceBase.GetFamily: TAddressType;
+begin
+  Result := Socket.Family;
+end;
+
+procedure TncSourceBase.SetFamily(const Value: TAddressType);
+begin
+  Socket.Family := Value;
+end;
+
 function TncSourceBase.GetKeepAlive: Boolean;
 begin
   Result := Socket.KeepAlive;
@@ -1259,6 +1278,7 @@ type
 function TncTCPClientSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
+  TncSourceLine(Result).SetKind(stTCP);
 end;
 
 constructor TncClientSource.Create(AOwner: TComponent);
@@ -1268,6 +1288,7 @@ begin
   FOnReconnected := nil;
 
   Socket := TncTCPClientSourceSocket.Create(nil);
+  Socket.Family := afIPv4; // Set default family
   Socket.Port := DefPort;
   Socket.NoDelay := DefNoDelay;
   Socket.EventsUseMainThread := False;
@@ -1351,6 +1372,7 @@ type
 function TncTCPServerSourceSocket.CreateLineObject: TncLine;
 begin
   Result := TncSourceLine.Create;
+  TncSourceLine(Result).SetKind(stTCP);
 end;
 
 constructor TncServerSource.Create(AOwner: TComponent);
@@ -1358,6 +1380,7 @@ begin
   inherited Create(AOwner);
 
   Socket := TncTCPServerSourceSocket.Create(nil);
+  Socket.Family := afIPv4; // Set default family
   Socket.NoDelay := DefNoDelay;
   Socket.Port := DefPort;
   Socket.EventsUseMainThread := False;
@@ -1383,3 +1406,4 @@ begin
 end;
 
 end.
+
