@@ -339,6 +339,7 @@ end;
 procedure TncLine.CreateClientHandle(const aHost: string; const aPort: Integer);
 var
   ConnectThread: TConnectThread;
+  ConnectResult: Integer;
 {$IFDEF MSWINDOWS}
   Hints: TAddrInfoW;
 {$ELSE}
@@ -369,27 +370,35 @@ begin
 {$IFNDEF MSWINDOWS}
         EnableReuseAddress;
 {$ENDIF}
-        ConnectThread := TConnectThread.Create;
-        try
-          ConnectThread.Line := Self;
-          ConnectThread.ConnectResult := -1;
+        ConnectResult := Connect(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen);
+        if ConnectResult = -1 then
+          raise EncLineException.Create('Connect timeout');
+        Check(ConnectResult);
+        SetConnected;
 
-          // Connect to server
-          ConnectThread.ReadyEvent.WaitFor;
-          ConnectThread.ReadyEvent.ResetEvent;
-          ConnectThread.WakeupEvent.SetEvent;
-          ConnectThread.WaitForReady(FConnectTimeout);
+        // Does not work:
+        // ConnectThread := TConnectThread.Create;
+        // try
+        // ConnectThread.Line := Self;
+        // ConnectThread.ConnectResult := -1;
+        //
+        // // Connect to server
+        // ConnectThread.ReadyEvent.WaitFor;
+        // ConnectThread.ReadyEvent.ResetEvent;
+        // ConnectThread.WakeupEvent.SetEvent;
+        // ConnectThread.WaitForReady(FConnectTimeout);
+        //
+        // if ConnectThread.ConnectResult = -1 then
+        // raise EncLineException.Create('Connect timeout');
+        //
+        // Check(ConnectThread.ConnectResult);
+        // SetConnected;
+        // finally
+        // ConnectThread.FreeOnTerminate := True;
+        // ConnectThread.Terminate;
+        // ConnectThread.WakeupEvent.SetEvent;
+        // end;
 
-          if ConnectThread.ConnectResult = -1 then
-            raise EncLineException.Create('Connect timeout');
-
-          Check(ConnectThread.ConnectResult);
-          SetConnected;
-        finally
-          ConnectThread.FreeOnTerminate := True;
-          ConnectThread.Terminate;
-          ConnectThread.WakeupEvent.SetEvent;
-        end;
       except
         DestroyHandle;
         raise;
@@ -641,8 +650,12 @@ end;
 
 function TncLine.GetReceiveTimeout: Integer;
 var
-  Opt: DWord;
+  Opt: UInt32;
+{$IFDEF MSWINDOWS}
   OptSize: Integer;
+{$ELSE}
+  OptSize: UInt32;
+{$ENDIF}
 begin
   OptSize := SizeOf(Opt);
 {$IFDEF MSWINDOWS}
@@ -655,8 +668,12 @@ end;
 
 procedure TncLine.SetReceiveTimeout(const Value: Integer);
 var
-  Opt: DWord;
+  Opt: UInt32;
+{$IFDEF MSWINDOWS}
   OptSize: Integer;
+{$ELSE}
+  OptSize: UInt32;
+{$ENDIF}
 begin
   Opt := Value;
   OptSize := SizeOf(Opt);
@@ -669,8 +686,12 @@ end;
 
 function TncLine.GetSendTimeout: Integer;
 var
-  Opt: DWord;
+  Opt: UInt32;
+{$IFDEF MSWINDOWS}
   OptSize: Integer;
+{$ELSE}
+  OptSize: UInt32;
+{$ENDIF}
 begin
   OptSize := SizeOf(Opt);
 {$IFDEF MSWINDOWS}
@@ -683,8 +704,12 @@ end;
 
 procedure TncLine.SetSendTimeout(const Value: Integer);
 var
-  Opt: DWord;
+  Opt: UInt32;
+{$IFDEF MSWINDOWS}
   OptSize: Integer;
+{$ELSE}
+  OptSize: UInt32;
+{$ENDIF}
 begin
   Opt := Value;
   OptSize := SizeOf(Opt);
@@ -735,6 +760,13 @@ begin
   end;
 end;
 
+{ TConnectThread }
+
+procedure TConnectThread.ProcessEvent;
+begin
+  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^, Line.AddrResult^.ai_addrlen);
+end;
+
 {$IFDEF MSWINDOWS}
 
 var
@@ -767,13 +799,6 @@ end;
 
 var
   WSAData: TWSAData;
-
-  { TConnectThread }
-
-procedure TConnectThread.ProcessEvent;
-begin
-  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^, Line.AddrResult^.ai_addrlen);
-end;
 
 initialization
 
