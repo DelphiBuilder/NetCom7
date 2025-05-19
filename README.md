@@ -1,29 +1,25 @@
-# NetCom7: Comprehensive Delphi Encryption & High-Performance Network Communications
+# NetCom7 – High-Performance Network & Encryption Library for Delphi
 
-NetCom7 is a powerful, modern Delphi library designed for both **advanced cryptography** and **highly scalable network communication**. Created with pure Object Pascal, it offers developers an extensive set of tools for building secure and efficient applications, all in one package.
-
----
-
-### 🔐 Extensive Cryptography Suite
-
-NetCom7 provides a **broad spectrum of encryption algorithms and hash functions**, surpassing many other Delphi libraries:
-
-- **Block Ciphers** (including AES finalists and more):
-  - Modern: AES (Rijndael), Twofish, Serpent, RC6, Mars
-  - Legacy: Blowfish, CAST128/256, IDEA, DES, TEA, ICE, RC2, RC5, Misty1
-- **Stream Cipher**:
-  - RC4 (for legacy compatibility)
-- **Hash Functions**:
-  - Modern: SHA-256, SHA-512
-  - Legacy and specialized: MD4, MD5, SHA-1, RIPEMD128/160, Tiger, Haval
-- **Modular & Clean Code**:
-  - Each cipher and hash is implemented in a dedicated unit, following modern Delphi coding practices.
-  - Easily extensible and maintainable.
-
-*Note:* While it currently does not include authenticated encryption modes (e.g., AES-GCM), these can be integrated externally.
+NetCom7 is a high-performance, modern Delphi networking and encryption library. It combines **thread-efficient networking**, a **rich set of encryption algorithms**, and **easy component-based usage**—ideal for building scalable servers and secure clients with minimal overhead.
 
 ---
 
+## 🚀 Features
+
+### 🔌 Networking
+- Thread pool architecture: one thread **per command**, not per client.
+- Scales to **thousands of simultaneous connections** on Windows, MacOS, Android, iOS and Linux.
+- Built-in support for TCP, client/server modes, and raw streams.
+- Works with **events or callbacks**, no thread management needed.
+
+### 🔐 Encryption
+- **30+ encryption & hashing algorithms** (more than DCPcrypt):
+  - AES (Rijndael), Blowfish, Twofish, Serpent, Mars, RC6, and more.
+  - Stream cipher: RC4 (legacy).
+  - Hashes: SHA-256, SHA-512, RIPEMD-160, Haval, MD5, Tiger, etc.
+- Fully modular and extensible design.
+
+---
 ### 🕸️ Scalable Network Communications
 
 NetCom7’s networking engine uses a **unique, scalable threading model** that solves the classic thread-per-connection limitation:
@@ -46,13 +42,49 @@ NetCom7’s networking engine uses a **unique, scalable threading model** that s
 - **Modern Architecture**: Modular, clean, and maintainable codebase.
 - **Broad Crypto Coverage**: Supports many encryption standards used in industry.
 - **Scalability**: Supports massive concurrent client loads without thread exhaustion.
+- **Optimised**: Inlining and code profiling for each function for performance and low overhead.
+- **Multiplatform**: Compiles for all known Delphi target platforms: Windows, MacOS, iOS, Android, Linux
 - **Open Source**: Available on GitHub for review, contributions, and customization.
 
 ---
 
-## The fastest communications possible.
+## 📦 Installation
 
-This is version 7.2 of the NetCom package. In this version, the NetCom package is now multi-platform! 
+1. Clone or download this repo.
+2. Add the '\Source' and '\Source\Encryption' folder to your Delphi library path.
+3. Open and run any of the provided demos under '\Demos'.
+
+---
+
+## 🧑‍💻 Quick Start Example
+
+Here’s how easy it is to build a TCP server:
+
+```pascal
+var Server: TNetComServer;
+
+Server := TNetComServer.Create(nil);
+Server.Port := 8000;
+Server.OnCommandReceived := HandleCommand;
+Server.Start;
+```
+
+No threads, no socket juggling — just drop and go.
+
+---
+
+## 📂 Folder Structure
+
+- `/Source/Encryption`: 30+ encryption & hash algorithms.
+- `/Source/NetCom`: Core networking engine and components.
+- `/Demos`: Ready-to-run client/server examples.
+- `/Docs`: API notes, usage details, and reference.
+
+---
+
+## 📌 Notes
+
+This is version 7.2 of the NetCom package, the fastest communications possible. In this version, the NetCom package is now multi-platform! 
 You can compile your apps under all platforms in FireMonkey!
 
 This set of components is the fastest possible implementation of socket communications, in any language; this is an extremely optimised code on TCP/IP sockets. Forget using a thread per connection: With this suite you can have as many concurrent connections to your server as you like. Threads are used per request and not per connection, and are maintained in a very fast thread pool class.
@@ -132,4 +164,10 @@ Special thanks to Daniel Mauric, Tommi Prami, Roland Bengtsson for the extensive
 
 VasDemos[at]yahoo[dot]co[dot]uk
 
-** Delphi RULES **
+---
+
+## 🔗 License
+
+MIT — free to use and modify.
+
+---
