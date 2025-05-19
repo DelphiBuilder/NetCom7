@@ -1,5 +1,56 @@
-# NetCom7
-The fastest communications possible.
+# NetCom7: Comprehensive Delphi Encryption & High-Performance Network Communications
+
+NetCom7 is a powerful, modern Delphi library designed for both **advanced cryptography** and **highly scalable network communication**. Created with pure Object Pascal, it offers developers an extensive set of tools for building secure and efficient applications, all in one package.
+
+---
+
+### 🔐 Extensive Cryptography Suite
+
+NetCom7 provides a **broad spectrum of encryption algorithms and hash functions**, surpassing many other Delphi libraries:
+
+- **Block Ciphers** (including AES finalists and more):
+  - Modern: AES (Rijndael), Twofish, Serpent, RC6, Mars
+  - Legacy: Blowfish, CAST128/256, IDEA, DES, TEA, ICE, RC2, RC5, Misty1
+- **Stream Cipher**:
+  - RC4 (for legacy compatibility)
+- **Hash Functions**:
+  - Modern: SHA-256, SHA-512
+  - Legacy and specialized: MD4, MD5, SHA-1, RIPEMD128/160, Tiger, Haval
+- **Modular & Clean Code**:
+  - Each cipher and hash is implemented in a dedicated unit, following modern Delphi coding practices.
+  - Easily extensible and maintainable.
+
+*Note:* While it currently does not include authenticated encryption modes (e.g., AES-GCM), these can be integrated externally.
+
+---
+
+### 🕸️ Scalable Network Communications
+
+NetCom7’s networking engine uses a **unique, scalable threading model** that solves the classic thread-per-connection limitation:
+
+- **Thread Pool per Command Request**:
+  - Instead of assigning a dedicated thread per client connection (which limits Windows servers to ~500 threads/connections), NetCom7 uses a small pool of worker threads.
+  - These threads process commands asynchronously from any number of connected clients, enabling tens of thousands of concurrent connections.
+- **Efficient Resource Usage**:
+  - Keeps the server lightweight and performant even under heavy loads.
+- **Command-Driven Model**:
+  - Incoming commands from clients are queued and dispatched efficiently.
+- **Ideal for High-Concurrency Servers**:
+  - Perfect for real-time communication apps, games, and any server needing to handle massive simultaneous clients.
+
+---
+
+### 🛠️ Why Choose NetCom7?
+
+- **Delphi Native**: Written entirely in Object Pascal for seamless integration.
+- **Modern Architecture**: Modular, clean, and maintainable codebase.
+- **Broad Crypto Coverage**: Supports many encryption standards used in industry.
+- **Scalability**: Supports massive concurrent client loads without thread exhaustion.
+- **Open Source**: Available on GitHub for review, contributions, and customization.
+
+---
+
+##The fastest communications possible.
 
 This is version 7.2 of the NetCom package. In this version, the NetCom package is now multi-platform! 
 You can compile your apps under all platforms in FireMonkey!
