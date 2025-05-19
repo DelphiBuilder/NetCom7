@@ -50,7 +50,7 @@ NetCom7’s networking engine uses a **unique, scalable threading model** that s
 
 ---
 
-##The fastest communications possible.
+## The fastest communications possible.
 
 This is version 7.2 of the NetCom package. In this version, the NetCom package is now multi-platform! 
 You can compile your apps under all platforms in FireMonkey!
