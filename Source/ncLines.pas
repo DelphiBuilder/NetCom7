@@ -10,6 +10,8 @@
 // - Fix Linux compilation
 // - Added UDP support
 // - Added IPV6 support
+// - Removed problematic threading approach from CreateClientHandle
+// - Implemented socket-level timeout control for more reliable connection handling
 //
 // 9/8/2020
 // - Completed multiplatform support, now NetCom can be compiled in all
@@ -38,7 +40,7 @@ uses
   Winapi.Windows, Winapi.Winsock2,
 {$ELSE}
   Posix.SysTypes, Posix.SysSelect, Posix.SysSocket, Posix.NetDB, Posix.SysTime,
-  Posix.Unistd, {Posix.ArpaInet,}
+  Posix.Unistd, Posix.Errno,
 {$ENDIF}
   System.SyncObjs,
   System.Math,
@@ -46,8 +48,7 @@ uses
   System.Diagnostics,
   System.IOUtils,
   System.Classes,
-  ncIPUtils,
-  ncThreads;
+  ncIPUtils;
 
 const
   // Flag that indicates that the socket is intended for bind() + listen() when constructing it
@@ -60,11 +61,14 @@ const
 {$IFDEF MSWINDOWS}
   InvalidSocket = Winapi.Winsock2.INVALID_SOCKET;
   SocketError = SOCKET_ERROR;
+  WSAETIMEDOUT = 10060;
 {$ELSE}
   InvalidSocket = -1;
   SocketError = -1;
   IPPROTO_TCP = 6;
   TCP_NODELAY = $0001;
+  ETIMEDOUT = 110;
+  ECONNREFUSED = 111;
 {$ENDIF}
 
 type
@@ -117,13 +121,6 @@ type
   TncLine = class; // Forward declaration
 
   TncLineOnConnectDisconnect = procedure(aLine: TncLine) of object;
-
-  TConnectThread = class(TncReadyThread)
-  public
-    Line: TncLine;
-    ConnectResult: Integer;
-    procedure ProcessEvent; override;
-  end;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TncLine
@@ -432,7 +429,6 @@ end;
 procedure TncLine.CreateClientHandle(const aHost: string; const aPort: Integer;
   const aBroadcast: Boolean = False);
 var
-  ConnectThread: TConnectThread;
 {$IFDEF MSWINDOWS}
   Hints: TAddrInfoW;
   ErrorCode: Integer;
@@ -441,6 +437,7 @@ var
   AnsiHost, AnsiPort: RawByteString;
 {$ENDIF}
   ResolveHost: string;
+  ConnectResult: Integer;
 begin
   try
     // Validate host for IPv6 if applicable
@@ -490,17 +487,6 @@ begin
     Hints.ai_socktype := CRawSocketTypes[FKind];
     Hints.ai_protocol := CRawProtocolTypes[FKind];
 
-    // Create the socket first
-    FHandle := Socket(Hints.ai_family, CRawSocketTypes[FKind],
-      CRawProtocolTypes[FKind]);
-    if FHandle = InvalidSocket then
-    begin
-      ErrorCode :=
-{$IFDEF MSWINDOWS}WSAGetLastError(){$ELSE}GetLastError(){$ENDIF};
-      raise Exception.Create(Format('Socket creation failed: %s',
-        [SysErrorMessage(ErrorCode)]));
-    end;
-
     // Resolve the server address and port
 {$IFDEF MSWINDOWS}
     GetAddressInfo(PChar(ResolveHost), PChar(IntToStr(aPort)), @Hints,
@@ -512,65 +498,68 @@ begin
       AddrResult);
 {$ENDIF}
     try
+      // Create a SOCKET for connecting to server
+      FHandle := Socket(AddrResult^.ai_family, AddrResult^.ai_socktype, AddrResult^.ai_protocol);
+      Check(FHandle);
+      try
 {$IFNDEF MSWINDOWS}
-      EnableReuseAddress;
+        EnableReuseAddress;
 {$ENDIF}
-      if IsConnectionBased then
-      begin
-        ConnectThread := TConnectThread.Create;
-        try
-          ConnectThread.Line := Self;
-          ConnectThread.ConnectResult := -1;
-          ConnectThread.ReadyEvent.WaitFor;
-          ConnectThread.ReadyEvent.ResetEvent;
-          ConnectThread.WakeupEvent.SetEvent;
-          ConnectThread.WaitForReady(FConnectTimeout);
-          if ConnectThread.ConnectResult = -1 then
+        if IsConnectionBased then
+        begin
+          ConnectResult := Connect(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen);
+          if ConnectResult = -1 then
             raise EncLineException.Create('Connect timeout');
-          Check(ConnectThread.ConnectResult);
+          Check(ConnectResult);
           SetConnected;
-        finally
-          ConnectThread.FreeOnTerminate := True;
-          ConnectThread.Terminate;
-          ConnectThread.WakeupEvent.SetEvent;
-        end;
-      end
-      else
-      begin
-        // For UDP, handle IPv4 and IPv6 differently
-        case FFamily of
-          afIPv4:
-            begin
-              // IPv4 UDP needs connect
-              if not aBroadcast then
-                Check(Connect(FHandle, AddrResult^.ai_addr^,
-                  AddrResult^.ai_addrlen));
-              SetConnected;
-            end;
-          afIPv6:
-            begin
-              // For IPv6 UDP with link-local addresses, ensure scope ID is set
-              if TncIPUtils.IsLinkLocal(ResolveHost) then
+        end
+        else
+        begin
+          // For UDP, handle IPv4 and IPv6 differently
+          case FFamily of
+            afIPv4:
               begin
-                var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
-                // Set appropriate scope ID if needed
-                // Add a method to get interface index ?
+                // IPv4 UDP: connect if not broadcast mode
+                if not aBroadcast then
+                begin
+                  ConnectResult := Connect(FHandle, AddrResult^.ai_addr^, AddrResult^.ai_addrlen);
+                  Check(ConnectResult);
+                end
+                else
+                begin
+                  // Enable broadcast option for UDP broadcast
+                  EnableBroadcast;
+                end;
+                SetConnected;
               end;
-              SetConnected;
-            end;
+            afIPv6:
+              begin
+                // For IPv6 UDP with link-local addresses, ensure scope ID is set
+                if TncIPUtils.IsLinkLocal(ResolveHost) then
+                begin
+                  var AddrIn6 := PSockAddrIn6(AddrResult^.ai_addr)^;
+                  // Set appropriate scope ID if needed
+                  // This could be enhanced with interface detection
+                end;
+                SetConnected;
+              end;
+          end;
         end;
-      end;
 
-    except
-      DestroyHandle;
-      raise;
-    end;
-  finally
+      except
+        DestroyHandle;
+        raise;
+      end;
+    finally
 {$IFDEF MSWINDOWS}
-    FreeAddressInfo(AddrResult);
+      FreeAddressInfo(AddrResult);
 {$ELSE}
-    freeaddrinfo(AddrResult^);
+      freeaddrinfo(AddrResult^);
 {$ENDIF}
+    end;
+  except
+    FHandle := InvalidSocket;
+    raise;
   end;
 end;
 
@@ -1041,18 +1030,6 @@ begin
   SafeLoadFrom('wship6.dll');
 end;
 {$ENDIF}
-
-{ TConnectThread }
-procedure TConnectThread.ProcessEvent;
-begin
-{$IFDEF MSWINDOWS}
-  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^,
-    Line.AddrResult^.ai_addrlen);
-{$ELSE}
-  ConnectResult := Connect(Line.FHandle, Line.AddrResult^.ai_addr^,
-    Line.AddrResult^.ai_addrlen);
-{$ENDIF}
-end;
 
 initialization
 
