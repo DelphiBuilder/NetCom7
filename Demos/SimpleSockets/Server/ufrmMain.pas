@@ -69,6 +69,7 @@ begin
   begin
     try
       // Activate the TCP Server
+      TCPServer.Port := edtPort.Value;
       TCPServer.Active := True;
       btnActivate.Caption := 'Stop TCP Server';
       Log('TCP Server Activated at port: ' + IntToStr(TCPServer.Port));

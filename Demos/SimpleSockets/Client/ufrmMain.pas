@@ -87,6 +87,7 @@ begin
       TCPClient.Host := edtHost.Text;
 
       // Activate the TCP client
+      TCPClient.Port := edtPort.Value;
       TCPClient.Active := True;
       btnActivate.Caption := 'Stop TCP Client';
       Log('TCP Client Activated');
