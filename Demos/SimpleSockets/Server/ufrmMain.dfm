@@ -19,7 +19,7 @@ object Form1: TForm1
     Left = 5
     Top = 37
     Width = 517
-    Height = 201
+    Height = 182
     Margins.Left = 5
     Margins.Top = 0
     Margins.Right = 5
@@ -99,6 +99,17 @@ object Form1: TForm1
         OnClick = btnShutdownAllClientsClick
       end
     end
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Top = 224
+    Width = 527
+    Height = 19
+    Panels = <
+      item
+        Text = 'Connections: 0'
+        Width = 150
+      end>
   end
   object TCPServer: TncTCPServer
     OnConnected = TCPServerConnected

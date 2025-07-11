@@ -9,7 +9,7 @@ uses
   Posix.SysSocket, Posix.Unistd,
 {$ENDIF}
   System.Classes, System.SysUtils, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
-  Vcl.ExtCtrls, Vcl.Samples.Spin,
+  Vcl.ExtCtrls, Vcl.Samples.Spin, Vcl.ComCtrls,
   System.Diagnostics, ncLines, ncSocketList, ncSockets;
 
 type
@@ -21,6 +21,7 @@ type
     pblPort: TPanel;
     edtPort: TSpinEdit;
     btnShutdownAllClients: TButton;
+    StatusBar1: TStatusBar;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure TCPServerConnected(Sender: TObject; aLine: TncLine);
@@ -33,6 +34,8 @@ type
     procedure Log(const AMessage: string);
     procedure memLogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
+    FConnectionCount: Integer;
+    procedure UpdateConnectionCount;
   public
   end;
 
@@ -45,7 +48,8 @@ implementation
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-//
+  FConnectionCount := 0;
+  UpdateConnectionCount;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -116,11 +120,18 @@ begin
   end;
 end;
 
+procedure TForm1.UpdateConnectionCount;
+begin
+  StatusBar1.Panels[0].Text := 'Connections: ' + IntToStr(FConnectionCount);
+end;
+
 // *****************************************************************************
 // TCPServerConnected
 // *****************************************************************************
 procedure TForm1.TCPServerConnected(Sender: TObject; aLine: TncLine);
 begin
+  Inc(FConnectionCount);
+  UpdateConnectionCount;
 
   Log('Connected: ' + aLine.PeerIP);
 
@@ -132,6 +143,8 @@ end;
 // *****************************************************************************
 procedure TForm1.TCPServerDisconnected(Sender: TObject; aLine: TncLine);
 begin
+  Dec(FConnectionCount);
+  UpdateConnectionCount;
 
   Log('Disconnected: ' + aLine.PeerIP);
 
