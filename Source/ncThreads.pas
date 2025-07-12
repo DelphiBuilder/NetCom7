@@ -71,6 +71,9 @@ type
 
     procedure SetExecThreads(aThreadCount: Integer; aThreadPriority: TncThreadPriority);
     procedure SetThreadPriority(aPriority: TncThreadPriority);
+    
+    function GetThreadCount: Integer;
+    function GetActiveThreadCount: Integer;
 
     property GrowUpto: Integer read GetGrowUpto write SetGrowUpto;
   end;
@@ -408,6 +411,33 @@ begin
   Serialiser.Acquire;
   try
     FGrowUpto := Value;
+  finally
+    Serialiser.Release;
+  end;
+end;
+
+function TncThreadPool.GetThreadCount: Integer;
+begin
+  Serialiser.Acquire;
+  try
+    Result := Length(Threads);
+  finally
+    Serialiser.Release;
+  end;
+end;
+
+function TncThreadPool.GetActiveThreadCount: Integer;
+var
+  i: Integer;
+begin
+  Serialiser.Acquire;
+  try
+    Result := 0;
+    for i := 0 to High(Threads) do
+    begin
+      if Assigned(Threads[i]) and (Threads[i].ReadyEvent.WaitFor(0) <> wrSignaled) then
+        Inc(Result);
+    end;
   finally
     Serialiser.Release;
   end;

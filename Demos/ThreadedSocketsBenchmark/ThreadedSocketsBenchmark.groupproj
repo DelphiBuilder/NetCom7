@@ -1,0 +1,60 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{344BDD54-D641-46CD-A8CE-D73D6EB92681}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Client\ThreadedClient.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Server\ThreadedServer.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Server2\TCPServerComparison.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="ThreadedClient">
+        <MSBuild Projects="Client\ThreadedClient.dproj"/>
+    </Target>
+    <Target Name="ThreadedClient:Clean">
+        <MSBuild Projects="Client\ThreadedClient.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ThreadedClient:Make">
+        <MSBuild Projects="Client\ThreadedClient.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="ThreadedServer">
+        <MSBuild Projects="Server\ThreadedServer.dproj"/>
+    </Target>
+    <Target Name="ThreadedServer:Clean">
+        <MSBuild Projects="Server\ThreadedServer.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ThreadedServer:Make">
+        <MSBuild Projects="Server\ThreadedServer.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="TCPServerComparison">
+        <MSBuild Projects="Server2\TCPServerComparison.dproj"/>
+    </Target>
+    <Target Name="TCPServerComparison:Clean">
+        <MSBuild Projects="Server2\TCPServerComparison.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="TCPServerComparison:Make">
+        <MSBuild Projects="Server2\TCPServerComparison.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="ThreadedClient;ThreadedServer;TCPServerComparison"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="ThreadedClient:Clean;ThreadedServer:Clean;TCPServerComparison:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="ThreadedClient:Make;ThreadedServer:Make;TCPServerComparison:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

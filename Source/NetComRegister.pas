@@ -4,7 +4,7 @@ interface
 
 uses
   WinApi.Windows, System.Classes, System.SysUtils, ToolsAPI, DesignIntf, DesignEditors,
-  ncSockets, ncSources, ncCommandHandlers, ncDBSrv, ncDBCnt, ncUDPSockets;  // Added ncUDPSockets
+  ncSockets, ncSources, ncTSockets, ncCommandHandlers, ncDBSrv, ncDBCnt, ncUDPSockets;
 
 type
   TncTCPSocketDefaultEditor = class(TDefaultEditor)
@@ -31,6 +31,8 @@ begin
   RegisterComponents('NetCom7', [
     TncTCPServer,
     TncTCPClient,
+    TncServer,        // New threaded socket components
+    TncClient,
     TncUDPServer,     // Added UDP components
     TncUDPClient,
     TncServerSource,
@@ -42,6 +44,8 @@ begin
 
   RegisterComponentEditor(TncTCPServer, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncTCPClient, TncTCPSocketDefaultEditor);
+  RegisterComponentEditor(TncServer, TncTCPSocketDefaultEditor);     // New threaded socket editors
+  RegisterComponentEditor(TncClient, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncUDPServer, TncUDPSocketDefaultEditor);  // Added UDP editors
   RegisterComponentEditor(TncUDPClient, TncUDPSocketDefaultEditor);
   RegisterComponentEditor(TncServerSource, TncSourceDefaultEditor);
@@ -100,7 +104,7 @@ var
 resourcestring
   resPackageName = 'NetCom7 Network Communications Framework';
   resLicence = 'Full Edition for RAD Studio';
-  resAboutCopyright = 'Copyright © 2020 Bill Demos (VasDemos@yahoo.co.uk)';
+  resAboutCopyright = 'Copyright @ 2020 Bill Demos (VasDemos@yahoo.co.uk)';
   resAboutDescription =
     'Netcom7 Communicatios Framework enables you to use communication components with the ease of use of the Delphi programming language. Create and handle client/server sockets, sources and DB elements with no single line of API calls.';
 

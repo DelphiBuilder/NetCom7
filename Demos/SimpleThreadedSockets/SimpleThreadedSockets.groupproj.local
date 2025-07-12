@@ -2,6 +2,6 @@
 <BorlandProject>
 	<Transactions/>
 	<Default.Personality>
-		<Projects ActiveProject="D:\_Delphi\_Library\Netcom7\Demos\SimpleSockets\Client\Client.dproj"/>
+		<Projects ActiveProject="D:\_Delphi\_Library\Netcom7\Demos\SimpleThreadedSockets\Client\Client.dproj"/>
 	</Default.Personality>
 </BorlandProject>

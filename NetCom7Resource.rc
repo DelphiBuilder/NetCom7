@@ -1,3 +1,5 @@
 TNCICON BITMAP "PaletteIcons\\TncIcon.bmp"
 TNCUDPCLIENT BITMAP "PaletteIcons\\tncudpclient.bmp"
 TNCUDPSERVER BITMAP "PaletteIcons\\tncudpserver.bmp"
+TNCCLIENT BITMAP "PaletteIcons\\tncclient.bmp"
+TNCSERVER BITMAP "PaletteIcons\\tncserver.bmp"

@@ -42,6 +42,7 @@ contains
   ncLines in 'Source\ncLines.pas',
   ncSocketList in 'Source\ncSocketList.pas',
   ncSockets in 'Source\ncSockets.pas',
+  ncTSockets in 'Source\ncTSockets.pas',
   ncCommandPacking in 'Source\ncCommandPacking.pas',
   ncCommandHandlers in 'Source\ncCommandHandlers.pas',
   ncSources in 'Source\ncSources.pas',
