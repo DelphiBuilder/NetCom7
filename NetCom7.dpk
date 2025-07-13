@@ -81,7 +81,8 @@ contains
   ncEncTwofish in 'Source\Encryption\ncEncTwofish.pas',
   ncPendingCommandsList in 'Source\ncPendingCommandsList.pas',
   ncUDPSockets in 'Source\ncUDPSockets.pas',
-  ncIPUtils in 'Source\ncIPUtils.pas';
+  ncIPUtils in 'Source\ncIPUtils.pas',
+  ncSChannel in 'Source\ncSChannel.pas';
 
 end.
 

@@ -6,6 +6,11 @@
 // socket, organised in an object which contains the handle of the socket,
 // and also makes sure it checks every API command for errors
 //
+// 15/01/2025 - by J.Pauwels
+// - Added TLS handshake callback integration through OnBeforeConnected architecture
+// - Integrated TLS support into line-level socket operations
+// - Added secure communication layer for both server and client connections
+//
 // 14/01/2025 - by J.Pauwels
 // - Fix Linux compilation
 // - Added UDP support
@@ -140,6 +145,7 @@ type
     FDataObject: TObject;
     FOnConnected: TncLineOnConnectDisconnect;
     FOnDisconnected: TncLineOnConnectDisconnect;
+    FOnBeforeConnected: TncLineOnConnectDisconnect; // Called before OnConnected for TLS setup
   private
     PropertyLock: TCriticalSection;
     FHandle: TSocketHandle;
@@ -196,6 +202,8 @@ type
       write FOnConnected;
     property OnDisconnected: TncLineOnConnectDisconnect read FOnDisconnected
       write FOnDisconnected;
+    property OnBeforeConnected: TncLineOnConnectDisconnect read FOnBeforeConnected
+      write FOnBeforeConnected;
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
@@ -396,6 +404,7 @@ begin
 
   FOnConnected := nil;
   FOnDisconnected := nil;
+  FOnBeforeConnected := nil;
 end;
 
 destructor TncLine.Destroy;
@@ -511,7 +520,22 @@ begin
           if ConnectResult = -1 then
             raise EncLineException.Create('Connect timeout');
           Check(ConnectResult);
-          SetConnected;
+          
+          // For TLS connections, perform handshake BEFORE triggering OnConnected
+          if Assigned(FOnBeforeConnected) then
+          begin
+            try
+              FOnBeforeConnected(Self); // This will do TLS handshake
+            except
+              on E: Exception do
+              begin
+                DestroyHandle;
+                raise EncLineException.CreateFmt('TLS handshake failed: %s', [E.Message]);
+              end;
+            end;
+          end;
+          
+          SetConnected; // Only triggers OnConnected AFTER TLS is ready
         end
         else
         begin
@@ -673,6 +697,23 @@ begin
   Result.FHandle := NewHandle;
   Result.OnConnected := OnConnected;
   Result.OnDisconnected := OnDisconnected;
+  Result.OnBeforeConnected := OnBeforeConnected;
+  
+  // For server-side TLS connections, perform handshake BEFORE triggering OnConnected
+  if Assigned(Result.OnBeforeConnected) then
+  begin
+    try
+      Result.OnBeforeConnected(Result); // This will do TLS handshake for server
+    except
+      on E: Exception do
+      begin
+        Result.DestroyHandle;
+        Result.Free;
+        raise EncLineException.CreateFmt('Server TLS handshake failed: %s', [E.Message]);
+      end;
+    end;
+  end;
+  
   Result.SetConnected;
 end;
 

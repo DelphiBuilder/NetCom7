@@ -23,11 +23,12 @@
     <Transaction>2025/01/15 21:36:59.000.040,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient_32x32.bmp</Transaction>
     <Transaction>2025/01/15 21:38:09.000.173,D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpserver_32x32.bmp=</Transaction>
     <Transaction>2025/01/15 21:38:44.000.282,D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient_32x32.bmp=</Transaction>
-    <Transaction>2025/01/16 20:01:26.000.332,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient.bmp</Transaction>
     <Transaction>2025/01/16 20:01:26.000.367,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpserver.bmp</Transaction>
+    <Transaction>2025/01/16 20:01:26.000.332,=D:\_Delphi\_Library\NetCom7\PaletteIcons\tncudpclient.bmp</Transaction>
     <Transaction>2025/01/21 00:15:32.000.432,=D:\_Delphi\_Library\Netcom7\Source\ncIPv6Utils.pas</Transaction>
     <Transaction>2025/01/21 00:36:50.000.240,D:\_Delphi\_Library\Netcom7\Source\ncIPUtils.pas=D:\_Delphi\_Library\Netcom7\Source\ncIPv6Utils.pas</Transaction>
-    <Transaction>2025/07/12 15:38:07.000.604,=D:\_Delphi\_Library\Netcom7\PaletteIcons\tncclient.bmp</Transaction>
     <Transaction>2025/07/12 15:38:07.000.680,=D:\_Delphi\_Library\Netcom7\PaletteIcons\tncserver.bmp</Transaction>
+    <Transaction>2025/07/12 15:38:07.000.604,=D:\_Delphi\_Library\Netcom7\PaletteIcons\tncclient.bmp</Transaction>
+    <Transaction>2025/07/12 21:21:54.000.906,=D:\_Delphi\_Library\Netcom7\Source\ncSChannel.pas</Transaction>
   </Transactions>
 </BorlandProject>

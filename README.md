@@ -2,7 +2,9 @@
 
 The fastest communications possible.
 
-This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, and **high-performance threaded socket components**!
+This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, **high-performance threaded socket components**, and **TLS/SSL security support**!
+
+⚠️ **Note**: TLS/SSL implementation is currently available only for **ncSocket** (raw basic socket) components on Windows platforms through SChannel integration.
 
 ## Recent Updates
 
@@ -54,6 +56,23 @@ The **UDP** components can be dragged from the palette and customized in the obj
 
 ![alt text](image-1.png)
 
+### 🔐 TLS/SSL Security Support
+NetCom7 now includes **TLS/SSL encryption** support for secure communications:
+
+- **Windows SChannel Integration**: Native TLS support using Windows Secure Channel API (Windows only)
+- **Server & Client Support**: Both TncTCPServer and TncTCPClient components support TLS encryption
+- **Easy Configuration**: Simple `UseTLS` property to enable secure communications
+- **Certificate Management**: Built-in support for X.509 certificates and PFX files
+- **Secure Handshake**: Automatic TLS handshake handling with proper certificate validation
+
+#### Key Features
+- **Transport Layer Security**: Industry-standard TLS encryption for data protection
+- **Native Windows API**: Uses Windows SChannel for optimal performance and security
+- **Seamless Integration**: TLS functionality integrated into existing NetCom7 architecture
+- **OnBeforeConnected Events**: TLS handshake occurs before connection establishment
+
+⚠️ **Note**: TLS support is currently available for Windows platforms only through SChannel integration.
+
 ### IPV6
 
 TCP v4 / TCP v6 / UDP v4 / UDP v6 are now avaible.
@@ -65,6 +84,7 @@ TCP v4 / TCP v6 / UDP v4 / UDP v6 are now avaible.
 ### Demo Updates
 - Added new `SimpleThreadedSockets` demo
 - Added new `SimpleSockets_UDP` demo
+- Added new `SimpleSockets_TLS` demo for TLS/SSL secure communications
 - Updated the `SimpleSockets` demo
 - Added new `ThreadedSocketsBenchmark` demo for performance testing and comparison
 

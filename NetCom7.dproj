@@ -328,6 +328,7 @@
         <DCCReference Include="Source\ncPendingCommandsList.pas"/>
         <DCCReference Include="Source\ncUDPSockets.pas"/>
         <DCCReference Include="Source\ncIPUtils.pas"/>
+        <DCCReference Include="Source\ncSChannel.pas"/>
         <RcItem Include="PaletteIcons\TncIcon.bmp">
             <ResourceType>BITMAP</ResourceType>
             <ResourceId>TNCICON</ResourceId>

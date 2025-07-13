@@ -7,6 +7,12 @@ unit ncSockets;
 // This unit creates a TCP Server and TCP Client socket, along with their
 // threads dealing with reading from the socket
 //
+// 13/07/2025 - by J.Pauwels
+// - Added TLS implementation support through SChannel integration
+// - Added TLS properties (UseTLS, TlsProvider, CertificateFile) to TncTCPBase
+// - Integrated TLS handshake callbacks in OnBeforeConnected architecture
+// - Added secure communication capabilities for both server and client
+//
 // 14/01/2025 - by J.Pauwels
 // - Defined DefReadBufferLen as a new property
 // - Ajust TncCustomTCPServer.DataSocketDisconnected
@@ -46,13 +52,30 @@ unit ncSockets;
 interface
 
 uses
-{$IFDEF MSWINDOWS}
-  Winapi.Windows, Winapi.Winsock2,
-{$ELSE}
-  Posix.SysSocket, Posix.Unistd,
-{$ENDIF}
-  System.Classes, System.SysUtils, System.SyncObjs, System.Math, System.Diagnostics, System.TimeSpan,
-  ncLines, ncSocketList, ncThreads;
+  System.SysUtils,
+  System.Classes,
+  System.Diagnostics,
+  System.Math,
+  System.TimeSpan,
+  System.SyncObjs,
+  {$IFDEF MSWINDOWS}
+  Winapi.Windows,
+  Winapi.Winsock2,
+  ncSChannel,
+  {$ELSE}
+  Posix.SysSocket,
+  Posix.Unistd,
+  {$ENDIF}
+  ncSocketList,
+  ncLines,
+  ncThreads;
+
+type
+  // TLS Provider enumeration (declared early for use in constants)
+  TncTlsProvider = (
+    tpSChannel,     // Windows SChannel (Windows only, no external dependencies)
+    tpOpenSSL       // OpenSSL (cross-platform, requires OpenSSL DLLs)
+  );
 
 const
   DefPort = 16233;
@@ -65,6 +88,9 @@ const
   DefNoDelay = False;
   DefKeepAlive = True;
   DefFamily = afIPv4;
+  DefUseTLS = False;
+  DefTlsProvider = tpSChannel;
+  DefIgnoreCertificateErrors = False;
 
 resourcestring
   ECannotSetPortWhileConnectionIsActiveStr = 'Cannot set Port property whilst the connection is active';
@@ -74,13 +100,17 @@ resourcestring
   ECannotReceiveIfUseReaderThreadStr =
     'Cannot receive data if UseReaderThread is set. Use OnReadData event handler to get the data or set UseReaderThread property to false';
   ECannotSetFamilyWhileConnectionIsActiveStr = 'Cannot set Family property whilst the connection is active';
+  ETlsProviderNotSupportedStr = 'TLS provider not supported on this platform';
+  EOpenSSLNotAvailableStr = 'OpenSSL libraries not available';
 
- type
+type
   EPropertySetError = class(Exception);
   ENonActiveSocket = class(Exception);
   ECannotReceiveIfUseReaderThread = class(Exception);
+  ETlsProviderNotSupported = class(Exception);
+  EOpenSSLNotAvailable = class(Exception);
 
-    // We bring in TncLine so that a form that uses our components does
+  // We bring in TncLine so that a form that uses our components does
   // not have to reference ncLines unit to get the type
   TncLine = ncLines.TncLine;
 
@@ -88,6 +118,9 @@ resourcestring
   // These API functions are not made puclic in TncLine so that the user cannot
   // mangle up the line
   TncLineInternal = class(TncLine);
+
+  // Forward declarations
+  TncCustomTCPServer = class;
 
   // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TThreadLineList
@@ -131,6 +164,19 @@ resourcestring
     FOnDisconnected: TncOnConnectDisconnect;
     FOnReadData: TncOnReadData;
     FLine: TncLine;
+    
+    // TLS Properties
+    FUseTLS: Boolean;
+    FTlsProvider: TncTlsProvider;
+    FCertificateFile: string;
+    FPrivateKeyFile: string;
+    FPrivateKeyPassword: string;
+    FCACertificatesFile: string;
+    FIgnoreCertificateErrors: Boolean;
+    FTlsContext: TSChannelClient;
+    FTlsServerContext: TSChannelServer;
+    FIsServer: Boolean; // Flag to determine if this is a server or client
+    
     function GetReadBufferLen: Integer;  // Update
     procedure SetReadBufferLen(const Value: Integer);  // Update
     function GetActive: Boolean; virtual; abstract;
@@ -148,6 +194,23 @@ resourcestring
     procedure SetNoDelay(const Value: Boolean);
     function GetKeepAlive: Boolean;
     procedure SetKeepAlive(const Value: Boolean);
+    
+    // TLS Property Methods
+    function GetUseTLS: Boolean;
+    procedure SetUseTLS(const Value: Boolean);
+    function GetTlsProvider: TncTlsProvider;
+    procedure SetTlsProvider(const Value: TncTlsProvider);
+    function GetCertificateFile: string;
+    procedure SetCertificateFile(const Value: string);
+    function GetPrivateKeyFile: string;
+    procedure SetPrivateKeyFile(const Value: string);
+    function GetPrivateKeyPassword: string;
+    procedure SetPrivateKeyPassword(const Value: string);
+    function GetCACertificatesFile: string;
+    procedure SetCACertificatesFile(const Value: string);
+    function GetIgnoreCertificateErrors: Boolean;
+    procedure SetIgnoreCertificateErrors(const Value: Boolean);
+    
   private
     FUseReaderThread: Boolean;
     procedure DoActivate(aActivate: Boolean); virtual; abstract;
@@ -157,6 +220,13 @@ resourcestring
     ReadBuf: TBytes;
     procedure Loaded; override;
     function CreateLineObject: TncLine; virtual;
+    function GetHost: string; virtual; // Virtual method for TLS
+    procedure InitializeTLS(aLine: TncLine); virtual;
+    procedure FinalizeTLS(aLine: TncLine); virtual;
+    function SendTLS(aLine: TncLine; const aBuf; aBufSize: Integer): Integer; virtual;
+    function ReceiveTLS(aLine: TncLine; var aBuf; aBufSize: Integer): Integer; virtual;
+    procedure HandleTLSHandshake(aLine: TncLine); virtual;
+    procedure HandleTLSHandshakeComplete(aLine: TncLine); virtual;
     property Line: TncLine read FLine;
   public
     LineProcessor: TncReadyThread;
@@ -177,6 +247,15 @@ resourcestring
     property OnDisconnected: TncOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
     property OnReadData: TncOnReadData read FOnReadData write FOnReadData;
     property ReadBufferLen: Integer read GetReadBufferLen write SetReadBufferLen default DefReadBufferLen;  // Update
+    
+    // TLS Properties
+    property UseTLS: Boolean read GetUseTLS write SetUseTLS default DefUseTLS;
+    property TlsProvider: TncTlsProvider read GetTlsProvider write SetTlsProvider default DefTlsProvider;
+    property CertificateFile: string read GetCertificateFile write SetCertificateFile;
+    property PrivateKeyFile: string read GetPrivateKeyFile write SetPrivateKeyFile;
+    property PrivateKeyPassword: string read GetPrivateKeyPassword write SetPrivateKeyPassword;
+    property CACertificatesFile: string read GetCACertificatesFile write SetCACertificatesFile;
+    property IgnoreCertificateErrors: Boolean read GetIgnoreCertificateErrors write SetIgnoreCertificateErrors default DefIgnoreCertificateErrors;
   published
   end;
 
@@ -237,6 +316,14 @@ resourcestring
     property OnDisconnected;
     property OnReadData;
     property OnReconnected;
+    // TLS Properties
+    property UseTLS;
+    property TlsProvider;
+    property CertificateFile;
+    property PrivateKeyFile;
+    property PrivateKeyPassword;
+    property CACertificatesFile;
+    property IgnoreCertificateErrors;
   end;
 
   TncClientProcessor = class(TncReadyThread)
@@ -291,6 +378,14 @@ resourcestring
     property OnConnected;
     property OnDisconnected;
     property OnReadData;
+    // TLS Properties
+    property UseTLS;
+    property TlsProvider;
+    property CertificateFile;
+    property PrivateKeyFile;
+    property PrivateKeyPassword;
+    property CACertificatesFile;
+    property IgnoreCertificateErrors;
   end;
 
   TncServerProcessor = class(TncReadyThread)
@@ -430,6 +525,25 @@ begin
   FOnDisconnected := nil;
   FOnReadData := nil;
 
+  // Initialize TLS properties
+  FUseTLS := DefUseTLS;
+  FTlsProvider := DefTlsProvider;
+  FCertificateFile := '';
+  FPrivateKeyFile := '';
+  FPrivateKeyPassword := '';
+  FCACertificatesFile := '';
+  FIgnoreCertificateErrors := DefIgnoreCertificateErrors;
+  
+  // Initialize TLS contexts using FillChar and then set public fields
+  FillChar(FTlsContext, SizeOf(FTlsContext), 0);
+  FTlsContext.Initialized := False;
+  
+  FillChar(FTlsServerContext, SizeOf(FTlsServerContext), 0);
+  FTlsServerContext.Initialized := False;
+  FTlsServerContext.HandshakeCompleted := False;
+  
+  FIsServer := False;
+
   SetLength(ReadBuf, DefReadBufferLen);
 
 end;
@@ -441,8 +555,25 @@ end;
 
 destructor TncTCPBase.Destroy;
 begin
-  ShutDownLock.Free;
+  Active := False;
+  
+  // Clean up TLS contexts
+  if FUseTLS then
+  begin
+    if FIsServer then
+    begin
+      if FTlsServerContext.Initialized then
+        FTlsServerContext.BeforeDisconnection(Line);
+    end
+    else
+    begin
+      if FTlsContext.Initialized then
+        FTlsContext.BeforeDisconnection(Line);
+    end;
+  end;
+  
   PropertyLock.Free;
+  ShutDownLock.Free;
   inherited Destroy;
 end;
 
@@ -459,6 +590,10 @@ begin
   Result := TncLineInternal.Create;
   TncLineInternal(Result).SetKind(Kind);
   TncLineInternal(Result).SetFamily(FFamily);
+  
+  // Set up TLS callback if TLS is enabled
+  if FUseTLS then
+    TncLineInternal(Result).OnBeforeConnected := HandleTLSHandshake;
 end;
 
 procedure TncTCPBase.SetActive(const Value: Boolean);
@@ -652,6 +787,388 @@ begin
   end;
 end;
 
+// TLS Property Methods
+function TncTCPBase.GetUseTLS: Boolean;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FUseTLS;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetUseTLS(const Value: Boolean);
+begin
+  if not(csLoading in ComponentState) then
+    if Active then
+      raise EPropertySetError.Create('Cannot set UseTLS property whilst the connection is active');
+
+  PropertyLock.Acquire;
+  try
+    FUseTLS := Value;
+    
+    // Add TLS callback assignment when TLS is enabled
+    if Value then
+    begin
+      if FIsServer and (Self is TncCustomTCPServer) then
+      begin
+        // Server callback assignment
+        var Server := TncCustomTCPServer(Self);
+        if Server.Listener <> nil then
+        begin
+          TncLineInternal(Server.Listener).OnBeforeConnected := HandleTLSHandshake;
+        end;
+      end
+      else if not FIsServer and (Self is TncCustomTCPClient) then
+      begin
+        // Client callback assignment
+        var Client := TncCustomTCPClient(Self);
+        if Client.Line <> nil then
+        begin
+          TncLineInternal(Client.Line).OnBeforeConnected := HandleTLSHandshake;
+        end;
+      end;
+    end;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetTlsProvider: TncTlsProvider;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FTlsProvider;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetTlsProvider(const Value: TncTlsProvider);
+begin
+  if not(csLoading in ComponentState) then
+    if Active then
+      raise EPropertySetError.Create('Cannot set TlsProvider property whilst the connection is active');
+
+  PropertyLock.Acquire;
+  try
+    // Validate provider availability
+    case Value of
+      tpSChannel:
+        begin
+          {$IFNDEF MSWINDOWS}
+          raise ETlsProviderNotSupported.Create(ETlsProviderNotSupportedStr);
+          {$ENDIF}
+        end;
+      tpOpenSSL:
+        begin
+          // Future OpenSSL validation - for now, not supported
+          raise EOpenSSLNotAvailable.Create(EOpenSSLNotAvailableStr);
+        end;
+    end;
+    
+    FTlsProvider := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetCertificateFile: string;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FCertificateFile;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetCertificateFile(const Value: string);
+begin
+  PropertyLock.Acquire;
+  try
+    FCertificateFile := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetPrivateKeyFile: string;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FPrivateKeyFile;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetPrivateKeyFile(const Value: string);
+begin
+  PropertyLock.Acquire;
+  try
+    FPrivateKeyFile := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetPrivateKeyPassword: string;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FPrivateKeyPassword;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetPrivateKeyPassword(const Value: string);
+begin
+  PropertyLock.Acquire;
+  try
+    FPrivateKeyPassword := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetCACertificatesFile: string;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FCACertificatesFile;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetCACertificatesFile(const Value: string);
+begin
+  PropertyLock.Acquire;
+  try
+    FCACertificatesFile := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+function TncTCPBase.GetIgnoreCertificateErrors: Boolean;
+begin
+  PropertyLock.Acquire;
+  try
+    Result := FIgnoreCertificateErrors;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+procedure TncTCPBase.SetIgnoreCertificateErrors(const Value: Boolean);
+begin
+  PropertyLock.Acquire;
+  try
+    FIgnoreCertificateErrors := Value;
+  finally
+    PropertyLock.Release;
+  end;
+end;
+
+// TLS base implementation
+function TncTCPBase.GetHost: string;
+begin
+  Result := ''; // Default implementation, override in client
+end;
+
+// TLS Functionality Methods
+procedure TncTCPBase.InitializeTLS(aLine: TncLine);
+begin
+  if not FUseTLS then
+    Exit;
+  
+  if aLine = nil then
+    Exit;
+  
+  // Check if TLS is already initialized for this connection
+  if FIsServer then
+  begin
+    if FTlsServerContext.Initialized then
+      Exit;
+  end
+  else
+  begin
+    if FTlsContext.Initialized then
+      Exit;
+  end;
+  
+  if FIsServer then
+  begin
+    FTlsServerContext.AfterConnection(aLine, AnsiString(FCertificateFile), AnsiString(FPrivateKeyPassword));
+  end
+  else
+  begin
+    FTlsContext.AfterConnection(aLine, AnsiString(GetHost), FIgnoreCertificateErrors);
+  end;
+end;
+
+procedure TncTCPBase.HandleTLSHandshake(aLine: TncLine);
+begin
+  // This method is called automatically before OnConnected fires
+  // It performs the TLS handshake synchronously
+  if FUseTLS and (aLine <> nil) then
+  begin
+    InitializeTLS(aLine); // Perform the complete TLS handshake
+  end;
+end;
+
+procedure TncTCPBase.HandleTLSHandshakeComplete(aLine: TncLine);
+begin
+  // Call OnConnected for TLS connections after handshake completes
+  if FUseTLS and Assigned(OnConnected) then
+  begin
+    try
+      OnConnected(Self, aLine);
+    except
+      on E: Exception do
+        // OnConnected failed - could log this if needed
+    end;
+  end;
+end;
+
+procedure TncTCPBase.FinalizeTLS(aLine: TncLine);
+begin
+  if FUseTLS and (aLine <> nil) then
+  begin
+    try
+      case FTlsProvider of
+        tpSChannel:
+          begin
+            {$IFDEF MSWINDOWS}
+            if FIsServer then
+            begin
+              if FTlsServerContext.Initialized then
+                FTlsServerContext.BeforeDisconnection(aLine);
+            end
+            else
+            begin
+              if FTlsContext.Initialized then
+                FTlsContext.BeforeDisconnection(aLine);
+            end;
+            {$ENDIF}
+          end;
+        tpOpenSSL:
+          begin
+            // Future OpenSSL cleanup
+          end;
+      end;
+    except
+      on E: Exception do
+        // Log error but don't raise exception during cleanup
+    end;
+  end;
+end;
+
+function TncTCPBase.SendTLS(aLine: TncLine; const aBuf; aBufSize: Integer): Integer;
+begin
+  if FUseTLS then
+  begin
+    case FTlsProvider of
+      tpSChannel:
+        begin
+          {$IFDEF MSWINDOWS}
+          if FIsServer then
+          begin
+            if FTlsServerContext.Initialized then
+              Result := FTlsServerContext.Send(aLine, @aBuf, aBufSize)
+            else
+              Result := TncLineInternal(aLine).SendBuffer(aBuf, aBufSize);
+          end
+          else
+          begin
+            if FTlsContext.Initialized then
+              Result := FTlsContext.Send(aLine, @aBuf, aBufSize)
+            else
+              Result := TncLineInternal(aLine).SendBuffer(aBuf, aBufSize);
+          end;
+          {$ELSE}
+          raise ETlsProviderNotSupported.Create(ETlsProviderNotSupportedStr);
+          {$ENDIF}
+        end;
+      tpOpenSSL:
+        begin
+          // Future OpenSSL send implementation
+          raise EOpenSSLNotAvailable.Create(EOpenSSLNotAvailableStr);
+        end;
+    end;
+  end
+  else
+    Result := TncLineInternal(aLine).SendBuffer(aBuf, aBufSize);
+end;
+
+function TncTCPBase.ReceiveTLS(aLine: TncLine; var aBuf; aBufSize: Integer): Integer;
+begin
+  if FUseTLS then
+  begin
+    case FTlsProvider of
+      tpSChannel:
+        begin
+          {$IFDEF MSWINDOWS}
+          if FIsServer then
+          begin
+            if FTlsServerContext.Initialized then
+            begin
+              var WasHandshakeCompleted := FTlsServerContext.HandshakeCompleted;
+              
+              Result := FTlsServerContext.Receive(aLine, @aBuf, aBufSize);
+              
+              // Check if handshake just completed
+              if not WasHandshakeCompleted and FTlsServerContext.HandshakeCompleted then
+              begin
+                // Handshake just completed, call OnConnected
+                HandleTLSHandshakeComplete(aLine);
+                
+                // CRITICAL FIX: Return -1 to prevent OnReadData from being triggered with empty data
+                // The handshake completion callback has already been called above
+                Result := -1;
+              end;
+            end
+            else
+              Result := TncLineInternal(aLine).RecvBuffer(aBuf, aBufSize);
+          end
+          else
+          begin
+            if FTlsContext.Initialized then
+            begin
+              // For client, handshake is complete when Initialized becomes true
+              // But we need to track when it JUST became initialized (not if it was already initialized)
+              // Since the client calls AfterConnection during OnBeforeConnected, we know that
+              // the first call to Receive after OnBeforeConnected is when handshake is complete
+              
+              Result := FTlsContext.Receive(aLine, @aBuf, aBufSize);
+              
+              // Client-side handshake completion detection:
+              // The client TLS handshake is handled in OnBeforeConnected event
+              // So by the time we get here, handshake is already complete
+              // We don't need to do anything special for client handshake completion
+            end
+            else
+              Result := TncLineInternal(aLine).RecvBuffer(aBuf, aBufSize);
+          end;
+          {$ELSE}
+          raise ETlsProviderNotSupported.Create(ETlsProviderNotSupportedStr);
+          {$ENDIF}
+        end;
+      tpOpenSSL:
+        begin
+          // Future OpenSSL receive implementation
+          raise EOpenSSLNotAvailable.Create(EOpenSSLNotAvailableStr);
+        end;
+    end;
+  end
+  else
+    Result := TncLineInternal(aLine).RecvBuffer(aBuf, aBufSize);
+end;
+
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncCustomTCPClient }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -660,6 +1177,7 @@ constructor TncCustomTCPClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
+  FIsServer := False; // Set client flag for TLS context selection
   FHost := DefHost;
   FReconnect := True;
   FReconnectInterval := DefCntReconnectInterval;
@@ -677,6 +1195,10 @@ begin
 
   TncLineInternal(Line).OnConnected := DataSocketConnected;
   TncLineInternal(Line).OnDisconnected := DataSocketDisconnected;
+  
+  // Set up TLS handshake callback if TLS is enabled
+  if FUseTLS then
+    TncLineInternal(Line).OnBeforeConnected := HandleTLSHandshake;
 
   LineProcessor := TncClientProcessor.Create(Self);
   try
@@ -756,6 +1278,8 @@ begin
     except
     end;
 
+  // TLS initialization is now handled by OnBeforeConnected event
+  
   if Assigned(OnConnected) then
     try
       OnConnected(Self, aLine);
@@ -771,6 +1295,10 @@ end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
 begin
+  // Finalize TLS if enabled
+  if UseTLS then
+    FinalizeTLS(aLine);
+
   if Assigned(OnDisconnected) then
     try
       OnDisconnected(Self, aLine);
@@ -784,7 +1312,7 @@ begin
   if not Active then
     raise EPropertySetError.Create(ECannotSendWhileSocketInactiveStr);
 
-  TncLineInternal(Line).SendBuffer(aBuf, aBufSize);
+  SendTLS(Line, aBuf, aBufSize);
 end;
 
 procedure TncCustomTCPClient.Send(const aBytes: TBytes);
@@ -813,13 +1341,13 @@ begin
     Exit;
   end;
 
-  BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
+  BufRead := ReceiveTLS(Line, ReadBuf[0], Length(ReadBuf));
   Result := Copy(ReadBuf, 0, BufRead)
 end;
 
 function TncCustomTCPClient.ReceiveRaw(var aBytes: TBytes): Integer;
 begin
-  Result := TncLineInternal(Line).RecvBuffer(aBytes[0], Length(aBytes));
+  Result := ReceiveTLS(Line, aBytes[0], Length(aBytes));
 end;
 
 function TncCustomTCPClient.GetActive: Boolean;
@@ -906,8 +1434,8 @@ procedure TncClientProcessor.SocketProcess;
 var
   BufRead: Integer;
 begin
-  BufRead := TncLineInternal(FClientSocket.Line).RecvBuffer(FClientSocket.ReadBuf[0], Length(FClientSocket.ReadBuf));
-  if Assigned(FClientSocket.OnReadData) then
+  BufRead := FClientSocket.ReceiveTLS(FClientSocket.Line, FClientSocket.ReadBuf[0], Length(FClientSocket.ReadBuf));
+  if Assigned(FClientSocket.OnReadData) and (BufRead > 0) then
     try
       FClientSocket.OnReadData(FClientSocket, FClientSocket.Line, FClientSocket.ReadBuf, BufRead);
     except
@@ -1000,6 +1528,8 @@ end;
 constructor TncCustomTCPServer.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  
+  FIsServer := True; // Set server flag for TLS context selection
 
   Listener := CreateLineObject;
   if Listener.Family <> FFamily then
@@ -1009,14 +1539,22 @@ begin
 
   TncLineInternal(Listener).OnConnected := DataSocketConnected;
   TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
+  
+  // Set up TLS handshake callback if TLS is enabled
+  if FUseTLS then
+  begin
+    TncLineInternal(Listener).OnBeforeConnected := HandleTLSHandshake;
+  end;
+  Lines := TThreadLineList.Create();
 
-  Lines := TThreadLineList.Create;
   LineProcessor := TncServerProcessor.Create(Self);
   try
-    LineProcessor.Priority := FromNcThreadPriority(DefReaderThreadPriority);
+    if LineProcessor.Priority <> FromNcThreadPriority(DefReaderThreadPriority) then
+      LineProcessor.Priority := FromNcThreadPriority(DefReaderThreadPriority);
   except
     // Some Android devices do not like this
   end;
+  LineProcessor.WaitForReady;
 end;
 
 destructor TncCustomTCPServer.Destroy;
@@ -1143,11 +1681,22 @@ begin
     except
     end;
 
-    if Assigned(OnConnected) then
-      try
-        OnConnected(Self, aLine);
-      except
-      end;
+    // TLS initialization is now handled by OnBeforeConnected event
+    
+    // For TLS connections, delay OnConnected until after handshake completes
+    if not UseTLS then
+    begin
+      if Assigned(OnConnected) then
+        try
+          OnConnected(Self, aLine);
+        except
+        end;
+    end
+    else
+    begin
+      // For TLS connections, OnConnected will be called after handshake completes
+      // This is handled in the first successful TLS receive operation
+    end;
   end;
 end;
 
@@ -1161,6 +1710,10 @@ begin
     SetLength(ReadSocketHandles, 0)
   else
   begin
+    // Finalize TLS if enabled
+    if UseTLS then
+      FinalizeTLS(aLine);
+
     // First remove the handle to prevent further processing
     PropertyLock.Acquire;
     try
@@ -1186,7 +1739,7 @@ end;
 
 procedure TncCustomTCPServer.Send(aLine: TncLine; const aBuf; aBufSize: Integer);
 begin
-  TncLineInternal(aLine).SendBuffer(aBuf, aBufSize);
+  SendTLS(aLine, aBuf, aBufSize);
 end;
 
 procedure TncCustomTCPServer.Send(aLine: TncLine; const aBytes: TBytes);
@@ -1234,7 +1787,7 @@ begin
           try
             if not Line.Active then
               Abort;
-            BufRead := TncLineInternal(Line).RecvBuffer(ReadBuf[0], Length(ReadBuf));
+            BufRead := ReceiveTLS(Line, ReadBuf[0], Length(ReadBuf));
             Result := Copy(ReadBuf, 0, BufRead);
           except
             // Line has disconnected, destroy the line
@@ -1251,7 +1804,7 @@ end;
 
 function TncCustomTCPServer.ReceiveRaw(aLine: TncLine; var aBytes: TBytes): Integer;
 begin
-  Result := TncLineInternal(aLine).RecvBuffer(aBytes[0], Length(aBytes));
+  Result := ReceiveTLS(aLine, aBytes[0], Length(aBytes));
 end;
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1355,8 +1908,8 @@ begin
           ReadySocketsChanged := False;
           Exit;
         end;
-        BufRead := TncLineInternal(Line).RecvBuffer(FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
-        if Assigned(FServerSocket.OnReadData) then
+        BufRead := FServerSocket.ReceiveTLS(Line, FServerSocket.ReadBuf[0], Length(FServerSocket.ReadBuf));
+        if Assigned(FServerSocket.OnReadData) and (BufRead > 0) then
           FServerSocket.OnReadData(FServerSocket, Line, FServerSocket.ReadBuf, BufRead);
       except
         // Line has disconnected, destroy the line
