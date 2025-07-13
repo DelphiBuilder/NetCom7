@@ -4,7 +4,7 @@ The fastest communications possible.
 
 This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, **high-performance threaded socket components**, and **TLS/SSL security support**!
 
-⚠️ **Note**: TLS/SSL implementation is currently available only for **ncSocket** (raw basic socket) components on Windows platforms through SChannel integration.
+⚠️ **Note**: TLS/SSL implementation is currently available only for **ncSockets** (raw basic socket) components on Windows platforms through SChannel integration.
 
 ## Recent Updates
 
