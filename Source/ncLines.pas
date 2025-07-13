@@ -6,7 +6,7 @@
 // socket, organised in an object which contains the handle of the socket,
 // and also makes sure it checks every API command for errors
 //
-// 15/01/2025 - by J.Pauwels
+// 13/07/2025 - by J.Pauwels
 // - Added TLS handshake callback integration through OnBeforeConnected architecture
 // - Integrated TLS support into line-level socket operations
 // - Added secure communication layer for both server and client connections
