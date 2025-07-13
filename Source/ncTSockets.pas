@@ -23,12 +23,17 @@ unit ncTSockets;
 // - Processing threads for data handling (OnReadData event)
 // - Component composition pattern wrapping TncTCPServer/TncTCPClient
 // - All socket properties delegated to underlying components
+// - TLS/SSL support through SChannel integration (Windows)
 //
 // Architecture:
 // Network Data -> Reader Thread -> Processing Thread Pool -> OnReadData Event
 //
+// 13/07/2025 - by J.Pauwels
+// - Added TLS/SSL support through SChannel integration
+// - Added TLS properties (UseTLS, TlsProvider, CertificateFile)
+// - Integrated secure communication capabilities for both server and client
 //
-// 12/07/2025
+// 12/07/2025 - by J.Pauwels
 // - Initial creation
 //
 // Written by J.Pauwels
@@ -94,6 +99,7 @@ type
     
     FOnConnected: TncOnServerConnectDisconnect;
     FOnDisconnected: TncOnServerConnectDisconnect;
+    FOnReconnected: TncOnServerReconnected;
     FOnReadData: TncOnServerReadData;
     
     // Socket property delegation getters/setters
@@ -113,6 +119,16 @@ type
     procedure SetReadBufferLen(const Value: Integer);
     function GetUseReaderThread: Boolean;
     procedure SetUseReaderThread(const Value: Boolean);
+    function GetUseTLS: Boolean;
+    procedure SetUseTLS(const Value: Boolean);
+    function GetTlsProvider: TncTlsProvider;
+    procedure SetTlsProvider(const Value: TncTlsProvider);
+    function GetCertificateFile: string;
+    procedure SetCertificateFile(const Value: string);
+    function GetIgnoreCertificateErrors: Boolean;
+    procedure SetIgnoreCertificateErrors(const Value: Boolean);
+    function GetPrivateKeyPassword: string;
+    procedure SetPrivateKeyPassword(const Value: string);
     
     // Thread pool property getters/setters
     function GetDataProcessorThreadPriority: TncThreadPriority;
@@ -137,6 +153,7 @@ type
     LastConnectedLine, LastDisconnectedLine, LastReconnectedLine: TncLine;
     
     procedure Loaded; override;
+    procedure TLSHandshakeWrapper(aLine: TncLine);
     procedure CallConnectedEvents;
     procedure SocketConnected(Sender: TObject; aLine: TncLine);
     procedure CallDisconnectedEvents;
@@ -160,6 +177,11 @@ type
     property Family: TAddressType read GetFamily write SetFamily default DefFamily;
     property ReadBufferLen: Integer read GetReadBufferLen write SetReadBufferLen default DefReadBufferLen;
     property UseReaderThread: Boolean read GetUseReaderThread write SetUseReaderThread default DefUseReaderThread;
+    property UseTLS: Boolean read GetUseTLS write SetUseTLS default False;
+    property TlsProvider: TncTlsProvider read GetTlsProvider write SetTlsProvider default DefTlsProvider;
+    property CertificateFile: string read GetCertificateFile write SetCertificateFile;
+    property IgnoreCertificateErrors: Boolean read GetIgnoreCertificateErrors write SetIgnoreCertificateErrors default DefIgnoreCertificateErrors;
+    property PrivateKeyPassword: string read GetPrivateKeyPassword write SetPrivateKeyPassword;
     
     // Thread pool properties  
     property DataProcessorThreadPriority: TncThreadPriority read GetDataProcessorThreadPriority write SetDataProcessorThreadPriority default DefDataProcessorThreadPriority;
@@ -220,6 +242,11 @@ type
     property Family;
     property ReadBufferLen;
     property UseReaderThread;
+    property UseTLS;
+    property TlsProvider;
+    property CertificateFile;
+    property IgnoreCertificateErrors;
+    property PrivateKeyPassword;
     property DataProcessorThreadPriority;
     property DataProcessorThreads;
     property DataProcessorThreadsPerCPU;
@@ -268,6 +295,11 @@ type
     property Family;
     property ReadBufferLen;
     property UseReaderThread;
+    property UseTLS;
+    property TlsProvider;
+    property CertificateFile;
+    property IgnoreCertificateErrors;
+    property PrivateKeyPassword;
     property DataProcessorThreadPriority;
     property DataProcessorThreads;
     property DataProcessorThreadsPerCPU;
@@ -286,9 +318,17 @@ type
 
 implementation
 
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{ TDataProcessingThread }
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+uses
+  System.TypInfo;
+
+type
+  // Friend class declarations to access protected members
+  TncLineInternal = class(TncLine);
+  TncTCPBaseInternal = class(TncTCPBase);
+  TncCustomTCPServerInternal = class(TncCustomTCPServer);
+  TncTCPServerInternal = class(TncTCPServer);
+
+{ TncDataProcessingThread }
 
 procedure TDataProcessingThread.CallOnReadDataEvent;
 begin
@@ -330,6 +370,7 @@ begin
   
   FOnConnected := nil;
   FOnDisconnected := nil;
+  FOnReconnected := nil;
   FOnReadData := nil;
   
   DataProcessorThreadPool := TncThreadPool.Create(TDataProcessingThread);
@@ -370,10 +411,7 @@ begin
   WithinConnectionHandler := True;
   try
     if Assigned(OnConnected) then
-      try
-        OnConnected(Self, LastConnectedLine);
-      except
-      end;
+      OnConnected(Self, LastConnectedLine);
   finally
     WithinConnectionHandler := False;
   end;
@@ -439,18 +477,22 @@ procedure TncSocketBase.SocketReadData(Sender: TObject; aLine: TncLine; const aB
 var
   DataProcessingThread: TDataProcessingThread;
 begin
-  // Queue the data processing to the thread pool
-  DataProcessorThreadPool.Serialiser.Acquire;
-  try
-    DataProcessingThread := TDataProcessingThread(DataProcessorThreadPool.RequestReadyThread);
-    DataProcessingThread.OnReadData := OnReadData;
-    DataProcessingThread.Server := Self;
-    DataProcessingThread.Line := aLine;
-    DataProcessingThread.Buffer := Copy(aBuf, 0, aBufCount); // Copy the buffer to avoid race conditions
-    DataProcessingThread.BufferCount := aBufCount;
-    DataProcessorThreadPool.RunRequestedThread(DataProcessingThread);
-  finally
-    DataProcessorThreadPool.Serialiser.Release;
+  // The base socket handles TLS handshake internally and only fires OnReadData for application data
+  // So we can safely queue all data to the thread pool
+  if Assigned(OnReadData) then
+  begin
+    DataProcessorThreadPool.Serialiser.Acquire;
+    try
+      DataProcessingThread := TDataProcessingThread(DataProcessorThreadPool.RequestReadyThread);
+      DataProcessingThread.OnReadData := OnReadData;
+      DataProcessingThread.Server := Self;
+      DataProcessingThread.Line := aLine;
+      DataProcessingThread.Buffer := Copy(aBuf, 0, aBufCount); // Copy the buffer to avoid race conditions
+      DataProcessingThread.BufferCount := aBufCount;
+      DataProcessorThreadPool.RunRequestedThread(DataProcessingThread);
+    finally
+      DataProcessorThreadPool.Serialiser.Release;
+    end;
   end;
 end;
 
@@ -536,6 +578,79 @@ end;
 procedure TncSocketBase.SetUseReaderThread(const Value: Boolean);
 begin
   Socket.UseReaderThread := Value;
+end;
+
+function TncSocketBase.GetUseTLS: Boolean;
+begin
+  Result := Socket.UseTLS;
+end;
+
+procedure TncSocketBase.SetUseTLS(const Value: Boolean);
+begin
+  Socket.UseTLS := Value;
+  
+  // Set up TLS handshake callback if Line objects already exist
+  // The underlying ncSockets components will handle TLS setup during Line creation
+  if Value then
+  begin
+    if Socket is TncTCPClient then
+    begin
+      var Client := TncTCPClient(Socket);
+      if Client.Line <> nil then
+      begin
+        TncLineInternal(Client.Line).OnBeforeConnected := TLSHandshakeWrapper;
+      end;
+      // If Line doesn't exist yet, it will be set up automatically when Line is created
+    end
+    else if Socket is TncTCPServer then
+    begin
+      var Server := TncTCPServer(Socket);
+      if TncTCPServerInternal(Server).Listener <> nil then
+      begin
+        TncLineInternal(TncTCPServerInternal(Server).Listener).OnBeforeConnected := TLSHandshakeWrapper;
+      end;
+    end;
+  end;
+end;
+
+function TncSocketBase.GetTlsProvider: TncTlsProvider;
+begin
+  Result := Socket.TlsProvider;
+end;
+
+procedure TncSocketBase.SetTlsProvider(const Value: TncTlsProvider);
+begin
+  Socket.TlsProvider := Value;
+end;
+
+function TncSocketBase.GetCertificateFile: string;
+begin
+  Result := Socket.CertificateFile;
+end;
+
+procedure TncSocketBase.SetCertificateFile(const Value: string);
+begin
+  Socket.CertificateFile := Value;
+end;
+
+function TncSocketBase.GetIgnoreCertificateErrors: Boolean;
+begin
+  Result := Socket.IgnoreCertificateErrors;
+end;
+
+procedure TncSocketBase.SetIgnoreCertificateErrors(const Value: Boolean);
+begin
+  Socket.IgnoreCertificateErrors := Value;
+end;
+
+function TncSocketBase.GetPrivateKeyPassword: string;
+begin
+  Result := Socket.PrivateKeyPassword;
+end;
+
+procedure TncSocketBase.SetPrivateKeyPassword(const Value: string);
+begin
+  Socket.PrivateKeyPassword := Value;
 end;
 
 // Thread pool property methods
@@ -657,6 +772,12 @@ begin
   end;
 end;
 
+procedure TncSocketBase.TLSHandshakeWrapper(aLine: TncLine);
+begin
+  TncTCPBaseInternal(Socket).HandleTLSHandshake(aLine);
+end;
+
+
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncServer }
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -666,7 +787,7 @@ begin
   inherited Create(AOwner);
   
   // Create the underlying TCP server socket
-  Socket := TncTCPServer.Create(nil);
+  Socket := TncTCPServer.Create(Self);
   Socket.Family := afIPv4;
   Socket.Port := DefPort;
   Socket.NoDelay := DefNoDelay;
@@ -726,10 +847,7 @@ constructor TncClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   
-  FOnReconnected := nil;
-  
-  // Create the underlying TCP client socket
-  Socket := TncTCPClient.Create(nil);
+  Socket := TncTCPClient.Create(Self);
   Socket.Family := afIPv4;
   Socket.Port := DefPort;
   Socket.NoDelay := DefNoDelay;

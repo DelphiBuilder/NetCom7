@@ -4,7 +4,7 @@ The fastest communications possible.
 
 This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, **high-performance threaded socket components**, and **TLS/SSL security support**!
 
-⚠️ **Note**: TLS/SSL implementation is currently available only for **ncSockets** (raw basic socket) components on Windows platforms through SChannel integration.
+⚠️ **Note**: TLS/SSL implementation is currently available for **basic raw socket components** (TncTCPClient/TncTCPServer) and **raw threaded socket components** (TncServer/TncClient) on Windows platforms through SChannel integration.
 
 ## Recent Updates
 
@@ -13,8 +13,8 @@ This is an updated version of the NetCom7 package, now with enhanced **UDP** & *
 
 - **Built-in Thread Pool**: Automatically manages worker threads for concurrent request processing
 - **Raw Socket Performance**: Direct socket access without protocol overhead
+- **TLS/SSL Security Support**: Full TLS encryption support with thread pool processing
 - **Scalable Architecture**: Handles thousands of concurrent connections efficiently  
-- **Thread Pool Monitoring**: Real-time visibility into thread pool status and performance
 - **Simple API**: Easy-to-use interface similar to traditional NetCom7 components
 
 #### Performance Benefits
@@ -60,10 +60,11 @@ The **UDP** components can be dragged from the palette and customized in the obj
 NetCom7 now includes **TLS/SSL encryption** support for secure communications:
 
 - **Windows SChannel Integration**: Native TLS support using Windows Secure Channel API (Windows only)
-- **Server & Client Support**: Both TncTCPServer and TncTCPClient components support TLS encryption
-- **Easy Configuration**: Simple `UseTLS` property to enable secure communications
-- **Certificate Management**: Built-in support for X.509 certificates and PFX files
-- **Secure Handshake**: Automatic TLS handshake handling with proper certificate validation
+- **Basic Raw Socket Support**: TncTCPClient and TncTCPServer components support TLS encryption
+- **Raw Threaded Socket Support**: TncServer and TncClient components support TLS encryption with thread pool processing
+- **Easy Configuration**: Simple `UseTLS` property to enable secure communications on both component types
+- **Certificate Management**: Built-in support for X.509 certificates and PFX files on both component types
+- **Secure Handshake**: Automatic TLS handshake handling with proper certificate validation on both component types
 
 #### Key Features
 - **Transport Layer Security**: Industry-standard TLS encryption for data protection
@@ -71,7 +72,7 @@ NetCom7 now includes **TLS/SSL encryption** support for secure communications:
 - **Seamless Integration**: TLS functionality integrated into existing NetCom7 architecture
 - **OnBeforeConnected Events**: TLS handshake occurs before connection establishment
 
-⚠️ **Note**: TLS support is currently available for Windows platforms only through SChannel integration.
+⚠️ **Note**: TLS support is currently available for Windows platforms only through SChannel integration and works with both basic raw socket components and raw threaded socket components.
 
 ### IPV6
 
@@ -84,7 +85,8 @@ TCP v4 / TCP v6 / UDP v4 / UDP v6 are now avaible.
 ### Demo Updates
 - Added new `SimpleThreadedSockets` demo
 - Added new `SimpleSockets_UDP` demo
-- Added new `SimpleSockets_TLS` demo for TLS/SSL secure communications
+- Added new `SimpleSockets_TLS` demo for TLS/SSL secure communications (basic raw sockets)
+- Added new `SimpleThreadedSockets_TLS` demo for TLS/SSL secure communications (raw threaded sockets)
 - Updated the `SimpleSockets` demo
 - Added new `ThreadedSocketsBenchmark` demo for performance testing and comparison
 

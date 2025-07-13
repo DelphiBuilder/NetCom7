@@ -1355,7 +1355,6 @@ begin
 end;
 
 
-
 initialization
   // Load SChannel API
   SockSChannelApi := False;
