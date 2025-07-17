@@ -82,7 +82,8 @@ contains
   ncPendingCommandsList in 'Source\ncPendingCommandsList.pas',
   ncUDPSockets in 'Source\ncUDPSockets.pas',
   ncIPUtils in 'Source\ncIPUtils.pas',
-  ncSChannel in 'Source\ncSChannel.pas';
+  ncSChannel in 'Source\ncSChannel.pas',
+  ncSocketsPro in 'Source\ncSocketsPro.pas';
 
 end.
 

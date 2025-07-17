@@ -329,6 +329,7 @@
         <DCCReference Include="Source\ncUDPSockets.pas"/>
         <DCCReference Include="Source\ncIPUtils.pas"/>
         <DCCReference Include="Source\ncSChannel.pas"/>
+        <DCCReference Include="Source\ncSocketsPro.pas"/>
         <RcItem Include="PaletteIcons\TncIcon.bmp">
             <ResourceType>BITMAP</ResourceType>
             <ResourceId>TNCICON</ResourceId>
@@ -348,6 +349,14 @@
         <RcItem Include="PaletteIcons\tncserver.bmp">
             <ResourceType>BITMAP</ResourceType>
             <ResourceId>TNCSERVER</ResourceId>
+        </RcItem>
+        <RcItem Include="PaletteIcons\tnctcpproclient.bmp">
+            <ResourceType>BITMAP</ResourceType>
+            <ResourceId>TNCTCPPROCLIENT</ResourceId>
+        </RcItem>
+        <RcItem Include="PaletteIcons\tnctcpproserver.bmp">
+            <ResourceType>BITMAP</ResourceType>
+            <ResourceId>TNCTCPPROSERVER</ResourceId>
         </RcItem>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

@@ -4,7 +4,7 @@ interface
 
 uses
   WinApi.Windows, System.Classes, System.SysUtils, ToolsAPI, DesignIntf, DesignEditors,
-  ncSockets, ncSources, ncTSockets, ncCommandHandlers, ncDBSrv, ncDBCnt, ncUDPSockets;
+  ncSockets, ncSocketsPro, ncSources, ncTSockets, ncCommandHandlers, ncDBSrv, ncDBCnt, ncUDPSockets;
 
 type
   TncTCPSocketDefaultEditor = class(TDefaultEditor)
@@ -31,6 +31,8 @@ begin
   RegisterComponents('NetCom7', [
     TncTCPServer,
     TncTCPClient,
+    TncTCPProServer,  // Pro enhanced socket components
+    TncTCPProClient,
     TncServer,        // New threaded socket components
     TncClient,
     TncUDPServer,     // Added UDP components
@@ -44,6 +46,8 @@ begin
 
   RegisterComponentEditor(TncTCPServer, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncTCPClient, TncTCPSocketDefaultEditor);
+  RegisterComponentEditor(TncTCPProServer, TncTCPSocketDefaultEditor);  // Pro enhanced socket editors
+  RegisterComponentEditor(TncTCPProClient, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncServer, TncTCPSocketDefaultEditor);     // New threaded socket editors
   RegisterComponentEditor(TncClient, TncTCPSocketDefaultEditor);
   RegisterComponentEditor(TncUDPServer, TncUDPSocketDefaultEditor);  // Added UDP editors

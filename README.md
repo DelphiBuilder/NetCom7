@@ -2,13 +2,58 @@
 
 The fastest communications possible.
 
-This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, **high-performance threaded socket components**, and **TLS/SSL security support**!
+This is an updated version of the NetCom7 package, now with enhanced **UDP** & **IPV6** support, improved cross-platform capabilities, **high-performance threaded socket components**, **universal socket components with dual protocol support and thread pool processing**, and **TLS/SSL security support**!
 
-⚠️ **Note**: TLS/SSL implementation is currently available for **basic raw socket components** (TncTCPClient/TncTCPServer) and **raw threaded socket components** (TncServer/TncClient) on Windows platforms through SChannel integration.
+⚠️ **Note**: TLS/SSL implementation is currently available for **basic raw socket components** (TncTCPClient/TncTCPServer), **raw threaded socket components** (TncServer/TncClient), and **universal socket components** (TncTCPProClient/TncTCPProServer) on Windows platforms through SChannel integration.
+
+## 📊 **NetCom7 Socket Components Comparison**
+
+| Feature | **ncSockets** | **ncSources** | **ncSocketsPro** ⭐ | **ncTSockets** |
+|---------|---------------|---------------|---------------------|----------------|
+| **Architecture** | Basic Raw Sockets | Command Protocol | **Universal Hybrid** | Raw + Thread Pool |
+| **Socket Access** | ✅ Direct Raw | ❌ Command-Only | ✅ Direct Raw | ✅ Direct Raw |
+| **Custom Protocols** | ✅ Full Freedom | ❌ NetCom7 Only | ✅ Full Freedom | ✅ Full Freedom |
+| **Command Protocol** | ❌ Manual | ✅ Built-in | ✅ Built-in | ❌ Manual |
+| **Protocol Detection** | ❌ Manual | ❌ Single Protocol | ✅ **Automatic** | ❌ Manual |
+| **Thread Pool Processing** | ❌ Manual | ✅ Commands Only | ✅ **Commands + Raw** | ✅ Raw Data Only |
+| **Best For** | Simple protocols | RPC/Commands | **Universal** | High-throughput |
+
+### **Component Selection Guide**
+- **ncSockets**: Learning, simple protocols, full control
+- **ncSources**: RPC-style command execution, structured protocols  
+- **ncSocketsPro**: **Universal solution - handles any requirement** ⭐
+- **ncTSockets**: High-performance custom protocol processing
 
 ## Recent Updates
 
-### 🚀 New High-Performance Threaded Socket Components
+### 🌟 **Universal Socket Components with Dual Protocol Support + Thread Pool** ⭐
+**TncTCPProClient** and **TncTCPProServer** represent the **ultimate NetCom7 components**, combining the flexibility of ncSockets, the performance of ncSources, and intelligent protocol handling into one powerful solution.
+
+#### Features
+- **Dual Protocol Support**: Handle both raw data and structured commands simultaneously
+- **Thread Pool Command Processing**: Commands execute in high-performance worker threads (like ncSources)
+- **Automatic Protocol Detection**: Uses magic header (`$ACF0FF00`) to intelligently route data
+- **Guaranteed Message Delivery**: `SendCommand()` method ensures complete message transmission
+- **Full Backward Compatibility**: Existing custom protocols work exactly like ncSockets
+
+#### Intelligent Architecture
+```pascal
+Network → Reader Thread → Protocol Detection → {
+  Raw Data → OnReadData (Reader/Main Thread)
+  Commands → Thread Pool → OnCommand (Worker Threads)
+}
+```
+#### Easy Integration
+The **TncTCPProServer** and **TncTCPProClient** components can be dragged from the palette and customized in the object inspector.
+
+![alt text](image-6.png)
+
+![alt text](image-7.png) ![alt text](image-8.png)
+
+![alt text](image-9.png) ![alt text](image-10.png)
+
+
+### 🚀 **High-Performance Threaded Socket Components (ncTSockets)**
 **TncServer** and **TncClient** provide raw socket functionality with built-in thread pools for extreme performance:
 
 - **Built-in Thread Pool**: Automatically manages worker threads for concurrent request processing
@@ -60,11 +105,15 @@ The **UDP** components can be dragged from the palette and customized in the obj
 NetCom7 now includes **TLS/SSL encryption** support for secure communications:
 
 - **Windows SChannel Integration**: Native TLS support using Windows Secure Channel API (Windows only)
-- **Basic Raw Socket Support**: TncTCPClient and TncTCPServer components support TLS encryption
-- **Raw Threaded Socket Support**: TncServer and TncClient components support TLS encryption with thread pool processing
-- **Easy Configuration**: Simple `UseTLS` property to enable secure communications on both component types
-- **Certificate Management**: Built-in support for X.509 certificates and PFX files on both component types
-- **Secure Handshake**: Automatic TLS handshake handling with proper certificate validation on both component types
+- **Universal Coverage**: TLS support across all socket component types
+- **Easy Configuration**: Simple `UseTLS` property to enable secure communications
+- **Certificate Management**: Built-in support for X.509 certificates and PFX files
+- **Secure Handshake**: Automatic TLS handshake handling with proper certificate validation
+
+#### Supported Components
+- **Basic Raw Sockets**: TncTCPClient and TncTCPServer components
+- **Threaded Raw Sockets**: TncServer and TncClient components  
+- **Universal Sockets**: TncTCPProClient and TncTCPProServer components
 
 #### Key Features
 - **Transport Layer Security**: Industry-standard TLS encryption for data protection
@@ -72,7 +121,7 @@ NetCom7 now includes **TLS/SSL encryption** support for secure communications:
 - **Seamless Integration**: TLS functionality integrated into existing NetCom7 architecture
 - **OnBeforeConnected Events**: TLS handshake occurs before connection establishment
 
-⚠️ **Note**: TLS support is currently available for Windows platforms only through SChannel integration and works with both basic raw socket components and raw threaded socket components.
+⚠️ **Note**: TLS support is currently available for Windows platforms only through SChannel integration.
 
 ### IPV6
 
@@ -89,5 +138,4 @@ TCP v4 / TCP v6 / UDP v4 / UDP v6 are now avaible.
 - Added new `SimpleThreadedSockets_TLS` demo for TLS/SSL secure communications (raw threaded sockets)
 - Updated the `SimpleSockets` demo
 - Added new `ThreadedSocketsBenchmark` demo for performance testing and comparison
-
-
+- Added new `Multi-Socket_ncSocketsPro` demo showcasing dual protocol support, thread pool processing, and guaranteed message delivery
