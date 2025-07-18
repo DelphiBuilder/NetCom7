@@ -239,8 +239,6 @@ type
     FPrivateKeyPassword: string;
     FCACertificatesFile: string;
     FIgnoreCertificateErrors: Boolean;
-    FTlsContext: TSChannelClient;
-    FTlsServerContext: TSChannelServer;
     FIsServer: Boolean;
     
     function GetReadBufferLen: Integer;
@@ -686,14 +684,6 @@ begin
   FPrivateKeyPassword := '';
   FCACertificatesFile := '';
   FIgnoreCertificateErrors := DefIgnoreCertificateErrors;
-  
-  // Initialize TLS contexts using FillChar and then set public fields
-  FillChar(FTlsContext, SizeOf(FTlsContext), 0);
-  FTlsContext.Initialized := False;
-  
-  FillChar(FTlsServerContext, SizeOf(FTlsServerContext), 0);
-  FTlsServerContext.Initialized := False;
-  FTlsServerContext.HandshakeCompleted := False;
   
   FIsServer := False;
 

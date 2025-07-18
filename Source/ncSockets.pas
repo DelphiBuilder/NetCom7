@@ -192,8 +192,6 @@ type
     FPrivateKeyPassword: string;
     FCACertificatesFile: string;
     FIgnoreCertificateErrors: Boolean;
-    FTlsContext: TSChannelClient;
-    FTlsServerContext: TSChannelServer;
     FIsServer: Boolean; // Flag to determine if this is a server or client
     
     function GetReadBufferLen: Integer;  // Update
@@ -609,14 +607,6 @@ begin
   FPrivateKeyPassword := '';
   FCACertificatesFile := '';
   FIgnoreCertificateErrors := DefIgnoreCertificateErrors;
-  
-  // Initialize TLS contexts using FillChar and then set public fields
-  FillChar(FTlsContext, SizeOf(FTlsContext), 0);
-  FTlsContext.Initialized := False;
-  
-  FillChar(FTlsServerContext, SizeOf(FTlsServerContext), 0);
-  FTlsServerContext.Initialized := False;
-  FTlsServerContext.HandshakeCompleted := False;
   
   FIsServer := False;
 
@@ -1049,8 +1039,6 @@ procedure TncTCPBase.InitializeTLS(aLine: TncLine);
 var
   TlsContext: TncTlsConnectionContext;
 begin
-  OutputDebugString(PChar('TLS_INIT: Starting - IsServer: ' + BoolToStr(FIsServer, True) + ', Line: ' + IntToHex(NativeUInt(aLine), 8)));
-  
   if not FUseTLS then
     Exit;
   
@@ -1060,13 +1048,11 @@ begin
   // Get or create per-connection TLS context
   if TncLineInternal(aLine).DataObject = nil then
   begin
-    OutputDebugString(PChar('TLS_INIT: Creating NEW connection context'));
     TlsContext := TncTlsConnectionContext.Create(FIsServer);
     TncLineInternal(aLine).DataObject := TlsContext;
   end
   else
   begin
-    OutputDebugString(PChar('TLS_INIT: ERROR - Context already exists! Possible resource leak'));
     TlsContext := TncTlsConnectionContext(TncLineInternal(aLine).DataObject);
   end;
   
@@ -1075,7 +1061,6 @@ begin
   begin
     if TlsContext.GetServerContext^.Initialized then
     begin
-      OutputDebugString(PChar('TLS_INIT: Server context already initialized, exiting'));
       Exit;
     end;
   end
@@ -1083,7 +1068,6 @@ begin
   begin
     if TlsContext.GetClientContext^.Initialized then
     begin
-      OutputDebugString(PChar('TLS_INIT: Client context already initialized, exiting'));
       Exit;
     end;
   end;
@@ -1091,49 +1075,29 @@ begin
   // Initialize TLS for this specific connection
   if FIsServer then
   begin
-    OutputDebugString(PChar('TLS_INIT: Calling SChannel server AfterConnection (with aggressive cleanup)'));
     TlsContext.GetServerContext^.AfterConnection(aLine, AnsiString(FCertificateFile), AnsiString(FPrivateKeyPassword));
-    OutputDebugString(PChar('TLS_INIT: SChannel server AfterConnection completed'));
   end
   else
   begin
-    OutputDebugString(PChar('TLS_INIT: Calling SChannel client AfterConnection (with aggressive cleanup)'));
     TlsContext.GetClientContext^.AfterConnection(aLine, AnsiString(GetHost), FIgnoreCertificateErrors);
-    OutputDebugString(PChar('TLS_INIT: SChannel client AfterConnection completed'));
   end;
-  
-  OutputDebugString(PChar('TLS_INIT: Completed successfully'));
 end;
 
 procedure TncTCPBase.HandleTLSHandshake(aLine: TncLine);
 begin
-  OutputDebugString(PChar('TLS_HANDSHAKE: Called - IsServer: ' + BoolToStr(FIsServer, True) + ', Line: ' + IntToHex(NativeUInt(aLine), 8)));
-  
   // This method is called automatically before OnConnected fires
   // It performs the TLS handshake synchronously
   if FUseTLS and (aLine <> nil) then
   begin
-    OutputDebugString(PChar('TLS_HANDSHAKE: Starting TLS initialization'));
     try
       InitializeTLS(aLine); // Perform the complete TLS handshake
-      OutputDebugString(PChar('TLS_HANDSHAKE: TLS initialization completed successfully'));
     except
       on E: Exception do
       begin
-        OutputDebugString(PChar('TLS_HANDSHAKE: EXCEPTION during handshake: ' + E.Message));
         raise; // Re-raise the exception to maintain error handling
       end;
     end;
-  end
-  else
-  begin
-    if not FUseTLS then
-      OutputDebugString(PChar('TLS_HANDSHAKE: TLS not enabled, skipping'))
-    else
-      OutputDebugString(PChar('TLS_HANDSHAKE: Line is nil, skipping'));
   end;
-  
-  OutputDebugString(PChar('TLS_HANDSHAKE: Completed'));
 end;
 
 procedure TncTCPBase.HandleTLSHandshakeComplete(aLine: TncLine);
@@ -1154,11 +1118,8 @@ procedure TncTCPBase.FinalizeTLS(aLine: TncLine);
 var
   TlsContext: TncTlsConnectionContext;
 begin
-  OutputDebugString(PChar('TLS_CLEANUP: Starting - IsServer: ' + BoolToStr(FIsServer, True) + ', Line: ' + IntToHex(NativeUInt(aLine), 8)));
-  
   if FUseTLS and (aLine <> nil) and (TncLineInternal(aLine).DataObject <> nil) then
   begin
-    OutputDebugString(PChar('TLS_CLEANUP: Context found, starting cleanup'));
     try
       TlsContext := TncTlsConnectionContext(TncLineInternal(aLine).DataObject);
       
@@ -1170,26 +1131,14 @@ begin
             begin
               if TlsContext.GetServerContext^.Initialized then
               begin
-                OutputDebugString(PChar('TLS_CLEANUP: Calling SChannel server BeforeDisconnection'));
                 TlsContext.GetServerContext^.BeforeDisconnection(aLine);
-                OutputDebugString(PChar('TLS_CLEANUP: SChannel server BeforeDisconnection completed'));
-              end
-              else
-              begin
-                OutputDebugString(PChar('TLS_CLEANUP: Server context not initialized, skipping BeforeDisconnection'));
               end;
             end
             else
             begin
               if TlsContext.GetClientContext^.Initialized then
               begin
-                OutputDebugString(PChar('TLS_CLEANUP: Calling SChannel client BeforeDisconnection'));
                 TlsContext.GetClientContext^.BeforeDisconnection(aLine);
-                OutputDebugString(PChar('TLS_CLEANUP: SChannel client BeforeDisconnection completed'));
-              end
-              else
-              begin
-                OutputDebugString(PChar('TLS_CLEANUP: Client context not initialized, skipping BeforeDisconnection'));
               end;
             end;
             {$ENDIF}
@@ -1201,29 +1150,15 @@ begin
       end;
       
       // Clean up the TLS context object
-      OutputDebugString(PChar('TLS_CLEANUP: Freeing TLS context object'));
       TncLineInternal(aLine).DataObject := nil;
       TlsContext.Free;
-      OutputDebugString(PChar('TLS_CLEANUP: TLS context object freed successfully'));
     except
       on E: Exception do
       begin
-        OutputDebugString(PChar('TLS_CLEANUP: EXCEPTION during cleanup: ' + E.Message));
         // Log error but don't raise exception during cleanup
       end;
     end;
-  end
-  else
-  begin
-    if not FUseTLS then
-      OutputDebugString(PChar('TLS_CLEANUP: TLS not enabled'))
-    else if aLine = nil then
-      OutputDebugString(PChar('TLS_CLEANUP: Line is nil'))
-    else
-      OutputDebugString(PChar('TLS_CLEANUP: No TLS context to clean up'));
   end;
-  
-  OutputDebugString(PChar('TLS_CLEANUP: Completed'));
 end;
 
 function TncTCPBase.SendTLS(aLine: TncLine; const aBuf; aBufSize: Integer): Integer;
