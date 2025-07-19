@@ -735,9 +735,12 @@ begin
   TncLineInternal(Result).SetKind(Kind);
   TncLineInternal(Result).SetFamily(FFamily);
   
-  // Set up TLS callback if TLS is enabled
+  // Set up TLS callbacks if TLS is enabled
   if FUseTLS then
+  begin
     TncLineInternal(Result).OnBeforeConnected := HandleTLSHandshake;
+    TncLineInternal(Result).OnBeforeDisconnected := FinalizeTLS;
+  end;
 end;
 
 procedure TncTCPProBase.SetActive(const Value: Boolean);
@@ -962,6 +965,7 @@ begin
         if Server.Listener <> nil then
         begin
           TncLineInternal(Server.Listener).OnBeforeConnected := HandleTLSHandshake;
+          TncLineInternal(Server.Listener).OnBeforeDisconnected := FinalizeTLS;
         end;
       end
       else if not FIsServer and (Self is TncCustomTCPProClient) then
@@ -971,6 +975,7 @@ begin
         if Client.Line <> nil then
         begin
           TncLineInternal(Client.Line).OnBeforeConnected := HandleTLSHandshake;
+          TncLineInternal(Client.Line).OnBeforeDisconnected := FinalizeTLS;
         end;
       end;
     end;
@@ -1298,6 +1303,12 @@ begin
               
               Result := TlsContext.GetServerContext^.Receive(aLine, @aBuf, aBufSize);
               
+              // CRITICAL FIX: Detect TLS disconnection when Receive returns 0 after handshake completion
+              if (Result = 0) and WasHandshakeCompleted then
+              begin
+                raise Exception.Create('TLS client disconnected');
+              end;
+              
               // Check if handshake just completed
               if not WasHandshakeCompleted and TlsContext.GetServerContext^.HandshakeCompleted then
               begin
@@ -1322,6 +1333,12 @@ begin
               // the first call to Receive after OnBeforeConnected is when handshake is complete
               
               Result := TlsContext.GetClientContext^.Receive(aLine, @aBuf, aBufSize);
+              
+              // CRITICAL FIX: Detect TLS disconnection when Receive returns 0 after handshake completion
+              if (Result = 0) and TlsContext.GetClientContext^.Initialized then
+              begin
+                raise Exception.Create('TLS server disconnected');
+              end;
               
               // Client-side handshake completion detection:
               // The client TLS handshake is handled in OnBeforeConnected event
@@ -1377,9 +1394,12 @@ begin
   TncLineInternal(Line).OnConnected := DataSocketConnected;
   TncLineInternal(Line).OnDisconnected := DataSocketDisconnected;
   
-  // Set up TLS handshake callback if TLS is enabled
+  // Set up TLS callbacks if TLS is enabled
   if FUseTLS then
+  begin
     TncLineInternal(Line).OnBeforeConnected := HandleTLSHandshake;
+    TncLineInternal(Line).OnBeforeDisconnected := FinalizeTLS;
+  end;
 
   LineProcessor := TncClientProcessor.Create(Self);
   try
@@ -1476,9 +1496,7 @@ end;
 
 procedure TncCustomTCPProClient.DataSocketDisconnected(aLine: TncLine);
 begin
-  // Finalize TLS if enabled
-  if UseTLS then
-    FinalizeTLS(aLine);
+  // TLS cleanup is now handled automatically by OnBeforeDisconnected event
 
   if Assigned(OnDisconnected) then
     try
@@ -1920,10 +1938,11 @@ begin
   TncLineInternal(Listener).OnConnected := DataSocketConnected;
   TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
   
-  // Set up TLS handshake callback if TLS is enabled
+  // Set up TLS callbacks if TLS is enabled
   if FUseTLS then
   begin
     TncLineInternal(Listener).OnBeforeConnected := HandleTLSHandshake;
+    TncLineInternal(Listener).OnBeforeDisconnected := FinalizeTLS;
   end;
   Lines := TThreadLineList.Create();
 
@@ -2092,9 +2111,7 @@ begin
     SetLength(ReadSocketHandles, 0)
   else
   begin
-    // Finalize TLS if enabled
-    if UseTLS then
-      FinalizeTLS(aLine);
+    // TLS cleanup is now handled automatically by OnBeforeDisconnected event
 
     // Clean up connection state
     FConnectionStates.Remove(aLine);

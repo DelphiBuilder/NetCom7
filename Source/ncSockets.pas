@@ -183,7 +183,7 @@ type
     FOnDisconnected: TncOnConnectDisconnect;
     FOnReadData: TncOnReadData;
     FLine: TncLine;
-    
+
     // TLS Properties
     FUseTLS: Boolean;
     FTlsProvider: TncTlsProvider;
@@ -192,8 +192,10 @@ type
     FPrivateKeyPassword: string;
     FCACertificatesFile: string;
     FIgnoreCertificateErrors: Boolean;
+    FTlsContext: TSChannelClient;
+    FTlsServerContext: TSChannelServer;
     FIsServer: Boolean; // Flag to determine if this is a server or client
-    
+
     function GetReadBufferLen: Integer;  // Update
     procedure SetReadBufferLen(const Value: Integer);  // Update
     function GetActive: Boolean; virtual; abstract;
@@ -211,7 +213,7 @@ type
     procedure SetNoDelay(const Value: Boolean);
     function GetKeepAlive: Boolean;
     procedure SetKeepAlive(const Value: Boolean);
-    
+
     // TLS Property Methods
     function GetUseTLS: Boolean;
     procedure SetUseTLS(const Value: Boolean);
@@ -227,7 +229,7 @@ type
     procedure SetCACertificatesFile(const Value: string);
     function GetIgnoreCertificateErrors: Boolean;
     procedure SetIgnoreCertificateErrors(const Value: Boolean);
-    
+
   private
     FUseReaderThread: Boolean;
     procedure DoActivate(aActivate: Boolean); virtual; abstract;
@@ -264,7 +266,7 @@ type
     property OnDisconnected: TncOnConnectDisconnect read FOnDisconnected write FOnDisconnected;
     property OnReadData: TncOnReadData read FOnReadData write FOnReadData;
     property ReadBufferLen: Integer read GetReadBufferLen write SetReadBufferLen default DefReadBufferLen;  // Update
-    
+
     // TLS Properties
     property UseTLS: Boolean read GetUseTLS write SetUseTLS default DefUseTLS;
     property TlsProvider: TncTlsProvider read GetTlsProvider write SetTlsProvider default DefTlsProvider;
@@ -527,16 +529,17 @@ constructor TncTlsConnectionContext.Create(aIsServer: Boolean);
 begin
   inherited Create;
   FIsServer := aIsServer;
-  
+
   // Initialize TLS contexts using FillChar and then set public fields
   FillChar(FClientContext, SizeOf(FClientContext), 0);
   FClientContext.Initialized := False;
-  
+
   FillChar(FServerContext, SizeOf(FServerContext), 0);
   FServerContext.Initialized := False;
   FServerContext.HandshakeCompleted := False;
 end;
 
+{
 destructor TncTlsConnectionContext.Destroy;
 begin
   // Clean up TLS contexts
@@ -558,7 +561,23 @@ begin
   except
     // Ignore cleanup errors
   end;
-  
+
+  inherited Destroy;
+end;}
+
+destructor TncTlsConnectionContext.Destroy;
+begin
+  // In a perfect world, FinalizeTLS was already called
+  // and all cleanup is done - destructor should be nearly empty
+
+  {$IFDEF DEBUG}
+  // Debug check - verify cleanup already happened
+  if FIsServer then
+    Assert(not FServerContext.Initialized, 'Server TLS context not cleaned up!')
+  else
+    Assert(not FClientContext.Initialized, 'Client TLS context not cleaned up!');
+  {$ENDIF}
+
   inherited Destroy;
 end;
 
@@ -572,9 +591,6 @@ begin
   Result := @FServerContext;
 end;
 
-// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{ TThreadLineList }
-// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncTCPBase }
@@ -607,7 +623,15 @@ begin
   FPrivateKeyPassword := '';
   FCACertificatesFile := '';
   FIgnoreCertificateErrors := DefIgnoreCertificateErrors;
-  
+
+  // Initialize TLS contexts using FillChar and then set public fields
+  FillChar(FTlsContext, SizeOf(FTlsContext), 0);
+  FTlsContext.Initialized := False;
+
+  FillChar(FTlsServerContext, SizeOf(FTlsServerContext), 0);
+  FTlsServerContext.Initialized := False;
+  FTlsServerContext.HandshakeCompleted := False;
+
   FIsServer := False;
 
   SetLength(ReadBuf, DefReadBufferLen);
@@ -622,10 +646,10 @@ end;
 destructor TncTCPBase.Destroy;
 begin
   Active := False;
-  
+
   // TLS contexts are now managed per-connection and cleaned up in FinalizeTLS
   // No global TLS context cleanup needed
-  
+
   PropertyLock.Free;
   ShutDownLock.Free;
   inherited Destroy;
@@ -644,7 +668,7 @@ begin
   Result := TncLineInternal.Create;
   TncLineInternal(Result).SetKind(Kind);
   TncLineInternal(Result).SetFamily(FFamily);
-  
+
   // Set up TLS callback if TLS is enabled
   if FUseTLS then
     TncLineInternal(Result).OnBeforeConnected := HandleTLSHandshake;
@@ -861,7 +885,7 @@ begin
   PropertyLock.Acquire;
   try
     FUseTLS := Value;
-    
+
     // Add TLS callback assignment when TLS is enabled
     if Value then
     begin
@@ -921,7 +945,7 @@ begin
           raise EOpenSSLNotAvailable.Create(EOpenSSLNotAvailableStr);
         end;
     end;
-    
+
     FTlsProvider := Value;
   finally
     PropertyLock.Release;
@@ -1041,10 +1065,10 @@ var
 begin
   if not FUseTLS then
     Exit;
-  
+
   if aLine = nil then
     Exit;
-  
+
   // Get or create per-connection TLS context
   if TncLineInternal(aLine).DataObject = nil then
   begin
@@ -1055,23 +1079,19 @@ begin
   begin
     TlsContext := TncTlsConnectionContext(TncLineInternal(aLine).DataObject);
   end;
-  
+
   // Check if TLS is already initialized for this specific connection
   if FIsServer then
   begin
     if TlsContext.GetServerContext^.Initialized then
-    begin
       Exit;
-    end;
   end
   else
   begin
     if TlsContext.GetClientContext^.Initialized then
-    begin
       Exit;
-    end;
   end;
-  
+
   // Initialize TLS for this specific connection
   if FIsServer then
   begin
@@ -1089,14 +1109,7 @@ begin
   // It performs the TLS handshake synchronously
   if FUseTLS and (aLine <> nil) then
   begin
-    try
-      InitializeTLS(aLine); // Perform the complete TLS handshake
-    except
-      on E: Exception do
-      begin
-        raise; // Re-raise the exception to maintain error handling
-      end;
-    end;
+    InitializeTLS(aLine); // Perform the complete TLS handshake
   end;
 end;
 
@@ -1122,7 +1135,7 @@ begin
   begin
     try
       TlsContext := TncTlsConnectionContext(TncLineInternal(aLine).DataObject);
-      
+
       case FTlsProvider of
         tpSChannel:
           begin
@@ -1130,16 +1143,12 @@ begin
             if FIsServer then
             begin
               if TlsContext.GetServerContext^.Initialized then
-              begin
                 TlsContext.GetServerContext^.BeforeDisconnection(aLine);
-              end;
             end
             else
             begin
               if TlsContext.GetClientContext^.Initialized then
-              begin
                 TlsContext.GetClientContext^.BeforeDisconnection(aLine);
-              end;
             end;
             {$ENDIF}
           end;
@@ -1148,15 +1157,13 @@ begin
             // Future OpenSSL cleanup
           end;
       end;
-      
+
       // Clean up the TLS context object
       TncLineInternal(aLine).DataObject := nil;
       TlsContext.Free;
     except
       on E: Exception do
-      begin
         // Log error but don't raise exception during cleanup
-      end;
     end;
   end;
 end;
@@ -1168,7 +1175,7 @@ begin
   if FUseTLS and (TncLineInternal(aLine).DataObject <> nil) then
   begin
     TlsContext := TncTlsConnectionContext(TncLineInternal(aLine).DataObject);
-    
+
     case FTlsProvider of
       tpSChannel:
         begin
@@ -1223,6 +1230,12 @@ begin
               
               Result := TlsContext.GetServerContext^.Receive(aLine, @aBuf, aBufSize);
               
+              // CRITICAL FIX: Detect TLS disconnection when Receive returns 0 after handshake completion
+              if (Result = 0) and WasHandshakeCompleted then
+              begin
+                raise Exception.Create('TLS client disconnected');
+              end;
+              
               // Check if handshake just completed
               if not WasHandshakeCompleted and TlsContext.GetServerContext^.HandshakeCompleted then
               begin
@@ -1247,6 +1260,12 @@ begin
               // the first call to Receive after OnBeforeConnected is when handshake is complete
               
               Result := TlsContext.GetClientContext^.Receive(aLine, @aBuf, aBufSize);
+              
+              // CRITICAL FIX: Detect TLS disconnection when Receive returns 0 after handshake completion
+              if (Result = 0) and TlsContext.GetClientContext^.Initialized then
+              begin
+                raise Exception.Create('TLS server disconnected');
+              end;
               
               // Client-side handshake completion detection:
               // The client TLS handshake is handled in OnBeforeConnected event
@@ -1297,7 +1316,7 @@ begin
 
   TncLineInternal(Line).OnConnected := DataSocketConnected;
   TncLineInternal(Line).OnDisconnected := DataSocketDisconnected;
-  
+
   // Set up TLS handshake callback if TLS is enabled
   if FUseTLS then
     TncLineInternal(Line).OnBeforeConnected := HandleTLSHandshake;
@@ -1340,32 +1359,6 @@ begin
     begin
       TncLineInternal(Line).SetFamily(FFamily);
     end;
-    
-    // CRITICAL FIX: Reset TLS callback on each connection attempt
-    // This ensures proper TLS initialization for reconnections
-    if FUseTLS then
-    begin
-      OutputDebugString(PChar('CLIENT_CONNECT: TLS enabled - checking for residual context'));
-      // Ensure any residual TLS context is completely cleared before reconnection
-      if TncLineInternal(Line).DataObject <> nil then
-      begin
-        OutputDebugString(PChar('CLIENT_CONNECT: WARNING - Found residual TLS context! Force cleaning'));
-        FinalizeTLS(Line); // Force cleanup of any leftover TLS context
-        OutputDebugString(PChar('CLIENT_CONNECT: Residual context cleanup completed'));
-      end
-      else
-      begin
-        OutputDebugString(PChar('CLIENT_CONNECT: No residual context found - good'));
-      end;
-      
-      OutputDebugString(PChar('CLIENT_CONNECT: Setting TLS handshake callback'));
-      TncLineInternal(Line).OnBeforeConnected := HandleTLSHandshake;
-      OutputDebugString(PChar('CLIENT_CONNECT: TLS callback set, creating client handle'));
-    end
-    else
-    begin
-      TncLineInternal(Line).OnBeforeConnected := nil;
-    end;
 
     TncLineInternal(Line).CreateClientHandle(FHost, FPort);
 
@@ -1407,7 +1400,7 @@ begin
     end;
 
   // TLS initialization is now handled by OnBeforeConnected event
-  
+
   if Assigned(OnConnected) then
     try
       OnConnected(Self, aLine);
@@ -1423,37 +1416,15 @@ end;
 
 procedure TncCustomTCPClient.DataSocketDisconnected(aLine: TncLine);
 begin
-  OutputDebugString(PChar('CLIENT_DISCONNECT: Starting - Line: ' + IntToHex(NativeUInt(aLine), 8)));
-  
   // Finalize TLS if enabled
   if UseTLS then
-  begin
-    OutputDebugString(PChar('CLIENT_DISCONNECT: TLS enabled - calling FinalizeTLS'));
     FinalizeTLS(aLine);
-    OutputDebugString(PChar('CLIENT_DISCONNECT: FinalizeTLS completed'));
-  end
-  else
-  begin
-    OutputDebugString(PChar('CLIENT_DISCONNECT: TLS not enabled'));
-  end;
 
   if Assigned(OnDisconnected) then
     try
-      OutputDebugString(PChar('CLIENT_DISCONNECT: Calling OnDisconnected event'));
       OnDisconnected(Self, aLine);
-      OutputDebugString(PChar('CLIENT_DISCONNECT: OnDisconnected completed'));
     except
-      on E: Exception do
-      begin
-        OutputDebugString(PChar('CLIENT_DISCONNECT: Exception in OnDisconnected: ' + E.Message));
-      end;
-    end
-  else
-  begin
-    OutputDebugString(PChar('CLIENT_DISCONNECT: No OnDisconnected event assigned'));
-  end;
-  
-  OutputDebugString(PChar('CLIENT_DISCONNECT: Completed'));
+    end;
 end;
 
 
@@ -1678,7 +1649,7 @@ end;
 constructor TncCustomTCPServer.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  
+
   FIsServer := True; // Set server flag for TLS context selection
 
   Listener := CreateLineObject;
@@ -1689,7 +1660,7 @@ begin
 
   TncLineInternal(Listener).OnConnected := DataSocketConnected;
   TncLineInternal(Listener).OnDisconnected := DataSocketDisconnected;
-  
+
   // Set up TLS handshake callback if TLS is enabled
   if FUseTLS then
   begin
@@ -1832,7 +1803,7 @@ begin
     end;
 
     // TLS initialization is now handled by OnBeforeConnected event
-    
+
     // For TLS connections, delay OnConnected until after handshake completes
     if not UseTLS then
     begin
@@ -2097,3 +2068,6 @@ begin
 end;
 
 end.
+
+
+

@@ -146,6 +146,7 @@ type
     FOnConnected: TncLineOnConnectDisconnect;
     FOnDisconnected: TncLineOnConnectDisconnect;
     FOnBeforeConnected: TncLineOnConnectDisconnect; // Called before OnConnected for TLS setup
+    FOnBeforeDisconnected: TncLineOnConnectDisconnect; // Called before OnDisconnected for TLS cleanup
   private
     PropertyLock: TCriticalSection;
     FHandle: TSocketHandle;
@@ -204,6 +205,8 @@ type
       write FOnDisconnected;
     property OnBeforeConnected: TncLineOnConnectDisconnect read FOnBeforeConnected
       write FOnBeforeConnected;
+    property OnBeforeDisconnected: TncLineOnConnectDisconnect read FOnBeforeDisconnected
+      write FOnBeforeDisconnected;
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
@@ -405,6 +408,7 @@ begin
   FOnConnected := nil;
   FOnDisconnected := nil;
   FOnBeforeConnected := nil;
+  FOnBeforeDisconnected := nil;
 end;
 
 destructor TncLine.Destroy;
@@ -520,7 +524,7 @@ begin
           if ConnectResult = -1 then
             raise EncLineException.Create('Connect timeout');
           Check(ConnectResult);
-          
+
           // For TLS connections, perform handshake BEFORE triggering OnConnected
           if Assigned(FOnBeforeConnected) then
           begin
@@ -534,7 +538,7 @@ begin
               end;
             end;
           end;
-          
+
           SetConnected; // Only triggers OnConnected AFTER TLS is ready
         end
         else
@@ -654,6 +658,17 @@ procedure TncLine.DestroyHandle;
 begin
   if FActive then
   begin
+    // CRITICAL: Call TLS cleanup BEFORE destroying socket
+    if Assigned(FOnBeforeDisconnected) then
+    begin
+      try
+        FOnBeforeDisconnected(Self); // TLS cleanup while socket is still active
+      except
+        on E: Exception do
+          // Continue with socket cleanup even if TLS cleanup fails
+      end;
+    end;
+    
     try
 {$IFDEF MSWINDOWS}
       Shutdown(FHandle, SD_BOTH);
@@ -698,7 +713,8 @@ begin
   Result.OnConnected := OnConnected;
   Result.OnDisconnected := OnDisconnected;
   Result.OnBeforeConnected := OnBeforeConnected;
-  
+  Result.OnBeforeDisconnected := OnBeforeDisconnected;
+
   // For server-side TLS connections, perform handshake BEFORE triggering OnConnected
   if Assigned(Result.OnBeforeConnected) then
   begin
@@ -713,7 +729,7 @@ begin
       end;
     end;
   end;
-  
+
   Result.SetConnected;
 end;
 
@@ -1093,3 +1109,4 @@ WSACleanup;
 {$ENDIF}
 
 end.
+
