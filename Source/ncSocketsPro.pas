@@ -648,6 +648,50 @@ begin
 end;
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+{ TncTlsConnectionContext }
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+constructor TncTlsConnectionContext.Create(aIsServer: Boolean);
+begin
+  inherited Create;
+  FIsServer := aIsServer;
+
+  // Initialize TLS contexts using FillChar and then set public fields
+  FillChar(FClientContext, SizeOf(FClientContext), 0);
+  FClientContext.Initialized := False;
+
+  FillChar(FServerContext, SizeOf(FServerContext), 0);
+  FServerContext.Initialized := False;
+  FServerContext.HandshakeCompleted := False;
+end;
+
+destructor TncTlsConnectionContext.Destroy;
+begin
+  // In a perfect world, FinalizeTLS was already called
+  // and all cleanup is done - destructor should be nearly empty
+
+  {$IFDEF DEBUG}
+  // Debug check - verify cleanup already happened
+  if FIsServer then
+    Assert(not FServerContext.Initialized, 'Server TLS context not cleaned up!')
+  else
+    Assert(not FClientContext.Initialized, 'Client TLS context not cleaned up!');
+  {$ENDIF}
+
+  inherited Destroy;
+end;
+
+function TncTlsConnectionContext.GetClientContext: PSChannelClient;
+begin
+  Result := @FClientContext;
+end;
+
+function TncTlsConnectionContext.GetServerContext: PSChannelServer;
+begin
+  Result := @FServerContext;
+end;
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 { TncTCPProBase }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2673,58 +2717,6 @@ begin
     CallOnCommandEvent;
 end;
 
-// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{ TncTlsConnectionContext }
-// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-constructor TncTlsConnectionContext.Create(aIsServer: Boolean);
-begin
-  inherited Create;
-  FIsServer := aIsServer;
-  
-  // Initialize TLS contexts using FillChar and then set public fields
-  FillChar(FClientContext, SizeOf(FClientContext), 0);
-  FClientContext.Initialized := False;
-  
-  FillChar(FServerContext, SizeOf(FServerContext), 0);
-  FServerContext.Initialized := False;
-  FServerContext.HandshakeCompleted := False;
-end;
-
-destructor TncTlsConnectionContext.Destroy;
-begin
-  // Clean up TLS contexts
-  try
-    if FIsServer then
-    begin
-      if FServerContext.Initialized then
-      begin
-        // Context cleanup will be handled by BeforeDisconnection call
-      end;
-    end
-    else
-    begin
-      if FClientContext.Initialized then
-      begin
-        // Context cleanup will be handled by BeforeDisconnection call
-      end;
-    end;
-  except
-    // Ignore cleanup errors
-  end;
-  
-  inherited Destroy;
-end;
-
-function TncTlsConnectionContext.GetClientContext: PSChannelClient;
-begin
-  Result := @FClientContext;
-end;
-
-function TncTlsConnectionContext.GetServerContext: PSChannelServer;
-begin
-  Result := @FServerContext;
-end;
 
 end.
 
